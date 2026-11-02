@@ -47,7 +47,7 @@ Dedicated rule cases supplement the FR cases; all rejected operations must prese
 | BR-07 | FEAT-04 | 2 | TC-12 checks active-only return, one timestamp, and unchanged state on repeat; TC-20 checks atomic return rollback. |
 | BR-08 | FEAT-02, FEAT-04, FEAT-06 | 2 | TC-05, TC-09, TC-12 verify availability agrees with active-loan state after checkout/return; TC-17 later checks counts. |
 | BR-09 | FEAT-04 | 2 | TC-19: Send concurrent checkouts of two pending requests for one Asset ID against PostgreSQL; exactly one succeeds, one active loan exists, and the loser receives conflict with its request still pending. |
-| BR-10 | FEAT-03 | 1 | TC-21: Two requests for the same borrowable asset coexist as pending; submission creates no loan, reservation, or availability change. |
+| BR-10 | FEAT-03 | 1 | TC-21: Requests from two different borrowers for the same borrowable asset coexist as pending; submission creates no loan, reservation, or availability change. Duplicate pending submissions by the same borrower return 409, including concurrent submissions, and leave only one pending record. See the FEAT-03 implementation contract and automated tests. |
 | BR-11 | FEAT-04 | 2 | TC-09 rejects missing, invalid, past, and exactly-current due dates; accepts a future due date using controlled checkout time. |
 | BR-12 | FEAT-05 | 3 | TC-13 verifies the strict time boundary and exclusion of returned loans. |
 | BR-13 | FEAT-02, FEAT-03, FEAT-04, FEAT-06, FEAT-07 | 3 | TC-05, TC-06, TC-09, TC-15, TC-16, TC-17 verify retired assets are non-borrowable, reject requests/checkout, and appear correctly in summary counts. |

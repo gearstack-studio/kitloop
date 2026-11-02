@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Brand from './components/Brand'
 import Landing from './Landing'
 import SignUp from './SignUp'
 import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
+import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import { AmbientButton, AmbientLink } from './components/Ambient'
 import { AuthButton, AuthCard, AuthLink, Field } from './components/Auth'
 import { navigate, usePath } from './navigation'
@@ -11,7 +12,6 @@ import './App.css'
 import './Login.css'
 
 type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN' }
-type BorrowRequest = { id: string; assetId: string; status: string; submittedAt: string }
 type Loan = { id: string; assetId: string; dueAt: string; returnedAt: string | null }
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
@@ -41,6 +41,7 @@ async function api<T>(path: string, options: RequestInit = {}, csrf?: string): P
 }
 
 function App() {
+  const sessionEpoch = useRef(0)
   const path = usePath()
   const [identity, setIdentity] = useState<Identity | null>(null)
   const [csrf, setCsrf] = useState('')
@@ -53,11 +54,14 @@ function App() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('loading')
   const [requests, setRequests] = useState<BorrowRequest[]>([])
+  const [requestStatus, setRequestStatus] = useState<RequestStatus>('loading')
+  const [selectedAsset, setSelectedAsset] = useState('')
   const [loans, setLoans] = useState<Loan[]>([])
   const [dueDates, setDueDates] = useState<Record<string, string>>({})
 
   function endSession(message: string) {
-    setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setLoans([]); setNotice(message)
+    sessionEpoch.current++
+    setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setNotice(message); setError('')
   }
 
   useEffect(() => {
@@ -72,21 +76,26 @@ function App() {
 
   useEffect(() => {
     if (!identity) return
+    const epoch = sessionEpoch.current
     let active = true
     api<Asset[]>('/assets').then(({ data }) => {
-      if (active) { setAssets(data); setCatalogStatus('ready') }
+      if (active && epoch === sessionEpoch.current) { setAssets(data); setCatalogStatus('ready') }
     }).catch((failure: ApiFailure) => {
-      if (!active) return
+      if (!active || epoch !== sessionEpoch.current) return
       if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
       else setCatalogStatus('error')
     })
-    Promise.all([
-      api<BorrowRequest[]>(identity.role === 'BORROWER' ? '/requests/mine' : '/requests/pending'),
-      api<Loan[]>(identity.role === 'BORROWER' ? '/loans/mine' : '/loans/active'),
-    ]).then(([requestList, loanList]) => {
-      if (active) { setRequests(requestList.data); setLoans(loanList.data) }
+    api<BorrowRequest[]>(identity.role === 'BORROWER' ? '/requests/mine' : '/requests/pending').then(({ data }) => {
+      if (active && epoch === sessionEpoch.current) { setRequests(data); setRequestStatus('ready') }
     }).catch((failure: ApiFailure) => {
-      if (!active) return
+      if (!active || epoch !== sessionEpoch.current) return
+      if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
+      else setRequestStatus('error')
+    })
+    api<Loan[]>(identity.role === 'BORROWER' ? '/loans/mine' : '/loans/active').then(({ data }) => {
+      if (active && epoch === sessionEpoch.current) setLoans(data)
+    }).catch((failure: ApiFailure) => {
+      if (!active || epoch !== sessionEpoch.current) return
       if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
       else setError(failure.message)
     })
@@ -94,20 +103,39 @@ function App() {
   }, [identity])
 
   async function refreshData(role: Identity['role']) {
+    const epoch = sessionEpoch.current
     const [catalog, requestList, loanList] = await Promise.all([
       api<Asset[]>('/assets'),
       api<BorrowRequest[]>(role === 'BORROWER' ? '/requests/mine' : '/requests/pending'),
       api<Loan[]>(role === 'BORROWER' ? '/loans/mine' : '/loans/active'),
     ])
-    setAssets(catalog.data); setCatalogStatus('ready'); setRequests(requestList.data); setLoans(loanList.data)
+    if (epoch === sessionEpoch.current) {
+      setAssets(catalog.data); setCatalogStatus('ready'); setRequests(requestList.data); setRequestStatus('ready'); setLoans(loanList.data)
+    }
+  }
+
+  async function retryRequests() {
+    if (!identity) return
+    const epoch = sessionEpoch.current
+    setRequestStatus('loading')
+    try {
+      const result = await api<BorrowRequest[]>(identity.role === 'BORROWER' ? '/requests/mine' : '/requests/pending')
+      if (epoch === sessionEpoch.current) { setRequests(result.data); setRequestStatus('ready') }
+    } catch (failure) {
+      if (epoch !== sessionEpoch.current) return
+      if ((failure as ApiFailure).status === 401) endSession('Your session has ended. Please sign in again.')
+      else setRequestStatus('error')
+    }
   }
 
   async function retryCatalog() {
+    const epoch = sessionEpoch.current
     setCatalogStatus('loading')
     try {
-      setAssets((await api<Asset[]>('/assets')).data)
-      setCatalogStatus('ready')
+      const result = await api<Asset[]>('/assets')
+      if (epoch === sessionEpoch.current) { setAssets(result.data); setCatalogStatus('ready') }
     } catch (failure) {
+      if (epoch !== sessionEpoch.current) return
       if ((failure as ApiFailure).status === 401) endSession('Your session has ended. Please sign in again.')
       else setCatalogStatus('error')
     }
@@ -121,6 +149,7 @@ function App() {
       const result = await api<{ user: Identity }>('/auth/login', {
         method: 'POST', body: JSON.stringify({ username: username.trim(), password }),
       })
+      sessionEpoch.current++
       setCsrf(result.token ?? ''); setIdentity(result.data.user); setUsername('')
     } catch (failure) {
       const issue = failure as ApiFailure
@@ -142,27 +171,42 @@ function App() {
 
   async function act(path: string, body: object, message: string) {
     if (!identity) return
+    const epoch = sessionEpoch.current
     setBusy(true); setError(''); setNotice('')
     try {
       await api(path, { method: 'POST', body: JSON.stringify(body) }, csrf)
-      await refreshData(identity.role)
+      if (epoch !== sessionEpoch.current) return
       setNotice(message)
+      setSelectedAsset('')
+      try { await refreshData(identity.role) } catch (failure) {
+        if (epoch !== sessionEpoch.current) return
+        if ((failure as ApiFailure).status === 401) endSession('Your session has ended. Please sign in again.')
+        else { setRequestStatus('error'); setCatalogStatus('error'); setError('The action succeeded, but updated records could not be loaded. Retry loading before submitting again.') }
+      }
     } catch (failure) {
+      if (epoch !== sessionEpoch.current) return
       const issue = failure as ApiFailure
       if (issue.status === 401) endSession('Your session has ended. Please sign in again.')
       else {
         // A 409 means server state changed under us; refetch so the catalog shows current availability (FEAT-02 AC-13).
-        if (issue.status === 409) await refreshData(identity.role).catch(() => undefined)
+        if (issue.status === 409) {
+          try { await refreshData(identity.role) } catch (refreshFailure) {
+            if (epoch !== sessionEpoch.current) return
+            if ((refreshFailure as ApiFailure).status === 401) { endSession('Your session has ended. Please sign in again.'); return }
+            setRequestStatus('error'); setCatalogStatus('error')
+          }
+        }
         setError(issue.status === 403 ? 'You do not have permission for this action.' : issue.message)
       }
     } finally { setBusy(false) }
   }
 
-  const route = path === '/login' || path === '/signup' || path === '/dashboard' ? path : '/'
+  const route = path === '/login' || path === '/signup' || path === '/dashboard' || path === '/requests' ? path : '/'
 
   useEffect(() => {
     if (checking) return
-    if (route === '/dashboard' && !identity) navigate('/login', { replace: true })
+    if ((route === '/dashboard' || route === '/requests') && !identity) navigate('/login', { replace: true })
+    else if (route === '/requests' && identity?.role === 'CUSTODIAN') navigate('/dashboard', { replace: true })
     else if ((route === '/login' || route === '/signup') && identity) navigate('/dashboard', { replace: true })
     else if (path !== route) navigate('/', { replace: true })
   }, [checking, identity, route, path])
@@ -187,8 +231,23 @@ function App() {
     : <main className="dashboard">
       <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div><span className="identity-tag">Account {identity.id.slice(0, 8)}</span></div>
       {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
-      <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog} canRequest={identity.role === 'BORROWER'} busy={busy} onRequest={assetId => act('/requests', { assetId }, 'Borrow request submitted.')} />
-      <section className="panel"><div className="section-heading"><h2>{identity.role === 'BORROWER' ? 'My requests' : 'Pending requests'}</h2><span>{requests.length} records</span></div>{requests.length === 0 ? <p className="empty">No requests to show yet.</p> : <div className="record-list">{requests.map(item => <article className="record" key={item.id}><div><strong>{item.assetId}</strong><small>{new Date(item.submittedAt).toLocaleString()} · {item.status}</small></div>{identity.role === 'CUSTODIAN' && <div className="checkout-controls"><input type="datetime-local" aria-label={`Due date for ${item.assetId}`} value={dueDates[item.id] ?? ''} onChange={event => setDueDates({ ...dueDates, [item.id]: event.target.value })} /><button disabled={busy || !dueDates[item.id]} onClick={() => act(`/requests/${item.id}/checkout`, { assetId: item.assetId, dueAt: new Date(dueDates[item.id]).toISOString() }, 'Checkout recorded. Active loan created.')}>Check out</button></div>}</article>)}</div>}</section>
+      {identity.role === 'BORROWER' && <nav aria-label="Borrower pages"><AmbientLink href={route === '/requests' ? '/dashboard' : '/requests'}>{route === '/requests' ? 'Equipment dashboard' : 'My Requests page'}</AmbientLink></nav>}
+      {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog} canRequest={identity.role === 'BORROWER'} busy={busy} onRequest={assetId => { setSelectedAsset(assetId); navigate('/requests') }} />}
+      {identity.role === 'BORROWER' && route === '/requests' && <>
+        {catalogStatus === 'error' && <div role="alert"><p>Available equipment could not be loaded.</p><button onClick={retryCatalog}>Retry equipment</button></div>}
+        <BorrowRequestForm assets={assets} requests={requests} selected={selectedAsset} onSelect={setSelectedAsset} busy={busy}
+          ready={catalogStatus === 'ready' && requestStatus === 'ready'} onSubmit={event => {
+            event.preventDefault()
+            if (busy || requestStatus !== 'ready' || !assets.some(asset => asset.assetId === selectedAsset && asset.available) || requests.some(item => item.assetId === selectedAsset && item.status === 'PENDING')) return
+            void act('/requests', { assetId: selectedAsset }, 'Borrow request submitted with PENDING status.')
+          }} />
+      </>}
+      <Requests requests={requests} status={requestStatus} onRetry={retryRequests} custodian={identity.role === 'CUSTODIAN'}>
+        {item => identity.role === 'CUSTODIAN' && <div className="checkout-controls">
+          <input type="datetime-local" aria-label={`Due date for ${item.assetId}`} value={dueDates[item.id] ?? ''} onChange={event => setDueDates({ ...dueDates, [item.id]: event.target.value })} />
+          <button disabled={busy || !dueDates[item.id]} onClick={() => act(`/requests/${item.id}/checkout`, { assetId: item.assetId, dueAt: new Date(dueDates[item.id]).toISOString() }, 'Checkout recorded. Request fulfilled and active loan created.')}>Check out</button>
+        </div>}
+      </Requests>
       <section className="panel"><div className="section-heading"><h2>{identity.role === 'BORROWER' ? 'My loans' : 'Active loans'}</h2><span>{loans.length} records</span></div>{loans.length === 0 ? <p className="empty">No loans to show yet.</p> : <div className="record-list">{loans.map(loan => <article className="record" key={loan.id}><div><strong>{loan.assetId}</strong><small>Due {new Date(loan.dueAt).toLocaleDateString()} · {loan.returnedAt ? 'Returned' : 'Active'}</small></div></article>)}</div>}</section>
     </main>}
   </div>

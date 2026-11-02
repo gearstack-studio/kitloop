@@ -461,6 +461,30 @@
 }
 
 /* Catalog panel: states, card affordances */
+.request-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.request-form select {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 220px;
+  padding: var(--space-3);
+  color: var(--kl-text);
+  background: var(--kl-surface);
+  border: 1px solid var(--kl-border);
+  border-radius: var(--radius-control);
+}
+
+.request-form button {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+}
+
 .catalog-count {
   color: var(--color-text-muted);
   font-size: 14px;
