@@ -1,0 +1,8 @@
+# cwd: server
+# command: npm run build
+# date: 2026-11-02T23:52:02+07:00
+
+> server@1.0.0 build
+> tsc --noEmit
+
+# exit code: 0
