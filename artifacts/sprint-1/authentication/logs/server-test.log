@@ -1,0 +1,18 @@
+# cwd: server
+# command: npm test
+# date: 2026-11-02T23:51:52+07:00
+
+> server@1.0.0 test
+> vitest run
+
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  2 passed (2)
+      Tests  19 passed (19)
+   Start at  23:51:54
+   Duration  2.50s (tests 74%, import 24%, transform 2%, worker 1%)
+
+# exit code: 0

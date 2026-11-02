@@ -1,0 +1,126 @@
+.shell--login {
+  --gutter: clamp(20px, 4.5vw, 72px);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-editorial-bg);
+  color: var(--color-editorial-text);
+  color-scheme: dark;
+}
+
+.shell--login .topbar {
+  min-height: 74px;
+  padding-inline: max(var(--gutter), calc((100vw - 1600px) / 2 + 72px));
+  border-bottom: 1px solid var(--color-editorial-border);
+  background: color-mix(in srgb, var(--kl-bg) 70%, transparent);
+  backdrop-filter: blur(10px);
+  color: var(--color-editorial-text);
+}
+
+
+.auth-layout {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 40px var(--gutter) 64px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px 32px;
+  border: 1px solid var(--kl-border);
+  border-radius: 8px;
+  background: var(--kl-surface);
+  box-shadow: var(--shadow-panel);
+  animation: auth-in 300ms ease-out both;
+}
+
+.auth-card h1 { margin: 0 0 10px; font-size: 26px; font-weight: 650; letter-spacing: -0.035em; line-height: 1.2; }
+.auth-subtitle { margin: 0 0 32px; color: var(--color-editorial-muted); font-size: 14.5px; line-height: 1.55; }
+
+.auth-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.field { margin-bottom: 20px; }
+.field label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 550; }
+
+.field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--kl-border);
+  border-radius: 8px;
+  background: var(--kl-bg);
+  color: var(--kl-text);
+  caret-color: var(--kl-accent);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.field input:hover:not(:disabled) { border-color: var(--kl-border-hover); }
+.field input:focus-visible {
+  border-color: var(--kl-accent);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kl-accent) 22%, transparent);
+}
+.field input:disabled { opacity: 0.5; cursor: not-allowed; }
+.field input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-editorial-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-editorial-bg) inset;
+}
+
+.auth-button { margin-top: 8px; }
+
+.auth-footer { margin: 28px 0 0; color: var(--color-editorial-muted); font-size: 13px; text-align: center; }
+.auth-footer .link { font-weight: 600; }
+
+.shell--login .alert,
+.shell--login .notice {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.shell--login .auth-button + .alert,
+.shell--login .auth-button + .notice,
+.shell--login form + .alert,
+.shell--login form + .notice { margin: 20px 0 0; }
+.shell--login .alert { border-color: var(--kl-error-border); background: var(--kl-error-bg); color: var(--kl-error); }
+.shell--login .notice { border-color: var(--kl-border); background: var(--kl-surface-elevated); color: var(--kl-text); }
+
+@media (min-width: 1024px) {
+  .auth-layout { padding-block: 56px 96px; }
+  .auth-card { max-width: 520px; padding: 56px 56px 44px; }
+  .auth-card h1 { margin-bottom: 12px; font-size: 32px; }
+  .auth-subtitle { margin-bottom: 40px; font-size: 15px; }
+  .field { margin-bottom: 24px; }
+  .field input { min-height: 48px; font-size: 15px; }
+  .auth-button { min-height: 50px; margin-top: 12px; }
+  .auth-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-editorial-border); }
+}
+
+@keyframes auth-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 480px) {
+  .auth-layout { place-items: start center; padding-top: 28px; }
+  .auth-card { padding: 28px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card { animation: none; }
+}
+
+/* Auth backdrop */
+.shell--login { position: relative; overflow-x: clip; }
+.shell--login > .topbar, .shell--login > .auth-layout { position: relative; z-index: 1; }
+.backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.backdrop .landing-beams { position: absolute; inset: 0; overflow: hidden; }
+.backdrop-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgb(220 229 239 / 6%) 1px, transparent 1px), linear-gradient(90deg, rgb(220 229 239 / 6%) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000, transparent 80%);
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000, transparent 80%);
+}

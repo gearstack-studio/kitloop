@@ -1,0 +1,11 @@
+# cwd: server
+# command: npx prisma migrate status
+# date: 2026-11-02T23:52:05+07:00
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "kitloop_auth_dev", schema "public" at "localhost:5432"
+
+1 migration found in prisma/migrations
+
+Database schema is up to date!
+# exit code: 0
