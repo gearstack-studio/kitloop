@@ -4,9 +4,14 @@ import { ApiError } from "./api-error.js";
 import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
+import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
 
 export const domainRouter = Router();
 domainRouter.use(requireAuth);
+domainRouter.use((_request, response, next) => {
+  response.set("Cache-Control", "no-store");
+  next();
+});
 
 function requiredText(value: unknown, field: string, max = 200): string {
   if (typeof value !== "string" || !value.trim() || value.length > max) {
@@ -94,19 +99,16 @@ domainRouter.patch("/assets/:assetId", requireRole(Role.CUSTODIAN), requireCsrf,
 });
 
 domainRouter.post("/requests", requireRole(Role.BORROWER), requireCsrf, async (request, response) => {
-  const assetId = requiredText(request.body?.assetId, "assetId", 80);
-  const asset = await prisma.asset.findUnique({ where: { assetId } });
-  if (!asset || asset.retiredAt) throw notFound();
-  const borrowRequest = await prisma.borrowRequest.create({
-    data: { assetId, borrowerId: request.principal!.id },
-  });
+  const assetId = requestAssetId(request.body);
+  const borrowRequest = await createBorrowRequest(request.principal!.id, assetId);
   response.status(201).json(borrowRequest);
 });
 
 domainRouter.get("/requests/mine", requireRole(Role.BORROWER), async (request, response) => {
   response.json(await prisma.borrowRequest.findMany({
     where: { borrowerId: request.principal!.id },
-    orderBy: { submittedAt: "desc" },
+    include: requestDetails,
+    orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
   }));
 });
 
@@ -116,7 +118,8 @@ domainRouter.get("/requests/pending", requireRole(Role.CUSTODIAN), async (reques
       status: RequestStatus.PENDING,
       asset: { custodianAssets: { some: { custodianId: request.principal!.id } } },
     },
-    orderBy: { submittedAt: "asc" },
+    include: { ...requestDetails, borrower: { select: { id: true, username: true } } },
+    orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
   }));
 });
 
@@ -156,8 +159,10 @@ domainRouter.post("/requests/:id/checkout", requireRole(Role.CUSTODIAN), require
       if (borrowRequest.status !== RequestStatus.PENDING || borrowRequest.asset.retiredAt) {
         throw new ApiError(409, "CONFLICT", "Request cannot be checked out");
       }
-      const active = await transaction.loan.findFirst({ where: { assetId, returnedAt: null } });
-      if (active) throw new ApiError(409, "CONFLICT", "Asset is unavailable");
+      const active = await transaction.loan.count({ where: { assetId, ...activeLoanWhere } });
+      if (assetState({ retiredAt: borrowRequest.asset.retiredAt, activeLoanCount: active }) !== "AVAILABLE") {
+        throw new ApiError(409, "CONFLICT", "Asset is unavailable");
+      }
       const updated = await transaction.borrowRequest.updateMany({
         where: { id: borrowRequest.id, status: RequestStatus.PENDING },
         data: { status: RequestStatus.FULFILLED },

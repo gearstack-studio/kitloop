@@ -268,12 +268,16 @@ describe("FEAT-01 authentication API", () => {
   });
 
   it("derives a new request owner from the authenticated session", async () => {
-    const borrower = await login(usernames.borrowerA);
+    const borrower = await login(usernames.borrowerB);
+    const forged = await request(app).post("/api/requests").set("Origin", origin)
+      .set("Cookie", borrower.cookie).set("X-CSRF-Token", borrower.csrf)
+      .send({ assetId: assetA, borrowerId: borrowerAId });
+    expect(forged.status).toBe(400);
     const created = await request(app).post("/api/requests").set("Origin", origin)
       .set("Cookie", borrower.cookie).set("X-CSRF-Token", borrower.csrf)
-      .send({ assetId: assetA, borrowerId: borrowerBId });
+      .send({ assetId: assetA });
     expect(created.status).toBe(201);
-    expect(created.body.borrowerId).toBe(borrowerAId);
+    expect(created.body.borrowerId).toBe(borrowerBId);
     expect(created.body.status).toBe("PENDING");
     expect(await prisma.loan.count({ where: { requestId: created.body.id } })).toBe(0);
     await prisma.borrowRequest.delete({ where: { id: created.body.id } });

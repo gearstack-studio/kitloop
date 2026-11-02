@@ -61,6 +61,8 @@ model CustodianAsset {
 }
 
 model BorrowRequest {
+  // SQL migration enforces one PENDING request per (borrowerId, assetId).
+  // A full @@unique would incorrectly prevent later requests after fulfillment.
   id          String        @id @default(uuid()) @db.Uuid
   borrowerId  String        @db.Uuid
   assetId     String

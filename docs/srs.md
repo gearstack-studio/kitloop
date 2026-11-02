@@ -81,7 +81,7 @@ These rules apply on the server for every relevant request, regardless of client
 | BR-07 | Return is valid only for an active loan. A successful return shall record one return time and close that loan; a repeated return shall not change it. | 2 |
 | BR-08 | Successful checkout shall make the asset unavailable; successful return shall make a non-retired asset available. Availability shall agree with loan state. | 2 |
 | BR-09 | Concurrent checkout attempts for the same Asset ID shall produce at most one successful active loan; the losing attempt shall receive a conflict response and leave its request pending. | 2 |
-| BR-10 | Submitting a request shall not reserve an asset or create an active loan. Multiple pending requests may exist for the same asset; checkout resolves competition. | 1 |
+| BR-10 | Submitting a request shall not reserve an asset or create an active loan. Multiple pending requests from different borrowers may exist for the same asset; checkout resolves competition. A borrower may have at most one pending request per Asset ID; duplicate submission is rejected without writes. | 1 |
 | BR-11 | Checkout shall require a due date later than the checkout time. The chosen loan-period policy remains open in OQ-01. | 2 |
 | BR-12 | An active loan is overdue only when the current time is later than its due date. A returned loan is not currently overdue. | 3 |
 | BR-13 | A retired asset shall be excluded from borrowable availability and shall not be checked out. | 3 |
