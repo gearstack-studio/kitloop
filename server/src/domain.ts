@@ -1,6 +1,7 @@
 import { Prisma, RequestStatus, Role } from "@prisma/client";
 import { Router } from "express";
 import { ApiError } from "./api-error.js";
+import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 
@@ -23,12 +24,31 @@ function recordId(value: unknown): string {
 }
 
 domainRouter.get("/assets", async (_request, response) => {
-  const assets = await prisma.asset.findMany({
+  const rows = await prisma.asset.findMany({
     where: { retiredAt: null },
-    include: { loans: { where: { returnedAt: null }, select: { id: true } } },
-    orderBy: { name: "asc" },
+    select: {
+      assetId: true,
+      name: true,
+      category: true,
+      description: true,
+      retiredAt: true,
+      _count: { select: { loans: { where: activeLoanWhere } } },
+    },
+    orderBy: [{ name: "asc" }, { assetId: "asc" }],
   });
-  response.json(assets.map(({ loans, ...asset }) => ({ ...asset, available: loans.length === 0 })));
+  // Public catalog DTO: an explicit allowlist, never the database row (FEAT-02 contract section 5.1).
+  const catalog = rows
+    .map((row) => ({ row, state: assetState({ retiredAt: row.retiredAt, activeLoanCount: row._count.loans }) }))
+    .filter(({ state }) => state !== "RETIRED")
+    .map(({ row, state }) => ({
+      assetId: row.assetId,
+      name: row.name,
+      category: row.category,
+      description: row.description,
+      available: state === "AVAILABLE",
+    }));
+  response.set("Cache-Control", "no-store");
+  response.json(catalog);
 });
 
 domainRouter.post("/assets", requireRole(Role.CUSTODIAN), requireCsrf, async (request, response) => {

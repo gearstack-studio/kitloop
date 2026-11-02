@@ -1,0 +1,98 @@
+# RED run: tests written before implementation
+# cwd: server
+# command: npx vitest run --reporter=verbose
+# date: 2026-11-03T00:28:15+07:00
+# base commit: de9a99a
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 28ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 46ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 89ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 93ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 69ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 52ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 47ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 54ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 9ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 3ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 36ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 92ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 58ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 46ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 66ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 96ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 101ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 67ms
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval)
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape)
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability)
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05)
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering)
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure
+ ↓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token
+ × tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 7ms
+   → Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 28ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/catalog.test.ts [ tests/catalog.test.ts ]
+PrismaClientUnknownRequestError: 
+Invalid `prisma.loan.create()` invocation in
+D:/SWE_Project/kitloop/server/tests/catalog.test.ts:58:22
+
+  55 async function loanFor(assetId: string, returned: boolean) {
+  56   const loanRequest = await pendingRequest(assetId, otherBorrowerId);
+  57   await prisma.borrowRequest.update({ where: { id: loanRequest.id }, data: { status: "FULFILLED" } });
+→ 58   return prisma.loan.create(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "23514", message: "new row for relation \"Loan\" violates check constraint \"Loan_return_after_checkout\"", severity: "ERROR", detail: Some("Failing row contains (36b85ad2-00e1-4c92-b9f5-29c87175dd02, f8e8dc98-6a4e-4484-a9ac-af4dbf076e30, CAT-f04c6980-8, 26463740-c316-49de-89fc-237a0a4d2ba1, 7723c597-a984-4704-a3a0-70550f5b57f2, 2026-11-03 00:28:20.592+07, 2026-11-04 00:28:20.591+07, 2026-11-03 00:28:20.591+07, 7723c597-a984-4704-a3a0-70550f5b57f2)."), column: None, hint: None }), transient: false })
+ ❯ ei.handleRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:237:13
+ ❯ ei.handleAndLogRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12
+ ❯ ei.request node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12
+ ❯ a node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24
+ ❯ tests/catalog.test.ts:93:3
+     91|   ]) await prisma.asset.create({ data });
+     92|
+     93|   await loanFor(ids.bravo, true);
+       |   ^
+     94|   await loanFor(ids.charlie, false);
+     95|   await pendingRequest(ids.delta);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { clientVersion: '6.19.3', batchRequestIdx: undefined }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state
+Error: Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ❯ tests/availability.test.ts:6:42
+      4| describe("FEAT-02 availability definition", () => {
+      5|   it("TEST-FEAT-02-04 maps retirement and active loans to one canonica…
+      6|     const { assetState, isBorrowable } = await import("../src/availabi…
+       |                                          ^
+      7|     expect(assetState({ retiredAt: null, activeLoanCount: 0 })).toBe("…
+      8|     expect(assetState({ retiredAt: null, activeLoanCount: 1 })).toBe("…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  1 failed | 19 passed | 11 skipped (31)
+   Start at  00:28:18
+   Duration  2.85s (tests 67%, import 26%, transform 6%, worker 1%)
+
+    Isolate  4 workers spawned · ~135ms startup each (spawn + environment, per file)
+             at least ~405ms faster with isolate: false — reuses workers across files instead of one per file
+
+# exit code: 1

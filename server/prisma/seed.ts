@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient, Role } from "@prisma/client";
 import { hashPassword } from "../src/password.js";
+import { seedAssets } from "./seed-data.js";
 
 const borrowerPassword = process.env.DEMO_BORROWER_PASSWORD;
 const custodianPassword = process.env.DEMO_CUSTODIAN_PASSWORD;
@@ -33,24 +34,20 @@ async function main() {
     }));
   }
 
-  const assets = [
-    { assetId: "KL-CAM-001", name: "Mirrorless camera", category: "Camera", description: "Synthetic demo asset" },
-    { assetId: "KL-LAP-001", name: "Development laptop", category: "Computer", description: "Synthetic demo asset" },
-  ];
+  const assets = seedAssets;
   for (const asset of assets) {
     await prisma.asset.upsert({ where: { assetId: asset.assetId }, create: asset, update: asset });
   }
 
-  await prisma.custodianAsset.upsert({
-    where: { custodianId_assetId: { custodianId: custodians[0].id, assetId: assets[0].assetId } },
-    create: { custodianId: custodians[0].id, assetId: assets[0].assetId },
-    update: {},
-  });
-  await prisma.custodianAsset.upsert({
-    where: { custodianId_assetId: { custodianId: custodians[1].id, assetId: assets[1].assetId } },
-    create: { custodianId: custodians[1].id, assetId: assets[1].assetId },
-    update: {},
-  });
+  // custodian.demo manages the cameras; custodian.other manages the laptop (unchanged scope per asset).
+  const scope: Array<[number, string]> = [[0, "KL-CAM-001"], [0, "KL-CAM-002"], [1, "KL-LAP-001"]];
+  for (const [index, assetId] of scope) {
+    await prisma.custodianAsset.upsert({
+      where: { custodianId_assetId: { custodianId: custodians[index].id, assetId } },
+      create: { custodianId: custodians[index].id, assetId },
+      update: {},
+    });
+  }
 }
 
 try {

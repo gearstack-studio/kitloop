@@ -1,0 +1,8 @@
+# cwd: client
+# command: npm run lint
+# date: 2026-11-03T00:38:50+07:00
+
+> client@0.0.0 lint
+> eslint .
+
+# exit code: 0
