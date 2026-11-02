@@ -1,7 +1,9 @@
 # KitLoop System-Level Software Design Specification
 
-**Status:** Proposed design; review by both team members pending.  
-**Baseline:** `sprint-1-staging` revision `881c4d6`, 2026-11-02.  
+**Status:** Proposed design; review by both team members pending.
+
+**Baseline:** `sprint-1-staging` revision `881c4d6`, 2026-11-02.
+
 **Requirements:** [SRS](srs.md), [Feature Inventory](feature-inventory.md), and [Requirements Traceability Matrix (RTM)](traceability-matrix.md).
 
 ## 1. Purpose, scope, and implementation status
