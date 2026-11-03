@@ -152,7 +152,7 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
     expect(refreshedQueue.body.some((item: { id: string }) => item.id === created.body.id)).toBe(false);
   });
 
-  it("rolls back request fulfillment if loan creation fails", async () => {
+  it("rolls back failed loan creation, preserves availability, and permits a clean retry", async () => {
     const assetId = await asset();
     const created = await submit(borrower, { assetId });
     // Reject the insert at the database boundary after status has been updated.
@@ -164,10 +164,25 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
       expect(result.body.error.message).toBe("An unexpected error occurred");
       expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("PENDING");
       expect(await prisma.loan.count({ where: { assetId } })).toBe(0);
+      const catalog = await request(app).get("/api/assets").set("Cookie", borrower.cookie);
+      expect(catalog.status).toBe(200);
+      expect(catalog.body.find((item: { assetId: string }) => item.assetId === assetId).available).toBe(true);
+      const queue = await request(app).get("/api/requests/pending").set("Cookie", custodian.cookie);
+      expect(queue.status).toBe(200);
+      expect(queue.body.find((item: { id: string }) => item.id === created.body.id).status).toBe("PENDING");
     } finally {
       await prisma.$executeRawUnsafe('DROP TRIGGER reject_test_loan ON "Loan"');
       await prisma.$executeRawUnsafe('DROP FUNCTION reject_test_loan()');
     }
+    // The failed transaction must leave no status or uniqueness residue that blocks retry.
+    const retried = await checkout(custodian, created.body.id, assetId);
+    expect(retried.status).toBe(201);
+    expect(retried.body).toMatchObject({ requestId: created.body.id, assetId, status: "ACTIVE" });
+    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("CHECKED_OUT");
+    expect(await prisma.loan.count({ where: { assetId, returnedAt: null } })).toBe(1);
+    const catalog = await request(app).get("/api/assets").set("Cookie", borrower.cookie);
+    expect(catalog.status).toBe(200);
+    expect(catalog.body.find((item: { assetId: string }) => item.assetId === assetId).available).toBe(false);
   });
 
   it("does not expose database failure details during submission", async () => {

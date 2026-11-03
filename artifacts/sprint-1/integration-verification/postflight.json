@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-11-03T11:49:56.757Z",
+  "database": "kitloop_f03_test",
+  "counts": {
+    "users": 0,
+    "assets": 0,
+    "requests": 0,
+    "loans": 0,
+    "sessions": 0,
+    "assignments": 0
+  },
+  "testTriggers": [],
+  "testSchemas": [],
+  "countsMatchPreflight": true
+}
