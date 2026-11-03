@@ -34,11 +34,11 @@ describe('Borrow Request UI', () => {
   })
   it('renders history with equipment name and status without checkout controls', () => {
     render(<Requests requests={[{ ...pending, asset: { assetId: 'C', name: 'Microphone', category: 'Audio' } },
-      { ...pending, id: 'R2', assetId: 'A', status: 'FULFILLED' }]} status="ready" onRetry={vi.fn()} />)
+      { ...pending, id: 'R2', assetId: 'A', status: 'CHECKED_OUT' }]} status="ready" onRetry={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'My requests' })).toBeTruthy()
     expect(screen.getByText('Microphone')).toBeTruthy()
     expect(screen.getByText(/C · PENDING/)).toBeTruthy()
-    expect(screen.getByText(/A · FULFILLED/)).toBeTruthy()
+    expect(screen.getByText(/A · CHECKED_OUT/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Check out/ })).toBeNull()
   })
   it('distinguishes loading, error/retry and empty history', async () => {

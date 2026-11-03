@@ -2,7 +2,7 @@ import type { FormEvent, ReactNode } from 'react'
 import type { Asset } from './Catalog'
 
 export type BorrowRequest = {
-  id: string; assetId: string; borrowerId?: string; status: 'PENDING' | 'FULFILLED'; submittedAt: string
+  id: string; assetId: string; borrowerId?: string; status: 'PENDING' | 'CHECKED_OUT'; submittedAt: string
   asset?: { assetId: string; name: string; category: string }
   borrower?: { id: string; username: string }
 }
@@ -42,8 +42,9 @@ export default function Requests({ requests, status, onRetry, custodian = false,
     {status === 'ready' && (requests.length === 0 ? <p className="empty">No requests to show yet.</p> :
       <div className="record-list">{requests.map(item => <article className="record" key={item.id}>
         <div><strong>{item.asset?.name ?? item.assetId}</strong><small>{item.assetId} · {item.status}</small>
+          <small>Request {item.id}</small>
           <small>Submitted {new Date(item.submittedAt).toLocaleString()}</small>
-          {custodian && <small>Borrower: {item.borrower?.username ?? item.borrowerId ?? 'Unknown'}</small>}
+          {custodian && <small>Borrower: {item.borrower?.username ?? 'Unknown'} · {item.borrower?.id ?? item.borrowerId}</small>}
         </div>{children?.(item)}
       </article>)}</div>)}
   </section>

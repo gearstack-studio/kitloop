@@ -22,7 +22,7 @@ Each row defines the named TC's acceptance checks. API checks include persisted 
 | FR-06 | FEAT-03 | 1 | BR-03, BR-10; BR-13 (3) | TC-06: Valid existing borrowable asset produces a returned and saved pending request with requester, asset, and submission time; missing, unknown, or non-borrowable asset is rejected without writes. |
 | FR-07 | FEAT-03 | 1 | BR-03, BR-04 | TC-07: Borrower sees their newly submitted request with asset/status; another borrower's list and direct record ID cannot expose it. |
 | FR-08 | FEAT-03 | 2 | BR-03, BR-05 | TC-08: Custodian queue includes pending requests with requester and Asset ID for authorized assets; out-of-scope requests are inaccessible. |
-| FR-09 | FEAT-04 | 2 | BR-01, BR-02, BR-03, BR-05, BR-06, BR-08, BR-09, BR-11; BR-13 (3) | TC-09: Authorized checkout of an available asset with its pending request and future due date identifies a loan and fulfills the request. Invalid role, scope, asset state, request state/asset match, or due date produces no transition. |
+| FR-09 | FEAT-04 | 2 | BR-01, BR-02, BR-03, BR-05, BR-06, BR-08, BR-09, BR-11; BR-13 (3) | TC-09: Authorized checkout of an available asset with its pending request and future due date identifies a loan and checks out the request. Invalid role, scope, asset state, request state/asset match, or due date produces no transition. |
 | FR-10 | FEAT-04 | 2 | BR-02, BR-06, BR-08, BR-09, BR-11 | TC-10: Checkout persists exactly one active loan with asset, borrower, request, checkout time, due date, and custodian; reload and restart preserve the record. |
 | FR-11 | FEAT-05 | 2 | BR-03, BR-04 | TC-11: Borrower sees only their active and returned loans, with checkout/due/return information when present; foreign loan IDs are denied. |
 | FR-12 | FEAT-04 | 2 | BR-03, BR-05, BR-07, BR-08 | TC-12: Authorized return closes an active loan with one return time and restores non-retired availability; wrong role/scope, inactive loan, and repeated return leave state unchanged. |
@@ -43,7 +43,7 @@ Dedicated rule cases supplement the FR cases; all rejected operations must prese
 | BR-03 | FEAT-01, FEAT-03, FEAT-04, FEAT-05, FEAT-06, FEAT-07 | 1 | TC-18: For every protected operation introduced, unauthenticated calls return unauthorized and wrong-role calls forbidden, without mutation. Extend each sprint. |
 | BR-04 | FEAT-01, FEAT-03, FEAT-05 | 1 | TC-07 covers foreign requests including direct IDs; TC-11 extends ownership checks to loans in Sprint 2. |
 | BR-05 | FEAT-01, FEAT-03, FEAT-04, FEAT-06, FEAT-07 | 2 | TC-08, TC-09, TC-12 check scoped queue/checkout/return; TC-14, TC-15, TC-17 extend to administration/reporting in Sprint 3. |
-| BR-06 | FEAT-03, FEAT-04 | 2 | TC-09 checks pending status and Asset ID match; TC-20 checks atomic fulfillment/loan creation and failure rollback. |
+| BR-06 | FEAT-03, FEAT-04 | 2 | TC-09 checks pending status and Asset ID match; TC-20 checks atomic `PENDING` to `CHECKED_OUT` transition, loan creation, and failure rollback. |
 | BR-07 | FEAT-04 | 2 | TC-12 checks active-only return, one timestamp, and unchanged state on repeat; TC-20 checks atomic return rollback. |
 | BR-08 | FEAT-02, FEAT-04, FEAT-06 | 2 | TC-05, TC-09, TC-12 verify availability agrees with active-loan state after checkout/return; TC-17 later checks counts. |
 | BR-09 | FEAT-04 | 2 | TC-19: Send concurrent checkouts of two pending requests for one Asset ID against PostgreSQL; exactly one succeeds, one active loan exists, and the loser receives conflict with its request still pending. |

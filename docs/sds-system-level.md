@@ -12,7 +12,9 @@ This SDS defines the system architecture, component contracts, data relationship
 
 At the baseline, `client/` contains a React/TypeScript/Vite scaffold. `server/` contains an Express/TypeScript scaffold, a localhost CORS configuration, JSON parsing, and `GET /api/health`, with a health test. Authentication, domain endpoints, Prisma models, database constraints, and transaction behavior described below are planned. They are not present in the baseline. Endpoint names are proposed system contracts to refine in implementation PRs.
 
-The product has Borrower and Custodian roles. Each asset represents one physical copy. A pending request expresses intent without reservation. Custodian checkout fulfills a request and creates a loan; return closes that loan. There is no approval stage. Optional features excluded by the SRS, including cancellation, notifications, fines, scanning, and automatic allocation, are not introduced here.
+The product has Borrower and Custodian roles. Each asset represents one physical copy. A pending request expresses intent without reservation. Custodian checkout changes a request to `CHECKED_OUT` and creates an active loan; return closes that loan. There is no approval stage. Optional features excluded by the SRS, including cancellation, notifications, fines, scanning, and automatic allocation, are not introduced here.
+
+F-04 implementation refinement (2026-11-03): `CHECKED_OUT` replaces the previous request status label `FULFILLED` through an in-place enum migration. Loan DTOs expose `ACTIVE` or `RETURNED` derived from `returnedAt`; no independently editable loan-status column is introduced. Checkout now implements asset-then-request row locking and a server checkout timestamp, with due-date validation after lock acquisition. Historical contracts/evidence retain their original terminology; the [F-04 contract](sprints/sprint-1/FEAT-04-custodian-checkout.md) describes the current interface and coordinated deployment.
 
 ## 2. Architecture and deployment boundaries
 
@@ -86,7 +88,7 @@ All paths are under `/api`. JSON uses explicit response DTOs, ISO 8601 timestamp
 | POST `/requests` | Borrower; `{ assetId }` | 201 pending request with ID, asset, requester, submission time, status | 1 / FR-06 |
 | GET `/requests/mine` | Borrower | 200 own requests with asset/status | 1 / FR-07 |
 | GET `/requests/pending` | Custodian | 200 pending requests joined to authorized assets and necessary requester details | 2 / FR-08 |
-| POST `/requests/:requestId/checkout` | Custodian; `{ assetId, dueAt }`; asset must match request | 201 persisted loan and fulfilled request reference | 2 / FR-09, FR-10 |
+| POST `/requests/:requestId/checkout` | Custodian; `{ assetId, dueAt }`; asset must match request | 201 persisted loan and checked-out request reference | 2 / FR-09, FR-10 |
 | GET `/loans/mine` | Borrower | 200 own active/returned loan DTOs with applicable timestamps; overdue flag added in Sprint 3 | 2 / FR-11; 3 / FR-13 |
 | GET `/loans/active` | Custodian | 200 active loans for authorized assets, with due dates and later overdue flag; supports return selection | 2 / FR-12 support; 3 / FR-13 |
 | POST `/loans/:loanId/return` | Custodian | 200 closed loan with return time and refreshed asset availability | 2 / FR-12 |
@@ -109,7 +111,7 @@ erDiagram
     ASSET ||--o{ CUSTODIAN_ASSET : authorized_by
     USER ||--o{ BORROW_REQUEST : submits
     ASSET ||--o{ BORROW_REQUEST : requested_for
-    BORROW_REQUEST ||--o| LOAN : fulfilled_by
+    BORROW_REQUEST ||--o| LOAN : results_in
     ASSET ||--o{ LOAN : loan_history
     USER ||--o{ LOAN : borrows
     USER ||--o{ LOAN : checks_out
@@ -156,7 +158,7 @@ erDiagram
     }
 ```
 
-Role is one required enum on User: `BORROWER` or `CUSTODIAN`. A separate Role table is unnecessary for two fixed roles. CustodianAsset is a many-to-many authority relation with composite primary key `(custodianId, assetId)`; only Custodian users may receive assignments. BorrowRequest status is `PENDING` or `FULFILLED`. Nullable `retiredAt`, `returnedAt`, and `returnCustodianId` are absent until their corresponding event. A request has zero or one loan; an asset and borrower can each have many historical loans. User foreign keys on Loan have distinct meanings, shown separately above.
+Role is one required enum on User: `BORROWER` or `CUSTODIAN`. A separate Role table is unnecessary for two fixed roles. CustodianAsset is a many-to-many authority relation with composite primary key `(custodianId, assetId)`; only Custodian users may receive assignments. BorrowRequest status is `PENDING` or `CHECKED_OUT`. Nullable `retiredAt`, `returnedAt`, and `returnCustodianId` are absent until their corresponding event. A request has zero or one loan; an asset and borrower can each have many historical loans. User foreign keys on Loan have distinct meanings, shown separately above.
 
 Checkout records are represented by Loan's immutable request, asset, borrower, custodian, and checkout/due timestamps. No second checkout table duplicates that event. Return records add the return timestamp and actor to the same loan. Preserve referenced users/assets/requests and loan history rather than hard-deleting them through application endpoints.
 
@@ -169,7 +171,7 @@ Checkout records are represented by Loan's immutable request, asset, borrower, c
 | At most one checkout per request | Unique `Loan.requestId`; transactional request transition. |
 | Loan refers to the requested asset and borrower (BR-06) | Server derives borrower from the request and verifies supplied asset matches; propose a composite foreign key from Loan `(requestId, assetId, borrowerId)` to a matching unique tuple on BorrowRequest. |
 | Valid timestamps (BR-07, BR-11) | Database checks `dueAt > checkedOutAt`, `returnedAt IS NULL OR returnedAt >= checkedOutAt`, and return timestamp/actor nullability together; server validation supplies useful errors. |
-| Only a matching pending request becomes fulfilled | Atomic checkout transaction; no standalone status update API. |
+| Only a matching pending request becomes `CHECKED_OUT` | Atomic checkout transaction; no standalone status update API. |
 | No retirement during active custody | Retirement takes the same asset-row lock as checkout/return and checks for an active loan before writing. |
 | Authority belongs to a Custodian | Seed/service validation of role, plus scoped queries on every operation; assignments have no client write interface. |
 
@@ -214,16 +216,16 @@ sequenceDiagram
     API->>DB: Begin; lock asset, then request
     API->>DB: Recheck authority, availability and pending request match
     alt Valid transition
-        API->>DB: Insert loan and fulfill request
+        API->>DB: Insert loan and set request CHECKED_OUT
         API->>DB: Commit
-        API-->>UI: 201 loan and fulfilled request
+        API-->>UI: 201 loan and checked-out request
     else Conflict or validation failure
         API->>DB: Roll back
         API-->>UI: Safe error; no partial transition
     end
 ```
 
-The service first resolves the request's asset without treating the initial read as authorization, then locks that asset row and the request row in a consistent order. In the transaction it rechecks current custodian authority, pending request status, matching supplied Asset ID, non-retired available state, and `dueAt > checkedOutAt` using server time. Borrower and request references come from persisted request data. Insert the loan and change request status to fulfilled in the same transaction. Commit before sending success.
+The service first resolves the request's asset without treating the initial read as authorization, then locks that asset row and the request row in a consistent order. In the transaction it rechecks current custodian authority, pending request status, matching supplied Asset ID, non-retired available state, and `dueAt > checkedOutAt` using server time. Borrower and request references come from persisted request data. Insert the loan and change request status to CHECKED_OUT in the same transaction. Commit before sending success.
 
 All custody/retirement operations lock the asset first; concurrent attempts for the same asset serialize. The second checkout sees an active loan and receives 409; its request remains pending. The partial unique index is a final guard against duplicate active loans even if a code path misses the lock. Known uniqueness/serialization conflicts are translated safely; any failure rolls back both loan and request changes (BR-01, BR-02, BR-05, BR-06, BR-08, BR-09, BR-11; NFR-05, NFR-06). No automatic retry may select another request or duplicate a successful checkout.
 

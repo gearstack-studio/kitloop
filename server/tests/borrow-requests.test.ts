@@ -55,7 +55,7 @@ describe("request payload unit validation", () => {
   it("accepts only a trimmed Asset ID", () => {
     expect(requestAssetId({ assetId: " CAMERA-1 " })).toBe("CAMERA-1");
     for (const body of [null, [], {}, { assetId: 1 }, { assetId: " " }, { assetId: "x".repeat(81) },
-      { assetId: "A", status: "FULFILLED" }, { assetId: "A", borrowerId: "foreign" }]) {
+      { assetId: "A", status: "CHECKED_OUT" }, { assetId: "A", borrowerId: "foreign" }]) {
       expect(() => requestAssetId(body)).toThrow("Provide a valid assetId only");
     }
   });
@@ -105,7 +105,7 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
     expect((await submit(borrower, { assetId: `UNKNOWN-${suffix}` })).status).toBe(404);
     expect((await submit(borrower, { assetId: retired })).status).toBe(409);
     for (const body of [{}, { assetId: 42 }, { assetId: " " }, { assetId: "x".repeat(81) },
-      { assetId: available, borrowerId: other.id }, { assetId: available, status: "FULFILLED" }]) {
+      { assetId: available, borrowerId: other.id }, { assetId: available, status: "CHECKED_OUT" }]) {
       const result = await submit(borrower, body);
       expect(result.status).toBe(400); expect(result.body.error.fields.assetId).toBeTruthy();
     }
@@ -136,18 +136,18 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
     expect((await checkout(foreignCustodian, created.body.id, assetId)).status).toBe(404);
     expect((await checkout(borrower, created.body.id, assetId)).status).toBe(403);
     const modification = await request(app).patch(`/api/requests/${created.body.id}`).set("Cookie", borrower.cookie)
-      .set("Origin", origin).set("X-CSRF-Token", borrower.csrf).send({ status: "FULFILLED" });
+      .set("Origin", origin).set("X-CSRF-Token", borrower.csrf).send({ status: "CHECKED_OUT" });
     expect(modification.status).toBe(404);
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("PENDING");
     expect((await checkout(custodian, created.body.id, assetId)).status).toBe(201);
-    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("FULFILLED");
+    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("CHECKED_OUT");
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: competing.body.id } })).status).toBe("PENDING");
     expect((await submit(borrower, { assetId })).body.error.code).toBe("ASSET_UNAVAILABLE");
     expect((await submit(other, { assetId })).status).toBe(409);
     expect((await checkout(custodian, competing.body.id, assetId)).status).toBe(409);
     expect(await prisma.loan.count({ where: { assetId, returnedAt: null } })).toBe(1);
     const history = await request(app).get("/api/requests/mine").set("Cookie", borrower.cookie);
-    expect(history.body.find((item: { id: string }) => item.id === created.body.id).status).toBe("FULFILLED");
+    expect(history.body.find((item: { id: string }) => item.id === created.body.id).status).toBe("CHECKED_OUT");
     const refreshedQueue = await request(app).get("/api/requests/pending").set("Cookie", custodian.cookie);
     expect(refreshedQueue.body.some((item: { id: string }) => item.id === created.body.id)).toBe(false);
   });

@@ -461,6 +461,17 @@
 }
 
 /* Catalog panel: states, card affordances */
+.checkout-form {
+  display: grid;
+  gap: var(--space-2);
+  flex: 0 1 360px;
+  min-width: 0;
+}
+
+.checkout-form input { width: 100%; min-width: 0; }
+.checkout-help { font-size: 13px; color: var(--color-text-muted); }
+.record small { overflow-wrap: anywhere; }
+
 .request-form {
   display: flex;
   flex-wrap: wrap;
