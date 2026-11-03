@@ -330,7 +330,7 @@ describe("FEAT-01 authentication API", () => {
     expect(checkout.status).toBe(201);
     expect(checkout.body.borrowerId).toBe(borrowerAId);
     expect(checkout.body.checkoutCustodianId).toBe(custodianAId);
-    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: requestAId } })).status).toBe("FULFILLED");
+    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: requestAId } })).status).toBe("CHECKED_OUT");
     expect(await prisma.loan.count({ where: { assetId: assetA, returnedAt: null } })).toBe(1);
     const borrower = await login(usernames.borrowerA);
     const ownLoans = await request(app).get("/api/loans/mine").set("Cookie", borrower.cookie);
@@ -367,7 +367,7 @@ describe("FEAT-01 authentication API", () => {
         .send({ assetId: racingAsset, dueAt })));
       expect(results.map(result => result.status).sort()).toEqual([201, 409]);
       expect(await prisma.loan.count({ where: { assetId: racingAsset, returnedAt: null } })).toBe(1);
-      expect(await prisma.borrowRequest.count({ where: { assetId: racingAsset, status: "FULFILLED" } })).toBe(1);
+      expect(await prisma.borrowRequest.count({ where: { assetId: racingAsset, status: "CHECKED_OUT" } })).toBe(1);
     } finally {
       await prisma.loan.deleteMany({ where: { assetId: racingAsset } });
       await prisma.borrowRequest.deleteMany({ where: { assetId: racingAsset } });

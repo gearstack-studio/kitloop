@@ -54,7 +54,7 @@ async function pendingRequest(assetId: string, userId = borrowerId) {
 
 async function loanFor(assetId: string, returned: boolean) {
   const loanRequest = await pendingRequest(assetId, otherBorrowerId);
-  await prisma.borrowRequest.update({ where: { id: loanRequest.id }, data: { status: "FULFILLED" } });
+  await prisma.borrowRequest.update({ where: { id: loanRequest.id }, data: { status: "CHECKED_OUT" } });
   return prisma.loan.create({ data: {
     requestId: loanRequest.id,
     assetId,

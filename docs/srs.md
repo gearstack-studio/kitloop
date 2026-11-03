@@ -5,6 +5,8 @@
 **Product:** Technology Equipment Inventory & Borrowing Management System  
 **Implementation context:** React, TypeScript, Vite, Express, PostgreSQL, Prisma
 
+**F-04 terminology refinement (2026-11-03):** Successful checkout changes a request from `PENDING` to `CHECKED_OUT`. This replaces the earlier `FULFILLED` label without adding an approval stage or changing custody semantics. Loan status is `ACTIVE` while `returnedAt` is absent, otherwise `RETURNED`; the API derives this status from persisted custody facts. See the [checkout contract](sprints/sprint-1/FEAT-04-custodian-checkout.md) for migration and verification details.
+
 This SRS records the product requirements agreed in the project brief. The original course handout was not available in the workspace or as an identifiable public source when this draft was prepared. The team should compare this document with the original Part A rubric before submission. Decisions listed here are project working decisions, not claims of instructor approval.
 
 ## 1. Introduction and stakeholder problem
@@ -56,7 +58,7 @@ All FR items below are **mandatory**. “Verification sprint” is the first spr
 | FR-06 | A Borrower shall be able to submit a request for an existing, borrowable Asset ID; the system shall save the requester, asset, submission time, and pending status and return the created request. | 1 |
 | FR-07 | A Borrower shall be able to view their own requests with asset and status information, including a newly submitted request. | 1 |
 | FR-08 | A Custodian shall be able to view pending requests for assets within their authorized inventory, including the requester and Asset ID needed for checkout. | 2 |
-| FR-09 | An authorized Custodian shall be able to check out an available asset against a pending request by supplying a valid due date; the system shall identify the resulting loan and mark the request fulfilled. | 2 |
+| FR-09 | An authorized Custodian shall be able to check out an available asset against a pending request by supplying a valid due date; the system shall identify the resulting loan and mark the request `CHECKED_OUT`. | 2 |
 | FR-10 | Successful checkout shall create and persist one active loan containing the Asset ID, borrower, request reference, checkout time, due date, and custodian identifier; a reload shall show the same loan. | 2 |
 | FR-11 | A Borrower shall be able to view only their own active and returned loans, including checkout, due, and return information when present. | 2 |
 | FR-12 | An authorized Custodian shall be able to return an active loan, recording the return time and making the asset available again. | 2 |
@@ -77,7 +79,7 @@ These rules apply on the server for every relevant request, regardless of client
 | BR-03 | The backend shall require authentication and the appropriate Borrower or Custodian role for protected operations; a role mismatch shall not execute the operation. | 1 |
 | BR-04 | A Borrower may retrieve only requests and loans belonging to that Borrower, including when a different record ID is supplied directly. | 1 |
 | BR-05 | A Custodian may view, check out, return, edit, or report only assets in that Custodian's authorized inventory. | 2 |
-| BR-06 | Checkout is valid only for a pending request for the same Asset ID. A successful checkout shall change that request to fulfilled and create the active loan as one operation; a failed checkout shall do neither. | 2 |
+| BR-06 | Checkout is valid only for a pending request for the same Asset ID. A successful checkout shall change that request to `CHECKED_OUT` and create the active loan as one operation; a failed checkout shall do neither. | 2 |
 | BR-07 | Return is valid only for an active loan. A successful return shall record one return time and close that loan; a repeated return shall not change it. | 2 |
 | BR-08 | Successful checkout shall make the asset unavailable; successful return shall make a non-retired asset available. Availability shall agree with loan state. | 2 |
 | BR-09 | Concurrent checkout attempts for the same Asset ID shall produce at most one successful active loan; the losing attempt shall receive a conflict response and leave its request pending. | 2 |
@@ -108,7 +110,7 @@ Each NFR has a measurable acceptance target and verification method. These targe
 | --- | --- | --- |
 | AD-01 | Each physical copy has a unique Asset ID; requests and loans refer to that copy. | Availability and loan conflicts are checked per Asset ID. |
 | AD-02 | The only application roles are Borrower and Custodian. | A custodian's inventory authority is scoped separately from role membership. |
-| AD-03 | There is no separate approval stage. | Pending request → custodian checkout → fulfilled request and active loan. |
+| AD-03 | There is no separate approval stage. | Pending request → custodian checkout → checked-out request and active loan. |
 | AD-04 | A request does not reserve equipment; checkout is the custody-changing event. | Competing pending requests may coexist; only one can be checked out while an exclusive asset is unavailable. |
 | AD-05 | Sprint 1 uses seeded demo accounts and synthetic assets. | Real university identity and production data imports are excluded. |
 | AD-06 | Due date is recorded at checkout, when the custodian confirms the physical handoff. | A loan cannot become active without a future due date. |
@@ -124,7 +126,7 @@ No item below is represented as instructor-approved. Until resolved, the provisi
 | --- | --- | --- |
 | OQ-01 | What loan duration or maximum due-date policy applies? **Department owner / instructor** | Custodian enters a future due date at checkout (BR-11). Agree on allowed range or default before Sprint 2 acceptance. |
 | OQ-02 | How is a custodian's authorized inventory determined? **Department owner / project team** | Seed explicit custodian-to-asset authority for demos. Choose the maintained assignment model before Sprint 2 authorization tests. |
-| OQ-03 | May a borrower cancel a pending request, and may a custodian close an unfulfilled request? **Department owner / instructor** | Neither action is mandatory in this SRS. Resolve before adding cancellation or expiration states. |
+| OQ-03 | May a borrower cancel a pending request, and may a custodian close a pending request? **Department owner / instructor** | Neither action is mandatory in this SRS. Resolve before adding cancellation or expiration states. |
 | OQ-04 | Should catalog visibility include unavailable and retired assets for borrowers? **Department owner / project team** | Show available and checked-out assets with availability; exclude retired assets from borrowable results. Confirm display policy before Sprint 3 search acceptance. |
 | OQ-05 | What deployment environment and submission evidence does Part A or the final course rubric require? **Instructor / project team** | Maintain local build and test evidence; confirm hosting and artifact format before Sprint 3 deployment verification. |
 

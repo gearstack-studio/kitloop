@@ -87,9 +87,9 @@ describe('Borrower workflow integration in the React app (mocked HTTP)', () => {
     expect(posts).toBe(1)
   })
   it('loads request history on a fresh visit to the page', async () => {
-    history = [{ ...pending, status: 'FULFILLED' }]
+    history = [{ ...pending, status: 'CHECKED_OUT' }]
     render(<App />)
-    await screen.findByText('CAM-01 · FULFILLED')
+    await screen.findByText('CAM-01 · CHECKED_OUT')
     expect(screen.getByText('Camera')).toBeTruthy()
   })
   it('ignores a delayed history retry after logout and a different borrower signs in', async () => {

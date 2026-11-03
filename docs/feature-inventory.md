@@ -26,7 +26,7 @@ BR references describe applicable constraints, including constraints introduced 
 
 ## Boundaries and dependencies
 
-FEAT-01 owns identity and shared authorization enforcement; domain features own their operation-specific access checks. FEAT-02 reads availability; FEAT-04 changes it through checkout/return; FEAT-07 controls retirement. FEAT-03 owns request submission and views, while FEAT-04 alone fulfills requests. FEAT-05 reads loans; it does not create or close them. FEAT-06 aggregates authorized assets and does not introduce advanced analytics. Each FR has one owning feature in the RTM, preventing duplicate feature ownership.
+FEAT-01 owns identity and shared authorization enforcement; domain features own their operation-specific access checks. FEAT-02 reads availability; FEAT-04 changes it through checkout/return; FEAT-07 controls retirement. FEAT-03 owns request submission and views, while FEAT-04 alone changes requests from `PENDING` to `CHECKED_OUT` during checkout (the earlier label was `FULFILLED`). FEAT-05 reads loans; it does not create or close them. FEAT-06 aggregates authorized assets and does not introduce advanced analytics. Each FR has one owning feature in the RTM, preventing duplicate feature ownership.
 
 Sprint 1 acceptance covers FR-01–FR-07, BR-03, BR-04, BR-10, and NFR-01–NFR-04. BR-04 loan access is verified when FR-11 arrives in Sprint 2; Sprint 1 verifies request ownership. Later operations extend the same security and validation baseline. The RTM also tracks later FR, BR, and NFR coverage so deferred work remains visible.
 

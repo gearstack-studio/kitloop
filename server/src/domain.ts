@@ -5,6 +5,7 @@ import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
+import { checkoutInput, checkoutRequest, loanDto } from "./checkout.js";
 
 export const domainRouter = Router();
 domainRouter.use(requireAuth);
@@ -138,71 +139,26 @@ domainRouter.get("/requests/:id", async (request, response) => {
 });
 
 domainRouter.post("/requests/:id/checkout", requireRole(Role.CUSTODIAN), requireCsrf, async (request, response) => {
-  const assetId = requiredText(request.body?.assetId, "assetId", 80);
-  const dueAt = new Date(request.body?.dueAt);
-  if (!Number.isFinite(dueAt.getTime()) || dueAt <= new Date()) {
-    throw new ApiError(400, "VALIDATION_ERROR", "Future dueAt is required", { dueAt: "Must be a future date" });
-  }
-  const principal = request.principal!;
   const id = recordId(request.params.id);
-  try {
-    const loan = await prisma.$transaction(async (transaction) => {
-      const borrowRequest = await transaction.borrowRequest.findFirst({
-        where: {
-          id,
-          assetId,
-          asset: { custodianAssets: { some: { custodianId: principal.id } } },
-        },
-        include: { asset: true },
-      });
-      if (!borrowRequest) throw notFound();
-      if (borrowRequest.status !== RequestStatus.PENDING || borrowRequest.asset.retiredAt) {
-        throw new ApiError(409, "CONFLICT", "Request cannot be checked out");
-      }
-      const active = await transaction.loan.count({ where: { assetId, ...activeLoanWhere } });
-      if (assetState({ retiredAt: borrowRequest.asset.retiredAt, activeLoanCount: active }) !== "AVAILABLE") {
-        throw new ApiError(409, "CONFLICT", "Asset is unavailable");
-      }
-      const updated = await transaction.borrowRequest.updateMany({
-        where: { id: borrowRequest.id, status: RequestStatus.PENDING },
-        data: { status: RequestStatus.FULFILLED },
-      });
-      if (updated.count !== 1) throw new ApiError(409, "CONFLICT", "Request cannot be checked out");
-      return transaction.loan.create({
-        data: {
-          requestId: borrowRequest.id,
-          assetId,
-          borrowerId: borrowRequest.borrowerId,
-          checkoutCustodianId: principal.id,
-          dueAt,
-        },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    response.status(201).json(loan);
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError &&
-      ["P2002", "P2034"].includes(error.code)) {
-      throw new ApiError(409, "CONFLICT", "Asset is unavailable");
-    }
-    throw error;
-  }
+  const input = checkoutInput(request.body);
+  response.status(201).json(await checkoutRequest(request.principal!.id, id, input));
 });
 
 domainRouter.get("/loans/mine", requireRole(Role.BORROWER), async (request, response) => {
-  response.json(await prisma.loan.findMany({
+  response.json((await prisma.loan.findMany({
     where: { borrowerId: request.principal!.id },
     orderBy: { checkedOutAt: "desc" },
-  }));
+  })).map(loanDto));
 });
 
 domainRouter.get("/loans/active", requireRole(Role.CUSTODIAN), async (request, response) => {
-  response.json(await prisma.loan.findMany({
+  response.json((await prisma.loan.findMany({
     where: {
       returnedAt: null,
       asset: { custodianAssets: { some: { custodianId: request.principal!.id } } },
     },
     orderBy: { checkedOutAt: "desc" },
-  }));
+  })).map(loanDto));
 });
 
 domainRouter.get("/loans/:id", async (request, response) => {
@@ -216,5 +172,5 @@ domainRouter.get("/loans/:id", async (request, response) => {
     },
   });
   if (!record) throw notFound();
-  response.json(record);
+  response.json(loanDto(record));
 });

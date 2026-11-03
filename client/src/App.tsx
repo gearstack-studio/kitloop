@@ -5,6 +5,8 @@ import SignUp from './SignUp'
 import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
+import Checkout from './components/Checkout'
+import Loans, { type Loan } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
 import { AuthButton, AuthCard, AuthLink, Field } from './components/Auth'
 import { navigate, usePath } from './navigation'
@@ -12,7 +14,6 @@ import './App.css'
 import './Login.css'
 
 type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN' }
-type Loan = { id: string; assetId: string; dueAt: string; returnedAt: string | null }
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 class ApiFailure extends Error {
@@ -57,7 +58,6 @@ function App() {
   const [requestStatus, setRequestStatus] = useState<RequestStatus>('loading')
   const [selectedAsset, setSelectedAsset] = useState('')
   const [loans, setLoans] = useState<Loan[]>([])
-  const [dueDates, setDueDates] = useState<Record<string, string>>({})
 
   function endSession(message: string) {
     sessionEpoch.current++
@@ -218,7 +218,7 @@ function App() {
     {!identity && <Backdrop />}
     <header className="topbar"><Brand />
       {!identity && <AmbientLink variant="secondary" href="/">← Back to home</AmbientLink>}
-      {identity && <div className="topbar-controls"><span className="identity-tag">Account {identity.id.slice(0, 8)}</span><AmbientButton variant="secondary" onClick={signOut} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</AmbientButton></div>}
+      {identity && <div className="topbar-controls"><span className="identity-tag">Account {identity.id.slice(0, 8)}</span><AmbientButton variant="secondary" onClick={signOut} disabled={busy}>{busy ? 'Please wait…' : 'Sign out'}</AmbientButton></div>}
     </header>
     {!identity ? (route === '/signup' ? <SignUp /> : <AuthCard title="Welcome back" subtitle="Sign in to your KitLoop account." footer={<>Don't have an account? <AuthLink to="/signup">Sign up</AuthLink></>}>
         <form onSubmit={signIn}>
@@ -243,12 +243,11 @@ function App() {
           }} />
       </>}
       <Requests requests={requests} status={requestStatus} onRetry={retryRequests} custodian={identity.role === 'CUSTODIAN'}>
-        {item => identity.role === 'CUSTODIAN' && <div className="checkout-controls">
-          <input type="datetime-local" aria-label={`Due date for ${item.assetId}`} value={dueDates[item.id] ?? ''} onChange={event => setDueDates({ ...dueDates, [item.id]: event.target.value })} />
-          <button disabled={busy || !dueDates[item.id]} onClick={() => act(`/requests/${item.id}/checkout`, { assetId: item.assetId, dueAt: new Date(dueDates[item.id]).toISOString() }, 'Checkout recorded. Request fulfilled and active loan created.')}>Check out</button>
-        </div>}
+        {item => identity.role === 'CUSTODIAN' && <Checkout request={item} busy={busy}
+          ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
+          onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, 'Checkout recorded. Request CHECKED_OUT and active loan created.') }} />}
       </Requests>
-      <section className="panel"><div className="section-heading"><h2>{identity.role === 'BORROWER' ? 'My loans' : 'Active loans'}</h2><span>{loans.length} records</span></div>{loans.length === 0 ? <p className="empty">No loans to show yet.</p> : <div className="record-list">{loans.map(loan => <article className="record" key={loan.id}><div><strong>{loan.assetId}</strong><small>Due {new Date(loan.dueAt).toLocaleDateString()} · {loan.returnedAt ? 'Returned' : 'Active'}</small></div></article>)}</div>}</section>
+      <Loans loans={loans} custodian={identity.role === 'CUSTODIAN'} />
     </main>}
   </div>
 }

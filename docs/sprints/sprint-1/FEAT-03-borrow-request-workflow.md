@@ -4,6 +4,8 @@ Status: Implementation candidate; teammate review and PR merge pending.
 
 Baseline: `sprint-1-staging` commit `6524ef8`, 2026-11-03. Branch: `feature/borrow-request-workflow`.
 
+F-04 compatibility update: the checkout result now uses request status `CHECKED_OUT` (formerly `FULFILLED`). Apply all current migrations and regenerate Prisma before starting the API; see [FEAT-04](FEAT-04-custodian-checkout.md). Historical F-03 evidence describes the earlier label.
+
 ## Scope and duplicate policy
 
 Implements F-03 / FEAT-03: FR-06, FR-07, and scoped queue FR-08, integrated with the existing FR-09/FR-10 checkout. BR-03, BR-04, BR-05, BR-06, BR-10, and availability constraints apply. Return, approval, cancellation, and request expiration are outside this change.
@@ -18,7 +20,7 @@ Interpret “duplicate active requests” as repeated `PENDING` requests by the 
 | GET `/api/requests/mine` | Borrower only; newest first with stable ID tie-breaker. Own history includes status, submission time, and asset ID/name/category. |
 | GET `/api/requests/pending` | Custodian only; oldest first, scoped through CustodianAsset. Includes asset details and necessary requester ID/username. |
 | GET `/api/requests/:id` | Own borrower record or scoped custodian record; inaccessible IDs return generic 404. |
-| POST `/api/requests/:id/checkout` | Existing custodian-only transaction fulfills the matching pending request and creates a loan atomically; now uses the shared availability definition. |
+| POST `/api/requests/:id/checkout` | Custodian-only transaction changes the matching pending request to `CHECKED_OUT` and creates a loan atomically using the shared availability definition. |
 
 Unknown or malformed Asset IDs produce 404 or 400 respectively. Retired/checked-out equipment produces 409 `ASSET_UNAVAILABLE`; duplicate pending request produces 409 `DUPLICATE_REQUEST`. Input failures include an `assetId` field message. Missing authentication returns 401; wrong role or invalid CSRF returns 403. Unexpected failures return sanitized 500. Protected domain responses use `Cache-Control: no-store`. There is no endpoint allowing a borrower to approve or mutate request status.
 
@@ -48,7 +50,7 @@ If rows exist, have the inventory owner/team decide how to reconcile them before
 
 ## Automated verification
 
-Server: `npm test` and `npm run build` from `server/`. Configure an isolated PostgreSQL test database through ignored `.env.test`, as described in the root README; apply both migrations to it before running tests. Test fixtures are synthetic and cleaned up afterward. The rollback test installs and removes a temporary trigger on the isolated test database to force a failure between request fulfillment and loan creation.
+Server: `npm test` and `npm run build` from `server/`. Configure an isolated PostgreSQL test database through ignored `.env.test`, as described in the root README; apply all current migrations to it before running tests. Test fixtures are synthetic and cleaned up afterward. The rollback test installs and removes a temporary trigger on the isolated test database to force a failure between the request status change and loan creation.
 
 Client: `npm ci`, `npm test`, `npm run build`, and `npm run lint` from `client/`. UI tests run in jsdom using React Testing Library. The app-level tests mock HTTP responses; they do not establish live-browser end-to-end integration.
 
@@ -63,4 +65,4 @@ Client: `npm ci`, `npm test`, `npm run build`, and `npm run lint` from `client/`
 | Form selection, pending exclusion, disabled states, history, retry | `client/tests/requests.test.tsx` |
 | Submit and refresh, 409 recovery, expired session, failed refresh after success, fresh-page history | `client/tests/borrow-workflow.test.tsx` |
 
-Reviewers must verify this duplicate interpretation and migration preflight, run the documented commands, and exercise the borrower submit → custodian queue/checkout → borrower fulfilled-history path in a live browser. Human review, live-browser evidence, and reviewed PR merge remain pending; automated results do not complete these gates.
+Reviewers must verify this duplicate interpretation and migration preflight, run the documented commands, and exercise the borrower submit → custodian queue/checkout → borrower `CHECKED_OUT` history path in a live browser. Human review, live-browser evidence, and reviewed PR merge remain pending; automated results do not complete these gates.
