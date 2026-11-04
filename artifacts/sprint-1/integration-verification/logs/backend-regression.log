@@ -1,0 +1,80 @@
+
+> server@1.0.0 test
+> vitest run --reporter=verbose --reporter=json --outputFile.json=../artifacts/sprint-1/integration-verification/backend-results.json --no-color
+
+npm.cmd : ◇ injected env (3) from .env.test
+At line:2 char:1
++ npm.cmd test -- --reporter=verbose --reporter=json --outputFile.json= ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (◇ injected env (3) from .env.test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+ RUN  v5.0.5 C:/gitloop/kitloop/server
+
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 74ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 116ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 208ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 153ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 129ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 79ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 83ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 101ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 15ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 6ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 68ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 159ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 117ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 115ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 121ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 153ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 180ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 149ms
+ ✓ tests/borrow-requests.test.ts > request payload unit validation > accepts only a trimmed Asset ID 4ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > persists PENDING with server identity/time, exposes asset details, and never reserves 106ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects concurrent duplicate submissions and the database independently guards uniqueness 268ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > allows concurrent submissions by different borrowers without reserving 34ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects unknown, retired, malformed, and client-controlled fields without writes 64ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > enforces authentication, role and CSRF for creation 23ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs, forbids status writes and checks out atomically 173ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rolls back failed loan creation, preserves availability, and permits a clean retry 121ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > does not expose database failure details during submission 9ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > shows only scoped pending requests with borrower and equipment details 92ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads 118ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects invalid due dates and supplied status/identity without partial changes 97ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > checks due date against checkout time inside the transaction, not an earlier form timestamp 30ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects missing sessions, wrong role, CSRF failures and foreign-scope requests 47ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects a missing request, malformed ID, asset mismatch, and retired equipment 67ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects repeated and concurrent checkout of the same request 193ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different pending requests and custodians for one exclusive asset 106ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > does not expose a loan status mutation API to borrowers 45ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > preserves historic rows when the enum migration renames FULFILLED to CHECKED_OUT 53ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval) 277ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape) 152ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability) 72ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05) 137ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401 207ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering) 104ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data 24ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog 81ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets 78ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure 81ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token 97ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 73ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > accepts an explicit Asset ID and a timezone-aware due date 4ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects invalid bodies and client-assigned loan or identity fields 3ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects coercible, impossible, malformed, and timezone-free dates 2ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > requires the due date strictly after the actual checkout instant 1ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > derives ACTIVE/RETURNED from persisted custody facts without editable state 1ms
+ ✓ tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 10ms
+
+ Test Files  7 passed (7)
+      Tests  55 passed (55)
+   Start at  18:49:28
+   Duration  12.18s (tests 72%, import 26%, transform 1%, worker 1%)
+
+    Isolate  7 workers spawned · ~269ms startup each (spawn + environment, per file)
+             at least ~1.61s faster with isolate: false — reuses workers across files instead of one per file
+
+JSON report written to C:/gitloop/kitloop/artifacts/sprint-1/integration-verification/backend-results.json
+Exit code: 0
