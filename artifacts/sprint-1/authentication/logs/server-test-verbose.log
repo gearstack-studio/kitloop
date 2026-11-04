@@ -1,0 +1,33 @@
+# cwd: server
+# command: npx vitest run --reporter=verbose
+# date: 2026-11-02T23:51:57+07:00
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 39ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 65ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 124ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 118ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 97ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 64ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 59ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 74ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 12ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 4ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 50ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 118ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 84ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 59ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 84ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 119ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 132ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 84ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 36ms
+
+ Test Files  2 passed (2)
+      Tests  19 passed (19)
+   Start at  23:51:59
+   Duration  2.61s (tests 75%, import 23%, transform 2%, worker 1%)
+
+# exit code: 0

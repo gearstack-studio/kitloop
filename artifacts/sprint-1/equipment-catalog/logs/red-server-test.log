@@ -1,0 +1,137 @@
+# RED run (valid): FEAT-02 tests written before implementation; earlier attempts had test-fixture bugs (see red-attempt-1 and red-attempt-2 logs)
+# cwd: server
+# command: npx vitest run --reporter=verbose
+# date: 2026-11-03T00:28:51+07:00
+# base commit: de9a99a plus uncommitted tests only
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval) 133ms
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape) 94ms
+   → expected [ 'assetId', 'available', …(4) ] to deeply equal [ 'assetId', 'available', …(3) ]
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability) 45ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05) 60ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401 99ms
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering) 50ms
+   → expected [ 'CAT-8ae151fe-9', …(7) ] to deeply equal [ 'CAT-8ae151fe-9', …(7) ]
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data 14ms
+   → Cannot find module '/prisma/seed-data.js' imported from D:/SWE_Project/kitloop/server/tests/catalog.test.ts
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog 46ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets 43ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure 40ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token 48ms
+ × tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 5ms
+   → Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 25ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 46ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 86ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 80ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 68ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 46ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 41ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 48ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 6ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 3ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 34ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 86ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 54ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 42ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 58ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 94ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 102ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 59ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state
+Error: Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ❯ tests/availability.test.ts:6:42
+      4| describe("FEAT-02 availability definition", () => {
+      5|   it("TEST-FEAT-02-04 maps retirement and active loans to one canonica…
+      6|     const { assetState, isBorrowable } = await import("../src/availabi…
+       |                                          ^
+      7|     expect(assetState({ retiredAt: null, activeLoanCount: 0 })).toBe("…
+      8|     expect(assetState({ retiredAt: null, activeLoanCount: 1 })).toBe("…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape)
+AssertionError: expected [ 'assetId', 'available', …(4) ] to deeply equal [ 'assetId', 'available', …(3) ]
+
+- Expected
++ Received
+
+@@ -2,6 +2,7 @@
+    "assetId",
+    "available",
+    "category",
+    "description",
+    "name",
++   "retiredAt",
+  ]
+
+ ❯ tests/catalog.test.ts:137:40
+    135|     const asCustodian = await request(app).get("/api/assets").set("Coo…
+    136|     for (const item of fixtureItems(asBorrower.body)) {
+    137|       expect(Object.keys(item).sort()).toEqual(["assetId", "available"…
+       |                                        ^
+    138|       expect(typeof item.available).toBe("boolean");
+    139|       for (const key of ["assetId", "name", "category", "description"]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering)
+AssertionError: expected [ 'CAT-8ae151fe-9', …(7) ] to deeply equal [ 'CAT-8ae151fe-9', …(7) ]
+
+- Expected
++ Received
+
+@@ -3,8 +3,8 @@
+    "CAT-8ae151fe-8",
+    "CAT-8ae151fe-7",
+    "CAT-8ae151fe-6",
+    "CAT-8ae151fe-H",
+    "CAT-8ae151fe-F",
+-   "CAT-8ae151fe-1",
+    "CAT-8ae151fe-2",
++   "CAT-8ae151fe-1",
+  ]
+
+ ❯ tests/catalog.test.ts:200:92
+    198|     for (let attempt = 0; attempt < 3; attempt += 1) {
+    199|       const response = await request(app).get("/api/assets").set("Cook…
+    200|       expect(fixtureItems(response.body).map((item: { assetId: string …
+       |                                                                                            ^
+    201|     }
+    202|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data
+Error: Cannot find module '/prisma/seed-data.js' imported from D:/SWE_Project/kitloop/server/tests/catalog.test.ts
+ ❯ tests/catalog.test.ts:207:28
+    205|     await expect(prisma.asset.create({ data: { assetId: ids.alpha, nam…
+    206|       .rejects.toMatchObject({ code: "P2002" });
+    207|     const { seedAssets } = await import("../prisma/seed-data.js");
+       |                            ^
+    208|     const seedIds = seedAssets.map((asset: { assetId: string }) => ass…
+    209|     expect(new Set(seedIds).size).toBe(seedIds.length);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  4 failed | 27 passed (31)
+   Start at  00:28:52
+   Duration  3.21s (tests 77%, import 20%, transform 2%, worker 1%)
+
+    Isolate  4 workers spawned · ~129ms startup each (spawn + environment, per file)
+             at least ~388ms faster with isolate: false — reuses workers across files instead of one per file
+
+# exit code: 1

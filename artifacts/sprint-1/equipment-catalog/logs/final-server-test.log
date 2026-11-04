@@ -1,0 +1,48 @@
+# cwd: server
+# command: npx vitest run --reporter=verbose
+# date: 2026-11-03T00:39:53+07:00
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 27ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 54ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 98ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 89ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 74ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 48ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 52ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 61ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 11ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 3ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 37ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 91ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 61ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 45ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 62ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 90ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 95ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 67ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval) 130ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape) 87ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability) 48ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05) 60ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401 97ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering) 49ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data 11ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog 44ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets 42ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure 38ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token 48ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 29ms
+ ✓ tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 3ms
+
+ Test Files  4 passed (4)
+      Tests  31 passed (31)
+   Start at  00:39:54
+   Duration  3.32s (tests 76%, import 21%, transform 2%, worker 1%)
+
+    Isolate  4 workers spawned · ~133ms startup each (spawn + environment, per file)
+             at least ~398ms faster with isolate: false — reuses workers across files instead of one per file
+
+# exit code: 0

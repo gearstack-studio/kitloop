@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title">
+  <title id="title">KitLoop orbital loop</title>
+  <style>
+    .orbit { stroke: #0B1220; }
+    @media (prefers-color-scheme: dark) { .orbit { stroke: #FAFAFA; } }
+  </style>
+  <path class="orbit" d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z" fill="none" stroke-width="2" stroke-linecap="round"/>
+  <path class="orbit" d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z" fill="none" stroke-width="1.7" stroke-opacity=".65" stroke-linecap="round"/>
+  <circle cx="27.02" cy="9.11" r="2.4" fill="#38BDF8"/>
+</svg>

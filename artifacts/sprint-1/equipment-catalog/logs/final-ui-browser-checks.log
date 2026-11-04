@@ -1,0 +1,24 @@
+# Mocked-API browser checks (headless Edge via DevTools protocol), run 2026-11-03T00:38:56+07:00
+# Browser checks against the running app. Mocks are in-browser request interception; the database is never written.
+PASS  A1 h2 "Equipment catalog" is in the heading outline | [{"name":"Find your next tool.","level":1},{"name":"Equipment catalog","level":2},{"name":"My requests","level":2},{"name":"My loans","level":2},{"name":"Development laptop","level":3},{"name":"Mirrorless camera","level":3}]
+PASS  A2 catalog section is a named region "Equipment catalog"
+PASS  A3 request buttons are focusable and carry accessible names
+PASS  B1 error state shows alert and Retry
+PASS  B2 Retry loads the live catalog
+PASS  C1 a 401 from /assets returns to /login and clears the catalog | path=/login
+PASS  D0 before the action the mocked asset is Available
+PASS  D1 after a successful request the catalog is refetched and shows Checked out
+PASS  E0 before the action the mocked asset is Available
+PASS  E1 after a 409 the catalog is refetched and shows Checked out
+PASS  E2 the conflict message is still shown
+# mocked requests served:
+  GET /api/assets -> mocked 500
+  GET /api/assets -> mocked 401
+  GET /api/assets -> mocked 200
+  POST /api/requests -> mocked 201
+  GET /api/assets -> mocked 200
+  GET /api/assets -> mocked 200
+  POST /api/requests -> mocked 409
+  GET /api/assets -> mocked 200
+# summary: 11 of 11 checks passed
+# exit code: 0

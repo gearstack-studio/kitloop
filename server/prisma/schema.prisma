@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BORROWER
+  CUSTODIAN
+}
+
+enum RequestStatus {
+  PENDING
+  CHECKED_OUT
+}
+
+model User {
+  id                 String           @id @default(uuid()) @db.Uuid
+  username           String           @unique
+  passwordHash       String
+  role               Role
+  sessions           Session[]
+  custodianAssets    CustodianAsset[]
+  requests           BorrowRequest[]  @relation("BorrowerRequests")
+  borrowedLoans      Loan[]           @relation("BorrowerLoans")
+  checkedOutLoans    Loan[]           @relation("CheckoutCustodian")
+  returnedLoans      Loan[]           @relation("ReturnCustodian")
+}
+
+model Session {
+  tokenHash String   @id
+  userId    String   @db.Uuid
+  expiresAt DateTime @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Asset {
+  assetId            String           @id
+  name               String
+  category           String
+  description        String
+  retiredAt          DateTime?        @db.Timestamptz(6)
+  custodianAssets    CustodianAsset[]
+  requests           BorrowRequest[]
+  loans              Loan[]
+}
+
+model CustodianAsset {
+  custodianId String @db.Uuid
+  assetId     String
+  custodian   User   @relation(fields: [custodianId], references: [id], onDelete: Cascade)
+  asset       Asset  @relation(fields: [assetId], references: [assetId], onDelete: Cascade)
+
+  @@id([custodianId, assetId])
+}
+
+model BorrowRequest {
+  // SQL migration enforces one PENDING request per (borrowerId, assetId).
+  // A full @@unique would incorrectly prevent later requests after fulfillment.
+  id          String        @id @default(uuid()) @db.Uuid
+  borrowerId  String        @db.Uuid
+  assetId     String
+  submittedAt DateTime      @default(now()) @db.Timestamptz(6)
+  status      RequestStatus @default(PENDING)
+  borrower    User          @relation("BorrowerRequests", fields: [borrowerId], references: [id])
+  asset       Asset         @relation(fields: [assetId], references: [assetId])
+  loan        Loan?
+
+  @@index([borrowerId])
+  @@index([assetId, status])
+}
+
+model Loan {
+  id                    String    @id @default(uuid()) @db.Uuid
+  requestId             String    @unique @db.Uuid
+  assetId               String
+  borrowerId            String    @db.Uuid
+  checkoutCustodianId   String    @db.Uuid
+  checkedOutAt          DateTime  @default(now()) @db.Timestamptz(6)
+  dueAt                 DateTime  @db.Timestamptz(6)
+  returnedAt            DateTime? @db.Timestamptz(6)
+  returnCustodianId     String?   @db.Uuid
+  request               BorrowRequest @relation(fields: [requestId], references: [id])
+  asset                 Asset     @relation(fields: [assetId], references: [assetId])
+  borrower              User      @relation("BorrowerLoans", fields: [borrowerId], references: [id])
+  checkoutCustodian     User      @relation("CheckoutCustodian", fields: [checkoutCustodianId], references: [id])
+  returnCustodian       User?     @relation("ReturnCustodian", fields: [returnCustodianId], references: [id])
+
+  @@index([borrowerId])
+  @@index([assetId])
+}

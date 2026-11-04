@@ -1,0 +1,174 @@
+# RED run (valid): FEAT-02 tests written before implementation; first attempt had a fixture bug (see red-attempt-1-invalid-fixture-error.log)
+# cwd: server
+# command: npx vitest run --reporter=verbose
+# date: 2026-11-03T00:28:32+07:00
+# base commit: de9a99a plus uncommitted tests only
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval) 139ms
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape) 103ms
+   → expected [ 'assetId', 'available', …(4) ] to deeply equal [ 'assetId', 'available', …(3) ]
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability) 49ms
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05) 74ms
+   → 
+Invalid `prisma.loan.updateMany()` invocation in
+D:/SWE_Project/kitloop/server/tests/catalog.test.ts:178:23
+
+  175   .set("Cookie", custodian.cookie).set("X-CSRF-Token", custodian.csrf).send({ assetId: ids.free, dueAt });
+  176 expect(accepted.status).toBe(201);
+  177 // Return the asset to a clean state for later tests without relying on FEAT-04 return behaviour.
+→ 178 await prisma.loan.updateMany(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "23514", message: "new row for relation \"Loan\" violates check constraint \"Loan_return_after_checkout\"", severity: "ERROR", detail: Some("Failing row contains (5c4d53e6-fb4e-4821-a211-914c2b77a361, 5b325d09-e936-4701-8e88-3b328eb5d404, CAT-c252c65f-F, a930b846-2e58-4f08-933b-f1850981b5ac, c01dbbb4-12cb-4bde-9421-78123e308ee9, 2026-11-03 00:28:35.232+07, 2026-11-04 00:28:35.209+07, 2026-11-03 00:28:35.23+07, c01dbbb4-12cb-4bde-9421-78123e308ee9)."), column: None, hint: None }), transient: false })
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401 118ms
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering) 52ms
+   → expected [ 'CAT-c252c65f-9', …(7) ] to deeply equal [ 'CAT-c252c65f-9', …(7) ]
+ × tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data 10ms
+   → Cannot find module '/prisma/seed-data.js' imported from D:/SWE_Project/kitloop/server/tests/catalog.test.ts
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog 47ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets 47ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure 46ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token 58ms
+ × tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 6ms
+   → Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 28ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 51ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 99ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 94ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 76ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 50ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 47ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 58ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 8ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 3ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 41ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 100ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 62ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 46ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 65ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 94ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 114ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 69ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 31ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state
+Error: Cannot find module '/src/availability.js' imported from D:/SWE_Project/kitloop/server/tests/availability.test.ts
+ ❯ tests/availability.test.ts:6:42
+      4| describe("FEAT-02 availability definition", () => {
+      5|   it("TEST-FEAT-02-04 maps retirement and active loans to one canonica…
+      6|     const { assetState, isBorrowable } = await import("../src/availabi…
+       |                                          ^
+      7|     expect(assetState({ retiredAt: null, activeLoanCount: 0 })).toBe("…
+      8|     expect(assetState({ retiredAt: null, activeLoanCount: 1 })).toBe("…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape)
+AssertionError: expected [ 'assetId', 'available', …(4) ] to deeply equal [ 'assetId', 'available', …(3) ]
+
+- Expected
++ Received
+
+@@ -2,6 +2,7 @@
+    "assetId",
+    "available",
+    "category",
+    "description",
+    "name",
++   "retiredAt",
+  ]
+
+ ❯ tests/catalog.test.ts:137:40
+    135|     const asCustodian = await request(app).get("/api/assets").set("Coo…
+    136|     for (const item of fixtureItems(asBorrower.body)) {
+    137|       expect(Object.keys(item).sort()).toEqual(["assetId", "available"…
+       |                                        ^
+    138|       expect(typeof item.available).toBe("boolean");
+    139|       for (const key of ["assetId", "name", "category", "description"]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05)
+PrismaClientUnknownRequestError: 
+Invalid `prisma.loan.updateMany()` invocation in
+D:/SWE_Project/kitloop/server/tests/catalog.test.ts:178:23
+
+  175   .set("Cookie", custodian.cookie).set("X-CSRF-Token", custodian.csrf).send({ assetId: ids.free, dueAt });
+  176 expect(accepted.status).toBe(201);
+  177 // Return the asset to a clean state for later tests without relying on FEAT-04 return behaviour.
+→ 178 await prisma.loan.updateMany(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "23514", message: "new row for relation \"Loan\" violates check constraint \"Loan_return_after_checkout\"", severity: "ERROR", detail: Some("Failing row contains (5c4d53e6-fb4e-4821-a211-914c2b77a361, 5b325d09-e936-4701-8e88-3b328eb5d404, CAT-c252c65f-F, a930b846-2e58-4f08-933b-f1850981b5ac, c01dbbb4-12cb-4bde-9421-78123e308ee9, 2026-11-03 00:28:35.232+07, 2026-11-04 00:28:35.209+07, 2026-11-03 00:28:35.23+07, c01dbbb4-12cb-4bde-9421-78123e308ee9)."), column: None, hint: None }), transient: false })
+ ❯ ei.handleRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:237:13
+ ❯ ei.handleAndLogRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12
+ ❯ ei.request node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12
+ ❯ a node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24
+ ❯ tests/catalog.test.ts:178:5
+    176|     expect(accepted.status).toBe(201);
+    177|     // Return the asset to a clean state for later tests without relyi…
+    178|     await prisma.loan.updateMany({ where: { assetId: ids.free, returne…
+       |     ^
+    179|   });
+    180|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { clientVersion: '6.19.3', batchRequestIdx: undefined }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering)
+AssertionError: expected [ 'CAT-c252c65f-9', …(7) ] to deeply equal [ 'CAT-c252c65f-9', …(7) ]
+
+- Expected
++ Received
+
+@@ -3,8 +3,8 @@
+    "CAT-c252c65f-8",
+    "CAT-c252c65f-7",
+    "CAT-c252c65f-6",
+    "CAT-c252c65f-H",
+    "CAT-c252c65f-F",
+-   "CAT-c252c65f-1",
+    "CAT-c252c65f-2",
++   "CAT-c252c65f-1",
+  ]
+
+ ❯ tests/catalog.test.ts:202:92
+    200|     for (let attempt = 0; attempt < 3; attempt += 1) {
+    201|       const response = await request(app).get("/api/assets").set("Cook…
+    202|       expect(fixtureItems(response.body).map((item: { assetId: string …
+       |                                                                                            ^
+    203|     }
+    204|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data
+Error: Cannot find module '/prisma/seed-data.js' imported from D:/SWE_Project/kitloop/server/tests/catalog.test.ts
+ ❯ tests/catalog.test.ts:209:28
+    207|     await expect(prisma.asset.create({ data: { assetId: ids.alpha, nam…
+    208|       .rejects.toMatchObject({ code: "P2002" });
+    209|     const { seedAssets } = await import("../prisma/seed-data.js");
+       |                            ^
+    210|     const seedIds = seedAssets.map((asset: { assetId: string }) => ass…
+    211|     expect(new Set(seedIds).size).toBe(seedIds.length);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'ERR_MODULE_NOT_FOUND' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  5 failed | 26 passed (31)
+   Start at  00:28:34
+   Duration  3.62s (tests 78%, import 19%, transform 2%, worker 1%)
+
+    Isolate  4 workers spawned · ~151ms startup each (spawn + environment, per file)
+             at least ~452ms faster with isolate: false — reuses workers across files instead of one per file
+
+# exit code: 1

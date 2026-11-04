@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-11-03T11:48:16.712Z",
+  "node": "v24.14.0",
+  "host": "127.0.0.1",
+  "port": "55439",
+  "database": "kitloop_f03_test",
+  "distinctFromDevelopment": true,
+  "server": [
+    {
+      "version": "PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35227, 64-bit",
+      "database": "kitloop_f03_test",
+      "role": "kitloop_test"
+    }
+  ],
+  "migrations": [
+    {
+      "migration_name": "20261102125822_auth_baseline",
+      "applied": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20261103090000_unique_pending_request",
+      "applied": true,
+      "rolled_back": false
+    },
+    {
+      "migration_name": "20261103100000_checked_out_request_status",
+      "applied": true,
+      "rolled_back": false
+    }
+  ],
+  "counts": {
+    "users": 0,
+    "assets": 0,
+    "requests": 0,
+    "loans": 0,
+    "sessions": 0,
+    "assignments": 0
+  },
+  "testTriggers": [],
+  "testSchemas": []
+}

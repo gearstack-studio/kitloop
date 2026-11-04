@@ -1,0 +1,48 @@
+
+> server@1.0.0 test
+> vitest run tests/borrow-requests.test.ts tests/checkout.test.ts tests/checkout-unit.test.ts --reporter=verbose --no-color
+
+npm.cmd : ◇ injected env (3) from .env.test
+At line:2 char:1
++ npm.cmd test -- tests/borrow-requests.test.ts tests/checkout.test.ts  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (◇ injected env (3) from .env.test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+ RUN  v5.0.5 C:/gitloop/kitloop/server
+
+ ✓ tests/borrow-requests.test.ts > request payload unit validation > accepts only a trimmed Asset ID 4ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > persists PENDING with server identity/time, exposes asset details, and never reserves 140ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects concurrent duplicate submissions and the database independently guards uniqueness 163ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > allows concurrent submissions by different borrowers without reserving 35ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects unknown, retired, malformed, and client-controlled fields without writes 68ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > enforces authentication, role and CSRF for creation 22ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs, forbids status writes and checks out atomically 200ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rolls back failed loan creation, preserves availability, and permits a clean retry 210ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > does not expose database failure details during submission 11ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > shows only scoped pending requests with borrower and equipment details 94ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads 119ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects invalid due dates and supplied status/identity without partial changes 102ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > checks due date against checkout time inside the transaction, not an earlier form timestamp 33ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects missing sessions, wrong role, CSRF failures and foreign-scope requests 53ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects a missing request, malformed ID, asset mismatch, and retired equipment 71ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects repeated and concurrent checkout of the same request 180ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different pending requests and custodians for one exclusive asset 101ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > does not expose a loan status mutation API to borrowers 43ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > preserves historic rows when the enum migration renames FULFILLED to CHECKED_OUT 117ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > accepts an explicit Asset ID and a timezone-aware due date 5ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects invalid bodies and client-assigned loan or identity fields 4ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects coercible, impossible, malformed, and timezone-free dates 2ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > requires the due date strictly after the actual checkout instant 1ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > derives ACTIVE/RETURNED from persisted custody facts without editable state 1ms
+
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+   Start at  18:48:57
+   Duration  7.02s (tests 63%, import 33%, transform 4%, worker 1%)
+
+    Isolate  3 workers spawned · ~486ms startup each (spawn + environment, per file)
+             at least ~971ms faster with isolate: false — reuses workers across files instead of one per file
+
+Exit code: 0

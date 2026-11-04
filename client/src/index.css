@@ -1,0 +1,136 @@
+:root {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+
+  /* ---- KitLoop identity: Obsidian x Ice Silver (single source of truth) ---- */
+  --kl-bg: #09090b;
+  --kl-surface: #141419;
+  --kl-surface-elevated: #18181d;
+  --kl-text: #fafafa;
+  --kl-text-muted: #94a3b8;
+  --kl-accent: #dce5ef;
+  --kl-accent-hover: #c3cfdd;
+  --kl-accent-fg: #09090b;
+  --kl-border: #303038;
+  --kl-border-hover: #64748b;
+  --kl-focus: #dce5ef;
+  --kl-disabled-opacity: 0.5;
+
+  --kl-error: #fca5a5;
+  --kl-error-bg: #2a1215;
+  --kl-error-border: #7f1d1d;
+  --kl-success: #86efac;
+  --kl-success-bg: #0f2a1a;
+  --kl-success-border: #166534;
+  --kl-warning: #fcd34d;
+  --kl-warning-bg: #2a200a;
+  --kl-warning-border: #854d0e;
+
+  --kl-font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --kl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --kl-fast: 150ms;
+  --kl-base: 240ms;
+
+  /* Component-facing aliases */
+  --color-page: var(--kl-bg);
+  --color-surface: var(--kl-surface);
+  --color-surface-muted: var(--kl-surface-elevated);
+  --color-text: var(--kl-text);
+  --color-text-muted: var(--kl-text-muted);
+  --color-border: var(--kl-border);
+  --color-border-soft: var(--kl-border);
+  --color-brand: var(--kl-accent);
+  --color-brand-hover: var(--kl-accent-hover);
+  --color-accent: var(--kl-accent);
+  --color-on-accent: var(--kl-accent-fg);
+  --color-nav: var(--kl-bg);
+  --color-nav-elevated: var(--kl-surface-elevated);
+  --color-nav-border: var(--kl-border);
+  --color-error: var(--kl-error);
+  --color-error-bg: var(--kl-error-bg);
+  --color-success: var(--kl-success);
+  --color-success-bg: var(--kl-success-bg);
+  --color-warning: var(--kl-warning);
+  --color-warning-bg: var(--kl-warning-bg);
+  --color-editorial-bg: var(--kl-bg);
+  --color-editorial-surface: var(--kl-surface);
+  --color-editorial-text: var(--kl-text);
+  --color-editorial-muted: var(--kl-text-muted);
+  --color-editorial-border: var(--kl-border);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-pill: 999px;
+  --shadow-panel: 0 24px 60px -30px rgb(0 0 0 / 70%);
+  --shadow-button-hover: 0 8px 24px -12px rgb(220 229 239 / 35%);
+
+  background: var(--color-page);
+  color: var(--color-text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: var(--kl-disabled-opacity);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--kl-focus);
+  outline-offset: 3px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
