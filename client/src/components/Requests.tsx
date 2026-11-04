@@ -39,7 +39,9 @@ export default function Requests({ requests, status, onRetry, custodian = false,
       {status === 'ready' && <span>{requests.length} records</span>}</div>
     {status === 'loading' && <p role="status">Loading requests…</p>}
     {status === 'error' && <div role="alert"><p>Requests could not be loaded.</p><button onClick={onRetry}>Retry requests</button></div>}
-    {status === 'ready' && (requests.length === 0 ? <p className="empty">No requests to show yet.</p> :
+    {status === 'ready' && (requests.length === 0 ? <p className="empty">{custodian
+        ? 'No pending requests for the equipment assigned to you. Requests for equipment assigned to another custodian are not shown.'
+        : 'No requests to show yet.'}</p> :
       <div className="record-list">{requests.map(item => <article className="record" key={item.id}>
         <div><strong>{item.asset?.name ?? item.assetId}</strong><small>{item.assetId} · {item.status}</small>
           <small>Request {item.id}</small>
