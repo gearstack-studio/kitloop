@@ -1,4 +1,89 @@
-# Lab 5, Episode 2: KitLoop cloud readiness
+# Lab 5 deployment
+
+## Episode 3: Docker containerization (R-01, R-02, C-03)
+
+Run these commands from the repository root with Git, Docker Engine/Desktop running Linux containers, and Docker Compose v2 or later. Windows Docker Desktop requires a working WSL 2 installation. Node.js and PostgreSQL on the host are unnecessary for this workflow.
+
+### Clean-clone configuration
+
+```powershell
+git clone https://github.com/gearstack-studio/kitloop.git
+cd kitloop
+git switch docker-containerization-for-kitloop
+git rev-parse HEAD
+Copy-Item .env.example .env
+```
+
+On Linux/macOS use `cp .env.example .env`. Edit `.env` locally and replace every `REPLACE_*` value. Use a URL-safe database user/password/database name (letters, digits, underscores and hyphens) and match those values in `DATABASE_URL`. Generate independent random passwords and a CSRF secret of at least 32 characters with a password manager. Keep the database hostname `db` and port `5432`. The defaults open the browser at `http://localhost:8080`; if changing `WEB_PORT`, change `APP_ORIGIN` to the same browser origin. The frontend uses same-origin `/api` requests through Nginx.
+
+| Variable | Purpose | Secret? | Value source |
+| --- | --- | --- | --- |
+| `POSTGRES_USER` | PostgreSQL role created on first startup | No | Choose a local role name in root `.env` |
+| `POSTGRES_PASSWORD` | PostgreSQL role password | Yes | Generate locally, put in root `.env` |
+| `POSTGRES_DB` | Application database created on first startup | No | Choose a local database name in root `.env` |
+| `DATABASE_URL` | API/Prisma database connection | Yes | Assemble from the three PostgreSQL values and `db:5432` in root `.env` |
+| `SESSION_CSRF_SECRET` | HMAC key, minimum 32 characters | Yes | Generate locally in root `.env` |
+| `SESSION_TTL_HOURS` | Session lifetime in hours | No | Root `.env`, default 12 |
+| `APP_ORIGIN` | Exact origin for browser CORS/CSRF checks | No | Browser address in root `.env`, default `http://localhost:8080` |
+| `WEB_PORT` | Host loopback port published by Nginx | No | Root `.env`, default 8080 |
+| `DEMO_BORROWER_PASSWORD` | Password shared by synthetic borrower accounts | Yes | Generate locally in root `.env`; tools service only |
+| `DEMO_CUSTODIAN_PASSWORD` | Password shared by synthetic custodian accounts | Yes | Generate locally in root `.env`; tools service only |
+| `PORT` | Internal API listening port | No | Compose fixes it at 3000 to match the proxy and health check |
+| `NODE_ENV` | Cookie policy and demo seed guard | No | Image defaults to `production`; local Compose uses `development`, test uses `test` |
+| `VITE_API_BASE_URL` | Public API prefix embedded at client build time | No | Docker build argument defaults to empty for same-origin API access |
+| `SMOKE_BASE_URL` | Optional HTTP smoke-test destination | No | Smoke script defaults to `http://web` on the Compose network |
+
+Root `.env.example` lists the user-supplied Compose settings. Fixed internal settings and the optional frontend build argument are documented above. Existing `server/.env.example`, `server/.env.test.example`, and `client/.env.example` support host-based development. Docker excludes actual environment files at every directory level. No runtime secrets are build arguments. Never put secrets in any `VITE_` variable. Never attach expanded `docker compose config`, environment dumps, authentication response headers, cookies, or database URLs as evidence.
+
+### Build, migrate, seed, and run
+
+```powershell
+docker version
+docker compose version
+docker compose config --quiet
+docker compose --profile tools build --pull
+docker compose up -d --wait db
+docker compose run --rm tools npm run db:deploy
+docker compose run --rm tools npm run db:seed
+docker compose up -d --wait
+docker compose ps
+docker compose run --rm tools node scripts/verify-docker.mjs
+```
+
+Open `http://localhost:8080`, sign in as `borrower.demo` with the local `DEMO_BORROWER_PASSWORD`, open the catalog, and submit a request for an available asset. Confirm it appears in request history, refresh, and confirm it remains. Login writes a PostgreSQL session, the catalog reads seeded assets, and the request writes a BorrowRequest. `custodian.demo` manages cameras and `custodian.other` manages the laptop, using `DEMO_CUSTODIAN_PASSWORD`.
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/health
+Invoke-RestMethod http://localhost:8080/api/ready
+docker compose restart api
+Invoke-RestMethod http://localhost:8080/api/ready
+```
+
+On Linux/macOS use `curl --fail http://localhost:8080/api/ready` and the equivalent health URL. Readiness must return HTTP 200 with `status=ready` after restart; retry briefly while the API starts. Record browser action results without recording passwords, cookies or CSRF tokens.
+
+PostgreSQL persists in a named volume and is accessible only on the Compose network. `docker compose down` stops the stack and preserves data. Changing PostgreSQL initialization values does not update an existing volume. To reset disposable local data deliberately, run `docker compose down --volumes` and repeat migration/seed; this deletes the local database. Seeding is repeatable and resets demo passwords. Keep migrations explicit and run `db:deploy` before starting a newly updated API. The API health check waits for database connectivity and the web service waits for a ready API.
+
+The API image uses compiled JavaScript and production dependencies under the unprivileged `node` user. The tools image retains Prisma CLI and tsx for migration/seed. Local HTTP Compose uses `NODE_ENV=development` so browsers can send session cookies. For production use HTTPS, set `NODE_ENV=production` and the real `APP_ORIGIN`, and provision accounts separately because the demo seed refuses production. GCP deployment is a later episode.
+
+### Automated tests in containers
+
+```powershell
+docker compose --profile test build test client-test
+docker compose --profile test run --rm test
+docker compose --profile test run --rm client-test
+docker compose --profile test stop db-test
+docker compose --profile test rm -f db-test
+```
+
+The `test` service migrates a separate `kitloop_test` database, runs server integration tests, and checks live readiness responses (200 for reachable PostgreSQL and 503 for an unreachable database). Test data uses a separate PostgreSQL container with ephemeral storage. The `client-test` image builds and lints the frontend, then runs the existing client tests. Its runtime API base is `http://localhost:3000` to support the existing absolute-URL HTTP mocks. API compilation/typechecking runs while building the server test/tools/API stages. Execute the two test suites sequentially.
+
+### C-03 evidence and review
+
+Use a fresh clone of the exact candidate commit and a new Compose project (`$env:COMPOSE_PROJECT_NAME = 'kitloop-c03'` in PowerShell or `export COMPOSE_PROJECT_NAME=kitloop-c03` on Linux/macOS) so an existing database volume cannot conceal initialization problems. Record `git rev-parse HEAD`, Docker/Compose versions, commands above, exit results, health/readiness responses, and the catalog/request action with refresh. Check that `.env` is ignored using `git check-ignore .env` and that `git ls-files` contains no actual environment or secret files. Inspect the final API, tools and web images for actual `.env` files, and inspect image history for secret-bearing build arguments. Record pass/fail results only, without secret values.
+
+The current execution record is in [c-03-evidence.md](c-03-evidence.md). A blocked run does not satisfy C-03. Include successful clean-clone evidence with the tested SHA in the PR before claiming acceptance. Request review from `yiiipunn` explicitly covering C-03, apply `lab5`, and use the confirmed staging branch as the PR base.
+
+## Episode 2 historical readiness record
 
 ## Scope and baseline
 
