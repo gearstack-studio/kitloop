@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "test:ready:live": "node scripts/verify-ready.mjs",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts"
