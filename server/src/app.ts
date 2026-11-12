@@ -3,6 +3,7 @@ import express from "express";
 import { apiErrorHandler } from "./api-error.js";
 import { authRouter } from "./auth.js";
 import { domainRouter } from "./domain.js";
+import { prisma } from "./db.js";
 
 const app = express();
 
@@ -18,6 +19,15 @@ app.get("/api/health", (_request, response) => {
     status: "ok",
     service: "KitLoop API",
   });
+});
+
+app.get("/api/ready", async (_request, response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    response.status(200).json({ status: "ready" });
+  } catch {
+    response.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use("/api/auth", authRouter);

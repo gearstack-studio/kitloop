@@ -2,6 +2,9 @@ import "dotenv/config";
 import { PrismaClient, Role } from "@prisma/client";
 import { hashPassword } from "../src/password.js";
 import { seedAssets } from "./seed-data.js";
+import { assertDemoSeedAllowed } from "./seed-policy.js";
+
+assertDemoSeedAllowed(process.env.NODE_ENV);
 
 const borrowerPassword = process.env.DEMO_BORROWER_PASSWORD;
 const custodianPassword = process.env.DEMO_CUSTODIAN_PASSWORD;
