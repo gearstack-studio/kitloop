@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { parse } from 'dotenv';
 
-const testEnv = parse(readFileSync('.env.test'));
+const testEnv = existsSync('.env.test') ? parse(readFileSync('.env.test')) : process.env;
 if (!testEnv.DATABASE_URL || !/test/i.test(new URL(testEnv.DATABASE_URL).pathname)) {
   throw new Error('Live readiness verification requires a dedicated test database');
 }
