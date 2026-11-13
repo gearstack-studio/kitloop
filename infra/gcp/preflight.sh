@@ -10,7 +10,8 @@ note 'Required API status:'
 enabled_apis="$(gcloud services list --enabled --project="$PROJECT" --format='value(config.name)')"
 for api in run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
   sqladmin.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
-  compute.googleapis.com servicenetworking.googleapis.com logging.googleapis.com; do
+  compute.googleapis.com servicenetworking.googleapis.com logging.googleapis.com \
+  storage.googleapis.com; do
   if grep -qx "$api" <<<"$enabled_apis"; then
     printf 'ENABLED %s\n' "$api"
   else
@@ -25,6 +26,12 @@ note 'Cloud SQL instances:'
 if grep -qx sqladmin.googleapis.com <<<"$enabled_apis"; then
   gcloud sql instances list --project="$PROJECT" --format='table(name,region,state,databaseVersion)'
 else note 'Skipped: Cloud SQL Admin API is disabled.'; fi
+note 'Cloud Build source bucket:'
+if grep -qx storage.googleapis.com <<<"$enabled_apis"; then
+  gcloud storage buckets describe "gs://$BUILD_SOURCE_BUCKET" --project="$PROJECT" \
+    --format='table(name,location,iamConfiguration.uniformBucketLevelAccess.enabled)' || \
+    note 'Missing: dedicated source bucket has not been created.'
+else note 'Skipped: Cloud Storage API is disabled.'; fi
 note 'Cloud Run services:'
 if grep -qx run.googleapis.com <<<"$enabled_apis"; then
   gcloud run services list --region="$REGION" --project="$PROJECT" --format='table(metadata.name,status.url)'

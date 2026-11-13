@@ -10,13 +10,22 @@ case "$action" in
     gcloud services enable --project="$PROJECT" \
       run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
       sqladmin.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
-      compute.googleapis.com servicenetworking.googleapis.com logging.googleapis.com
+      compute.googleapis.com servicenetworking.googleapis.com logging.googleapis.com \
+      storage.googleapis.com
     ;;
   registry)
     confirm registry
     gcloud artifacts repositories create "$REPOSITORY" --project="$PROJECT" \
       --location="$REGION" --repository-format=docker \
       --description='KitLoop Lab 5 release images'
+    ;;
+  build-source)
+    confirm build-source
+    gcloud storage buckets create "gs://$BUILD_SOURCE_BUCKET" --project="$PROJECT" \
+      --location="$REGION" --uniform-bucket-level-access --public-access-prevention \
+      --soft-delete-duration=0
+    gcloud storage buckets update "gs://$BUILD_SOURCE_BUCKET" --project="$PROJECT" \
+      --lifecycle-file=infra/gcp/build-source-lifecycle.json
     ;;
   network)
     subnet_cidr="${2:-}"
@@ -57,6 +66,8 @@ case "$action" in
       --display-name='KitLoop Cloud Run runtime'
     gcloud iam service-accounts create kitloop-migrate --project="$PROJECT" \
       --display-name='KitLoop one-time migrations'
+    gcloud iam service-accounts create kitloop-bootstrap --project="$PROJECT" \
+      --display-name='KitLoop one-time production bootstrap'
     gcloud iam service-accounts create kitloop-build --project="$PROJECT" \
       --display-name='KitLoop Cloud Build'
     ;;
@@ -74,7 +85,7 @@ case "$action" in
     trap 'unset db_password csrf_secret database_url' EXIT
     gcloud sql users create kitloop_app --project="$PROJECT" \
       --instance="$SQL_INSTANCE" --password="$db_password"
-    database_url="postgresql://kitloop_app:${db_password}@localhost/kitloop?host=/cloudsql/${CONNECTION}&schema=public&connection_limit=5"
+    database_url="postgresql://kitloop_app:${db_password}@localhost/kitloop?host=%2Fcloudsql%2F${CONNECTION}&schema=public&connection_limit=5"
     printf '%s' "$database_url" | gcloud secrets create kitloop-database-url \
       --project="$PROJECT" --replication-policy=user-managed --locations="$REGION" --data-file=-
     printf '%s' "$csrf_secret" | gcloud secrets create kitloop-csrf \
@@ -82,36 +93,46 @@ case "$action" in
     note 'Secrets created. Record only their names and version numbers; never display payloads.'
     ;;
   bootstrap-secrets)
-    note 'Enter two distinct production account passwords from a password manager. They will not be echoed or logged.'
+    require_command realpath
+    require_command stat
+    require_command jq
+    require_command git
+    manifest="${2:-}"
+    [[ -n "$manifest" && -f "$manifest" && ! -L "$manifest" ]] || \
+      die 'Usage: prepare.sh bootstrap-secrets /absolute/path/to/reviewed-bootstrap.json (regular file outside the repository).'
+    manifest="$(realpath -- "$manifest")"
+    [[ "$manifest" == /* ]] || die 'Bootstrap manifest must resolve to an absolute path.'
+    repo_root="$(realpath -- "$(git rev-parse --show-toplevel)")"
+    [[ "$manifest" != "$repo_root/"* ]] || die 'Keep the bootstrap manifest outside the repository.'
+    permissions="$(stat -c '%a' "$manifest")"
+    [[ "$permissions" == 600 || "$permissions" == 400 ]] || \
+      die 'Bootstrap manifest must be owner-readable only (mode 600 or 400).'
+    jq -e 'type == "object" and (.users | type == "array" and length > 0) and (.assets | type == "array")' \
+      "$manifest" >/dev/null 2>&1 || die 'Bootstrap manifest must be JSON with users and assets arrays.'
+    note 'Review the manifest against server/.env.production.example. Existing account passwords will not be rotated.'
     confirm bootstrap-secrets
-    [[ -t 0 ]] || die 'Secret input requires an interactive terminal.'
     set +x
-    read -r -s -p 'Borrower password: ' borrower_password
-    printf '\n' >&2
-    read -r -s -p 'Custodian password: ' custodian_password
-    printf '\n' >&2
-    trap 'unset borrower_password custodian_password' EXIT
-    [[ ${#borrower_password} -ge 16 && ${#custodian_password} -ge 16 && "$borrower_password" != "$custodian_password" ]] || \
-      die 'Use distinct passwords of at least 16 characters.'
-    printf '%s' "$borrower_password" | gcloud secrets create kitloop-borrower-password \
-      --project="$PROJECT" --replication-policy=user-managed --locations="$REGION" --data-file=-
-    printf '%s' "$custodian_password" | gcloud secrets create kitloop-custodian-password \
-      --project="$PROJECT" --replication-policy=user-managed --locations="$REGION" --data-file=-
-    note 'Bootstrap secrets created. Share account passwords only through the team password manager.'
+    gcloud secrets create kitloop-bootstrap-input --project="$PROJECT" \
+      --replication-policy=user-managed --locations="$REGION" --data-file="$manifest"
+    note 'Bootstrap manifest stored as a secret. Keep account passwords in the team password manager.'
     ;;
   bootstrap-grants)
     confirm bootstrap-grants
-    for secret in kitloop-borrower-password kitloop-custodian-password; do
+    gcloud projects add-iam-policy-binding "$PROJECT" \
+      --member="serviceAccount:$BOOTSTRAP_SA" --role=roles/cloudsql.client >/dev/null
+    for secret in kitloop-database-url kitloop-bootstrap-input; do
       gcloud secrets add-iam-policy-binding "$secret" --project="$PROJECT" \
-        --member="serviceAccount:$MIGRATE_SA" --role=roles/secretmanager.secretAccessor >/dev/null
+        --member="serviceAccount:$BOOTSTRAP_SA" --role=roles/secretmanager.secretAccessor >/dev/null
     done
     ;;
   bootstrap-revoke)
     confirm bootstrap-revoke
-    for secret in kitloop-borrower-password kitloop-custodian-password; do
+    for secret in kitloop-database-url kitloop-bootstrap-input; do
       gcloud secrets remove-iam-policy-binding "$secret" --project="$PROJECT" \
-        --member="serviceAccount:$MIGRATE_SA" --role=roles/secretmanager.secretAccessor >/dev/null
+        --member="serviceAccount:$BOOTSTRAP_SA" --role=roles/secretmanager.secretAccessor >/dev/null
     done
+    gcloud projects remove-iam-policy-binding "$PROJECT" \
+      --member="serviceAccount:$BOOTSTRAP_SA" --role=roles/cloudsql.client >/dev/null
     ;;
   grants)
     confirm grants
@@ -126,9 +147,12 @@ case "$action" in
     gcloud artifacts repositories add-iam-policy-binding "$REPOSITORY" \
       --project="$PROJECT" --location="$REGION" \
       --member="serviceAccount:$BUILD_SA" --role=roles/artifactregistry.writer >/dev/null
+    gcloud storage buckets add-iam-policy-binding "gs://$BUILD_SOURCE_BUCKET" \
+      --project="$PROJECT" --member="serviceAccount:$BUILD_SA" \
+      --role=roles/storage.objectViewer >/dev/null
     gcloud projects add-iam-policy-binding "$PROJECT" \
       --member="serviceAccount:$BUILD_SA" --role=roles/logging.logWriter >/dev/null
     note 'Operator permissions (Cloud Run deployer, Cloud SQL admin, Service Account User, and IAM grant authority) must be reviewed separately.'
     ;;
-  *) die 'Usage: prepare.sh {apis|registry|network SUBNET_CIDR PSA_BASE_IP PSA_PREFIX|database|identity|secrets|bootstrap-secrets|grants|bootstrap-grants|bootstrap-revoke}' ;;
+  *) die 'Usage: prepare.sh {apis|registry|build-source|network SUBNET_CIDR PSA_BASE_IP PSA_PREFIX|database|identity|secrets|bootstrap-secrets MANIFEST_PATH|grants|bootstrap-grants|bootstrap-revoke}' ;;
 esac

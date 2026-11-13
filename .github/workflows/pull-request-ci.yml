@@ -37,6 +37,11 @@ jobs:
           docker version
           docker compose version
 
+      - name: Validate GCP release tooling offline
+        run: |
+          for script in infra/gcp/*.sh .github/scripts/*.sh; do bash -n "$script"; done
+          bash infra/gcp/guards.test.sh
+
       - name: Generate isolated synthetic configuration
         run: |
           config_file="$RUNNER_TEMP/kitloop-ci.env"

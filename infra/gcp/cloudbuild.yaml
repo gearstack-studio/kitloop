@@ -1,10 +1,12 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '--pull', '--target', 'cloud', '--build-arg', 'VITE_API_BASE_URL=', '-t', '${_APP_IMAGE}', '.']
+    args: ['build', '--pull', '--target', 'production', '--build-arg', 'VITE_API_BASE_URL=', '-t', '${_APP_IMAGE}', '.']
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '--pull', '--target', 'migrator', '-t', '${_MIGRATE_IMAGE}', '.']
+    args: ['build', '--pull', '--target', 'migration', '-t', '${_MIGRATION_IMAGE}', '.']
 images:
   - '${_APP_IMAGE}'
-  - '${_MIGRATE_IMAGE}'
+  - '${_MIGRATION_IMAGE}'
+# Two uncached multi-stage builds (server, client, Prisma) can exceed the 10-minute default.
+timeout: 1800s
 options:
   logging: CLOUD_LOGGING_ONLY

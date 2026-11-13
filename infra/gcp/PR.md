@@ -10,55 +10,69 @@
 
 **Label:** `lab5`
 
+Part of #31
+
 ## Summary
 
-Add Cloud Shell runbooks and guarded scripts for the first KitLoop deployment to a single Cloud Run service with private Cloud SQL PostgreSQL, Secret Manager, Artifact Registry, and a separate migration job. The scripts perform no action automatically and require typed confirmation before changing cloud resources. Existing Docker Compose and CI behavior is untouched.
+Add guarded Cloud Shell tooling for a single same-origin Cloud Run service with private Cloud SQL PostgreSQL, Secret Manager, Artifact Registry, and separate migration and bootstrap jobs. This branch merges `sprint-1-staging` (including PR #32's merge commit `978dec8`), so this PR's diff contains only PR B's GCP tooling, CI check and documentation. All commands are manual and require typed confirmation before changing cloud resources. **No GCP resource has been created and no deployment is claimed.**
 
 ## Implementation
 
-- `infra/gcp/preflight.sh` inventories the fixed project, region, APIs, repository, database, services, and VPC without changing resources.
-- `infra/gcp/prepare.sh` stages API, repository, network, database, secret, service account, and scoped IAM actions behind separate confirmations.
-- `infra/gcp/cloudbuild.yaml` builds and publishes the planned app and migration image targets.
-- `infra/gcp/release.sh` builds by source SHA, records immutable digests, runs migrations, deploys privately, publishes only after checks, and supports traffic rollback.
-- `infra/gcp/verify.sh` checks revision and HTTP health/readiness without printing credentials.
-- `.gcloudignore` keeps local environments, credentials, generated files, and evidence outside the Cloud Build source upload.
-- `docs/labs/lab-05/deployment.md` and `infra/gcp/README.md` document the architecture, costs, order, integration contract, verification, and remaining work.
+- `infra/gcp/preflight.sh` inventories the fixed project, region, APIs, repository, database, services and VPC without changing resources.
+- `infra/gcp/prepare.sh` stages APIs, a private source bucket, Artifact Registry, network, database, secrets, four service accounts and scoped IAM grants behind separate confirmations.
+- `infra/gcp/cloudbuild.yaml` builds PR A's `production` and `migration` targets with a 30-minute timeout and publishes both images.
+- `infra/gcp/release.sh`:
+  - `build` accepts only a clean, pushed commit on `feat/5-first-gcp-deployment` or `sprint-1-staging`, and prints both immutable digests.
+  - `migrate` runs the migration image's default entrypoint. Bootstrap and deploy require its latest execution to have completed successfully with the commit's exact migration digest.
+  - `bootstrap` runs `node dist/bootstrap-cli.js` in the production image with the reviewed `BOOTSTRAP_INPUT` secret. Only after verifying the execution does it record the execution name as the Cloud SQL label `kitloop_bootstrap`.
+  - `deploy` requires that label rather than the one-time job, so the job may be deleted and its access revoked. Later releases never repeat bootstrap. `APP_ORIGIN` is always the canonical deterministic URL `https://kitloop-PROJECT_NUMBER.asia-southeast1.run.app`; no placeholder origin exists.
+    - First deployment: a private service (`--no-allow-unauthenticated`).
+    - Later releases: a `--no-traffic` revision tagged `candidate`. Traffic moves only after `/`, `/api/health` and `/api/ready` pass on the candidate. Invoker IAM is never changed, so public access is preserved.
+  - `rollback` accepts only a ready revision with a registry digest and canonical `APP_ORIGIN`, then confirms 100% routing. A later deploy moves traffic away from a rollback pin.
+- `infra/gcp/verify.sh` reports and validates the revisions actually receiving traffic, then checks the canonical URL without printing tokens. Identity tokens are passed to curl on stdin.
+- `infra/gcp/guards.test.sh` is an offline regression suite. It uses a file-backed fake `gcloud`/`curl`, real `jq` on Cloud Run v1-shaped JSON, and a pseudo-terminal for typed confirmations. `.github/workflows/pull-request-ci.yml` runs `bash -n` on the release scripts and the suite.
+- `.gcloudignore` keeps local environments, credentials, generated files and evidence out of the Cloud Build upload.
+- `docs/labs/lab-05/deployment.md` and `infra/gcp/README.md` document the architecture, costs, ordered first and later releases, the canonical URL, zero-downtime limits, rollback and evidence.
 
 ## Verification
 
-- [x] Git Bash `bash -n` passed for all six new Bash files.
-- [x] Mock guard test passed: noninteractive and wrong-project mutation attempts stopped before a cloud call.
-- [x] Cloud Build YAML parsed and declared two image targets.
-- [x] `docker compose config --quiet` exited 0 (Docker warned that its local client config was inaccessible; no Compose interpolation error).
-- [x] Backend: 8 test files, 58 tests passed; `npm run typecheck` and `npm run build` exited 0.
-- [x] Frontend: 4 test files, 21 tests passed; `npm run lint` and `npm run build` exited 0.
-- [x] `git diff --check` exited 0; proposed paths were checked for high-confidence credential patterns without printing values. Local `.env` files remain ignored.
-- [ ] ShellCheck was unavailable in the local environment.
-- [ ] Production image, migration command, and local runtime tests: **DEV4952 integration pending**.
-- [ ] Cloud Build, migration job, Cloud Run, database, and browser verification: **not run; approval and integration pending**.
+- [x] `bash -n` passed for all six `infra/gcp` scripts.
+- [x] ShellCheck 0.10.0 (`koalaman/shellcheck` image) reported no findings at any severity for the six scripts. Two intentional patterns carry documented directives.
+- [x] `guards.test.sh` passed on Debian bookworm (jq 1.6, util-linux 2.38.1): 14 scenario groups plus the final pass line.
+  - Noninteractive, wrong-project and mistyped-confirmation guards.
+  - Migration and bootstrap gates.
+  - The documented first release, including bootstrap revocation and job deletion.
+  - Private verify, then publish.
+  - A later release without bootstrap that preserves public access.
+  - A failed candidate that receives no traffic.
+  - Failed, mismatched and incomplete migrations.
+  - Rollback safety, then redeploy off a rollback pin.
+  - Build branch and pushed-commit checks.
+- [x] Mutation check: the suite failed for 14 of 15 deliberately reintroduced defects, including each original audit defect. The survivor removed the redundant `completionTime` clause; the `succeededCount` clause still rejects a running execution.
+- [x] Cloud Build YAML parsed. `production` and `migration` Docker targets were built from a `.gcloudignore`-filtered copy of the merged tree. App, bootstrap and migration entrypoints behaved as specified without a database. Runtime code is unchanged from PR #32, whose hosted CI passed on `fd0c95b`.
+- [x] `git diff --check` and a secret-pattern scan of this PR's diff found nothing.
+- [ ] PR B hosted CI on the pushed head: pending.
+- [ ] Cloud Build, Cloud SQL, Cloud Run jobs/service, canonical URL reporting, real HTTPS browser checks and persistence across revisions: **not executed**.
 
 ## Provisioning prerequisites
 
-Billing and budget alerts, remaining credits, regional quota, cost estimate, network CIDRs, operator IAM, DEV4952 image/bootstrap contract, and explicit approval must be checked before cloud resources are created. Cloud SQL and build/image storage may incur charges. The Cloud SQL trial eligibility of this project is unverified and its trial instance is not the proposed durable database.
+Billing and budget alerts, remaining credits, regional quota, cost estimate, network CIDRs, operator IAM (including Cloud SQL label updates) and explicit approval must be checked before cloud resources are created. Cloud SQL, build source storage and image storage may incur charges. The Cloud SQL trial eligibility of this project is unverified, and its trial instance is not the proposed durable database.
 
-## Deployment and evidence
+## Remaining cloud-dependent risks
 
-Follow `infra/gcp/README.md` in order. Record the reviewed source SHA, Cloud Build ID/result, immutable image digests, private Cloud SQL state, migration execution, Cloud Run revision/URL, health/readiness, browser workflow, and persistence. Do not attach secrets, tokens, cookies, database URLs, or unredacted logs. **No deployment is claimed by this PR.**
-
-## Remaining integration dependencies
-
-- DEV4952: `cloud` and `migrator` Docker targets, same-origin routing, production `db:bootstrap` command using the documented environment contract, and production runtime tests.
-- GCP owner approval: billable resources, service accounts/IAM, secrets, Cloud SQL, build, deployment, and public invocation.
-- Bootstrap job execution remains blocked until DEV4952's command interface is implemented and reviewed.
+- Cloud Run's built-in Cloud SQL socket attachment with a **private-IP-only** instance and Direct VPC egress must be confirmed by the first `migrate` execution.
+- These must be confirmed in Cloud Shell:
+  - The deterministic URL appears in the service's `run.googleapis.com/urls` annotation or `status.url`.
+  - Real `gcloud ... --format=json` output matches the v1 field paths the jq gates read.
+  - The installed `gcloud` accepts every flag.
+  - Org policy allows `allUsers` invoker access.
+- The candidate checks do not exercise login or writes. Migrations must stay backward compatible because they run while the previous revision serves.
 
 ## Reviewer checklist
 
-- [ ] Confirm all scripts point to the intended project and `asia-southeast1` and stop on wrong active project.
-- [ ] Confirm private-only Cloud SQL, Direct VPC egress, exact origin, and secret-scoped IAM.
-- [ ] Confirm no default/demo credentials or production seed bypass.
-- [ ] Confirm source SHA, image digest, migration and rollback contracts match DEV4952's image.
-- [ ] Confirm evidence claims are backed by actual execution and unrelated Sprint 1 files are excluded.
-
-## Draft Episode 5 issue update
-
-Repository-side GCP tooling and the deployment runbook are prepared on `feat/5-first-gcp-deployment`. The plan uses one same-origin Cloud Run service, private-IP Cloud SQL, Secret Manager, Artifact Registry, and a separate migration job. Local script guards, syntax, Compose configuration, and existing backend/frontend tests and builds passed. No GCP resource has been created. Cost/budget approval and DEV4952's production image, migration, bootstrap, and runtime evidence are still required before deployment. Post this only after an Episode 5 issue is opened; no matching issue was present during preparation.
+- [ ] Confirm all scripts target `lab-5-cloud-deployment-514310` in `asia-southeast1` and stop on a wrong active project.
+- [ ] Confirm private-only Cloud SQL, Direct VPC egress, canonical `APP_ORIGIN` and secret-scoped IAM.
+- [ ] Confirm the bootstrap label lifecycle, the first-versus-later deploy paths, and that redeploys never touch invoker IAM.
+- [ ] Confirm rollback rejects unsafe revisions and the next deploy moves traffic off a rollback pin.
+- [ ] Confirm no default or demo credentials and no production seed bypass.
+- [ ] Confirm evidence claims are backed by actual execution and the diff contains no PR A or unrelated Sprint 1 files.
