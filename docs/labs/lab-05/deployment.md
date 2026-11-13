@@ -84,7 +84,7 @@ The generator runs with the host operator's UID/GID so its mode-0600 file remain
 
 The checks cover root/deep-link SPA and JS assets, health/readiness, Secure-cookie attributes, CSRF/foreign-origin rejection, borrower permission checks, persisted session/request across SIGTERM restart, custodian checkout, loan/availability reads and logout. The script additionally requires the documented nonzero exits for missing/unreachable migration databases, missing bootstrap input, invalid production configuration, and the production demo-seed guard. It deletes only its own uniquely named containers/volumes on exit, including failures.
 
-Backend tests additionally cover manifest validation, salted hashes, reruns with changed input passwords, concurrent bootstrap calls, role-conflict rollback and asset-conflict preservation. See [production-runtime-review.md](production-runtime-review.md) for actual results, findings, PR B handoff and the prepared PR description. Hosted CI for this branch awaits a reviewed commit/push.
+Backend tests additionally cover manifest validation, salted hashes, reruns with changed input passwords, concurrent bootstrap calls, role-conflict rollback and asset-conflict preservation. See [production-runtime-review.md](production-runtime-review.md) for actual results, findings and the PR B handoff. [Hosted CI and screenshot evidence](evidence/README.md) records the tested implementation and merge SHAs for PR #32.
 
 ## Episode 4: CI on pull requests
 

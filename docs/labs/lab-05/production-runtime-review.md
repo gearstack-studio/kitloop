@@ -75,7 +75,7 @@ Its required failure cases were missing `DATABASE_URL` (migration exit 2), unrea
 | BLOCKER for deployment | Actual Cloud SQL connectivity, HTTPS/browser workflow, service identity and public endpoint have not been deployed/tested | PR B cloud integration and evidence remain required |
 | MAJOR, pre-existing | Migration/tools dependency graph reports 3 high npm advisories through Prisma CLI -> `@prisma/config` -> `deepmerge-ts` (GHSA-ggr8-5vv4-36mx) | Excluded from long-running runtime; retained in one-shot job/build tooling. Prisma major-version upgrade needs separate review; do not claim job image is advisory-free |
 | MAJOR, pre-existing | Earlier Episode 3 evidence recorded intermittent concurrent-checkout HTTP 500 | Did not reproduce in this 70-test run; no domain behavior change or suppression applied |
-| MINOR | Updated hosted CI and tests tied to an implementation commit are pending | Requires the user's reviewed commit/push. Local actionlint and command sequence passed |
+| MINOR, resolved after publication | Updated hosted CI and implementation SHA were pending at local review time | Hosted CI passed for `f489ac2`; checkout log verified merge `4718038`. See `evidence/README.md` and PR #32 for the run and screenshots |
 | SUGGESTION | Pin approved base-image digests for a deployment release | PR B should record immutable digests and source SHA as issue #31 requires |
 
 No new unresolved blocker was found in repository-side runtime verification. No hardcoded production passwords, secret-bearing image contents, destructive initialization, auth bypass or permission bypass was found. Existing synthetic test/demo fixtures remain confined to their explicit workflows. The production smoke checks cookie attributes and server behavior over internal HTTP using a synthetic HTTPS Origin; actual browser Secure-cookie transport, certificate validation, Cloud SQL sockets and Cloud Run lifecycle still require PR B verification. This is **GO for PR A review**, and **NO-GO for claiming Episode 5 deployment complete**.
@@ -107,7 +107,7 @@ Part of #31.
 ### Remaining integration and known findings
 - PR B must build/tag both targets from this reviewed commit, configure the real HTTPS origin/database/secrets, run migration before traffic and perform cloud/browser persistence verification.
 - Migration/build tooling retains 3 pre-existing Prisma CLI advisory-chain findings. Earlier concurrent-checkout 500 was not reproduced here and remains a known finding.
-- Hosted CI awaits this PR's reviewed commit/push. No GCP resources were modified.
+- Hosted CI results, tested SHAs and screenshots are linked from PR #32 and evidence/README.md. No GCP resources were modified.
 
 ### Reviewer checklist
 - [ ] Confirm runtime image contains frontend/API/Prisma Client, runs non-root, uses PORT and shuts down gracefully.
