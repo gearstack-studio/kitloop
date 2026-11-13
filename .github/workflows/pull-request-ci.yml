@@ -66,6 +66,15 @@ jobs:
           docker compose up -d --wait
           docker compose run --rm tools node scripts/verify-docker.mjs
 
+      - name: Verify production image, jobs and restart persistence
+        run: |
+          runtime_env="$RUNNER_TEMP/kitloop-production.env"
+          trap 'rm -f -- "$runtime_env"' EXIT
+          docker compose run --rm --no-deps --user "$(id -u):$(id -g)" -e GITHUB_ACTIONS=true \
+            -v "$RUNNER_TEMP:/test-output" tools \
+            node scripts/prepare-production-test.mjs /test-output/kitloop-production.env
+          bash .github/scripts/production-smoke.sh "$runtime_env"
+
       - name: Record result
         if: always()
         env:

@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set a test database user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a test database password}
+      POSTGRES_DB: ${POSTGRES_DB:?Set a test database name}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      target: migration
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set the test database URL}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  bootstrap:
+    build:
+      context: .
+      target: production
+    command: [node, dist/bootstrap-cli.js]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set the test database URL}
+      BOOTSTRAP_INPUT: ${BOOTSTRAP_INPUT:?Set the test manifest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  production:
+    build:
+      context: .
+      target: production
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL:?Set the test database URL}
+      APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS test origin}
+      SESSION_CSRF_SECRET: ${SESSION_CSRF_SECRET:?Set a test session secret}
+    ports:
+      - "127.0.0.1:${RUNTIME_TEST_PORT:-8083}:8080"
+    read_only: true
+    stop_grace_period: 10s
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:8080/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+
+  verify:
+    profiles: [check]
+    build:
+      context: .
+      target: server-test
+    command: [node, scripts/verify-production.mjs, before-restart]
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS test origin}
+      BOOTSTRAP_INPUT: ${BOOTSTRAP_INPUT:?Set the test manifest}
+    volumes:
+      - smoke-state:/state
+    depends_on:
+      production:
+        condition: service_healthy
+
+volumes:
+  smoke-state:
