@@ -1,0 +1,17 @@
+.git
+.github
+.agents
+.codex
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+**/*.log
+**/*.pem
+**/*.key
+artifacts
+docs
+e2e

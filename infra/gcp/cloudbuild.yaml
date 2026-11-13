@@ -1,0 +1,10 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '--pull', '--target', 'cloud', '--build-arg', 'VITE_API_BASE_URL=', '-t', '${_APP_IMAGE}', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '--pull', '--target', 'migrator', '-t', '${_MIGRATE_IMAGE}', '.']
+images:
+  - '${_APP_IMAGE}'
+  - '${_MIGRATE_IMAGE}'
+options:
+  logging: CLOUD_LOGGING_ONLY

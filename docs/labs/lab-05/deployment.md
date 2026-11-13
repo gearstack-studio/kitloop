@@ -1,5 +1,65 @@
 # Lab 5 deployment
 
+## Episode 5: first GCP deployment preparation
+
+**Status:** Repository-side cloud tooling is prepared. No Cloud SQL instance, Secret Manager secret, service account, Artifact Registry repository, Cloud Build, Cloud Run job, or service has been created or verified by this work. The CPE334 Student Guide V1.1 and rubric were not available in the workspace; confirm their Episode 5 acceptance details before release.
+
+### Architecture and integration boundary
+
+Target project: `lab-5-cloud-deployment-514310`. Region: `asia-southeast1`. The target is one Cloud Run service serving the built React SPA and Express `/api` at the same HTTPS origin, with persistent PostgreSQL in a private-IP Cloud SQL instance. Artifact Registry stores immutable app and migrator images. Secret Manager supplies `DATABASE_URL` and `SESSION_CSRF_SECRET`. A one-time Cloud Run job applies checked-in Prisma migrations before the service is published. This design preserves the existing `Secure`, `HttpOnly`, `SameSite=Lax` cookie, Origin check, and CSRF behavior.
+
+The current Compose `web` container cannot be deployed unchanged because its Nginx configuration proxies to the Compose-only hostname `api`. DEV4952 owns the combined `cloud` image target, same-origin routing, `migrator` image target, production bootstrap command, and production image tests. The contract for those targets, environment variables, endpoints, and image names is in [infra/gcp/README.md](../../../infra/gcp/README.md). The scripts fail rather than assume those targets exist. The local Compose PostgreSQL volume and demo passwords are never production inputs; `db:seed` remains blocked under `NODE_ENV=production`.
+
+### Approval, cost and security gate
+
+The GCP project was reported active with billing enabled and Cloud Run/Cloud SQL APIs enabled. Remaining Free Trial credits, budget alerts, quota, and a regional cost estimate still need verification. An active billing account is not proof of free usage. Cloud SQL compute is continuous and may incur storage, backup, and network charges. Cloud Run, Cloud Build, Artifact Registry, Secret Manager, and logs may also charge. The proposed paid lab starting point is Cloud SQL Enterprise PostgreSQL 17 on `db-f1-micro`, zonal, 10 GiB SSD, capped automatic growth, and scheduled backups. Shared-core instances have no Cloud SQL SLA. The separate 30-day Cloud SQL free-trial instance requires an eligible new project, has a fixed large configuration and no ordinary backups, and is not assumed available here. Check the [Cloud SQL pricing and trial terms](https://cloud.google.com/sql/pricing) and [free-trial conditions](https://docs.cloud.google.com/sql/docs/postgres/free-trial-instance) immediately before approval.
+
+The database plan uses a dedicated VPC and subnet, private services access, and **no public IP**. Cloud Run service and migration job use Direct VPC egress and Cloud SQL attachment, with Prisma connecting through a Unix socket. The runtime service account gets Cloud SQL Client and accessor on the database URL and CSRF secret; the migration account gets Cloud SQL Client and accessor on the database URL only. The build account can write only to the KitLoop Artifact Registry repository and Cloud Logging. The temporary bootstrap password secrets are not granted to the runtime account. No service account keys are created. Confirm the operator's resource-creation and Service Account User permissions separately. [Cloud SQL private access](https://docs.cloud.google.com/sql/docs/postgres/configure-private-services-access), [Cloud Run VPC egress](https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc), [Cloud Run IAM](https://docs.cloud.google.com/run/docs/reference/iam/roles).
+
+### Ordered Cloud Shell commands
+
+Run from a clean clone of the reviewed `feat/5-first-gcp-deployment` commit. Every `prepare.sh` and `release.sh` action prompts for its exact project/action before changing anything. Inspect all existing and peered IP ranges before choosing the two example placeholders below; **do not copy an overlapping range**. Stop at the cost/approval gate before `prepare.sh apis`.
+
+```bash
+gcloud config set project lab-5-cloud-deployment-514310
+git status --porcelain
+git rev-parse HEAD
+bash infra/gcp/preflight.sh
+# Verify credits, budget alerts, quotas, IAM and estimated charges in Console.
+# Obtain approval before running any command below.
+bash infra/gcp/prepare.sh apis
+bash infra/gcp/prepare.sh registry
+bash infra/gcp/prepare.sh identity
+bash infra/gcp/prepare.sh network SUBNET_CIDR PSA_BASE_IP PSA_PREFIX
+bash infra/gcp/prepare.sh database
+bash infra/gcp/prepare.sh secrets
+bash infra/gcp/prepare.sh grants
+# After DEV4952's cloud and migrator targets are integrated and tested:
+bash infra/gcp/release.sh build
+SHA="$(git rev-parse --short=12 HEAD)"
+# Review all migrations and database backup status first:
+bash infra/gcp/release.sh migrate "$SHA"
+# After production bootstrap is implemented, provision accounts/assets separately.
+bash infra/gcp/prepare.sh bootstrap-secrets
+bash infra/gcp/prepare.sh bootstrap-grants
+bash infra/gcp/release.sh bootstrap "$SHA"
+# Verify account and asset counts without secrets, then:
+bash infra/gcp/prepare.sh bootstrap-revoke
+bash infra/gcp/release.sh deploy "$SHA"
+bash infra/gcp/verify.sh private
+# After production browser checks and explicit approval to publish:
+bash infra/gcp/release.sh publish
+bash infra/gcp/verify.sh public
+```
+
+`release.sh deploy` creates a private service with a temporary placeholder origin, reads its generated HTTPS URL, and updates `APP_ORIGIN` to that exact URL before public invocation. It pins Secret Manager version `1` for the first deployment and records the image digest. For a later secret rotation, publish a new version and update the pinned reference deliberately. The bootstrap job requires DEV4952's `db:bootstrap` implementation and fails if it is absent; no demo seed is an acceptable substitute. Full command behavior, failure recovery, and rollback syntax are in [infra/gcp/README.md](../../../infra/gcp/README.md).
+
+### Verification, evidence and rollback
+
+The automated verification script checks the ready Cloud Run revision, `/`, `/api/health`, and database-backed `/api/ready` for HTTP 200 without printing tokens. It does **not** establish authentication, data workflow, or persistence. In a browser, verify login, session restoration after refresh, catalog read, borrower request, custodian checkout, and persistence across a new revision. Record the actual project/region, approved cost setting, source SHA, Cloud Build ID/status, immutable app/migrator image digests, Cloud SQL private connection and backup state, migration job execution/result, service URL/revision, HTTP statuses, browser evidence, and any limitations. Never attach expanded database URLs, secret payloads, passwords, cookies, CSRF headers, identity tokens, or unredacted environment dumps.
+
+For a later release, retain the prior compatible Cloud Run revision and use `bash infra/gcp/release.sh rollback REVISION` to route traffic back, then rerun HTTP and browser checks. Rolling back traffic does not reverse a Prisma migration. Review backward compatibility and backups before applying schema changes; the first release has no prior application revision. Inspect Cloud Build step logs on build failure, the migration execution on schema failure, and Cloud Run revision logs on failed startup or readiness. Do not repeat a partially successful migration or reset the database without diagnosis.
+
 ## Episode 4: CI on pull requests
 
 `.github/workflows/pull-request-ci.yml` runs for opened, updated, reopened and ready-for-review pull requests targeting `sprint-1-staging` or `main`. The check is named **Build, test and Docker smoke**. It checks out the PR merge commit and records both that SHA and the PR head SHA in the Actions run summary. A newer update cancels an older run for the same PR. Any failed build, lint, typecheck, test, migration or smoke command fails the job.
