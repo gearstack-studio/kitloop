@@ -60,6 +60,92 @@ The automated verification script checks the ready Cloud Run revision, `/`, `/ap
 
 For a later release, retain the prior compatible Cloud Run revision and use `bash infra/gcp/release.sh rollback REVISION` to route traffic back, then rerun HTTP and browser checks. Rolling back traffic does not reverse a Prisma migration. Review backward compatibility and backups before applying schema changes; the first release has no prior application revision. Inspect Cloud Build step logs on build failure, the migration execution on schema failure, and Cloud Run revision logs on failed startup or readiness. Do not repeat a partially successful migration or reset the database without diagnosis.
 
+## Episode 5, PR A: production runtime
+
+PR A prepares the repository runtime for issue #31. GCP provisioning, deployment, IAM, service accounts and cloud evidence belong to PR B (`yiiipunn`). The runtime has been tested locally with isolated PostgreSQL; deployment to GCP is pending.
+
+### Single-port image and shutdown
+
+Build `Dockerfile` target `production` (also the final/default target). Express serves the compiled Vite SPA and `/api` from a single listener at `0.0.0.0:$PORT`. `/requests` and other client routes return `index.html`; missing assets and unknown API routes do not receive SPA HTML. Vite builds with an empty `VITE_API_BASE_URL`, so browser requests stay on the page's HTTPS origin. Cloud Run terminates TLS and forwards HTTP to this listener. A second proxy process is unnecessary.
+
+The application image contains compiled backend code, the compiled frontend, Prisma Client and runtime dependencies and runs as user `node`. It contains no environment files, demo seed, migration scripts or source tests. Separate existing `api`, `web`, `server-test` and `client-test` stages still support Episodes 3-4. Application startup validates production configuration and does not migrate or bootstrap. Missing frontend artifacts fail startup explicitly. `SIGTERM`/`SIGINT` stop accepting requests, drain HTTP connections and disconnect Prisma. A 9-second deadline bounds shutdown within Cloud Run's termination window.
+
+Port binding, TLS termination and the signal-handling design follow the [Cloud Run container contract](https://docs.cloud.google.com/run/docs/container-contract).
+
+```bash
+docker build --target production -t kitloop-runtime:local .
+docker build --target migration -t kitloop-migration:local .
+```
+
+Use the same source commit for both images. PR B must record that SHA and immutable image digests. Runtime command is `node dist/index.js` with working directory `/app/server`. No extra shell entrypoint is needed. The application image can run with a read-only root filesystem, as tested by the production smoke stack.
+
+### Production configuration contract
+
+`server/.env.production.example` contains placeholders for the production settings. Supply actual values as runtime environment/secrets. Environment files used in local verification must remain ignored and outside the Docker context where practical.
+
+| Variable | Consumer and purpose | Secret | Source |
+| --- | --- | --- | --- |
+| `NODE_ENV` | Runtime uses production validation and Secure cookies | No | Production image sets `production`; retain it for Cloud Run |
+| `PORT` | Single HTTP listener, integer 1-65535 | No | Cloud Run supplies it; image default 8080 |
+| `DATABASE_URL` | Prisma Client and migration job PostgreSQL connection | Yes | PR B's database provisioner / Secret Manager |
+| `APP_ORIGIN` | Exact HTTPS browser origin, with no trailing slash/path/query/credentials | No | Actual Cloud Run URL or approved custom domain after PR B creates the service |
+| `SESSION_CSRF_SECRET` | HMAC key, minimum 32 characters | Yes | Independently generated secret, persisted across revisions |
+| `SESSION_TTL_HOURS` | Positive session duration, default 12 | No | Deployment configuration |
+| `BOOTSTRAP_INPUT` | Explicit account/asset manifest, bootstrap job only | Yes | Reviewed operational input injected by Secret Manager or an approved secret channel |
+
+`DATABASE_URL` accepts both `postgresql:` and `postgres:` URLs. For the Cloud SQL Unix-socket approach, Prisma can use a URL whose `host` query parameter points to `/cloudsql/PROJECT:REGION:INSTANCE`; percent-encode credentials and the socket query value when assembling the URL. PR B must attach the matching Cloud SQL instance and grant its runtime identity the required access. Network/TLS connectivity and the actual service URL require cloud verification by PR B.
+
+Session cookies remain `Secure`, `HttpOnly`, `SameSite=Lax`, scoped to `/api`. Identity and sessions remain database-backed. CORS allows `APP_ORIGIN`; login/state-changing requests check Origin and mutations also check CSRF as before. Keep the same origin and session secret when testing session persistence across a revision. There is no production authentication bypass.
+
+### Separate migration job
+
+Use the `migration` image as a one-time job with only `DATABASE_URL`. Its entrypoint is `node scripts/migrate.mjs`, which runs the locked Prisma CLI's `migrate deploy` against checked-in migrations. Exit 0 means success, 2 means invalid/missing configuration, and 1 means execution/connectivity/migration failure. Output is sanitized to avoid logging connection strings or Prisma exception details. Inspect database connectivity and migration history through an approved operator session if diagnosis is required.
+
+```bash
+# /secure/migration.env contains DATABASE_URL and is supplied privately by the operator.
+docker run --rm --env-file /secure/migration.env kitloop-migration:local
+```
+
+Run and await successful migration before starting the service revision or invoking bootstrap. No schema reset, automatic seed or GCP job creation is performed by application startup. The migration image retains Prisma CLI/build dependencies; those tools are isolated from the application image. Failed migration deployment must stop the release.
+
+### Controlled account and asset bootstrap
+
+Use the production application image with command `node dist/bootstrap-cli.js` (or `npm run db:bootstrap`). This explicitly invoked command needs `DATABASE_URL` and secret `BOOTSTRAP_INPUT`. It does not require `APP_ORIGIN` or session configuration. The manifest must be a JSON object with a nonempty `users` array and an `assets` array (empty is allowed). See the placeholder manifest in `server/.env.production.example`.
+
+Each user supplies `username`, `password` (12-1024 characters), and `role` (`BORROWER` or `CUSTODIAN`). Each asset supplies `assetId`, `name`, `category`, `description`, and `custodianUsername` referencing a CUSTODIAN in the manifest. Passwords use the existing salted scrypt implementation. Account names, passwords and inventory values have no production defaults. Test fixtures are generated only by the separate test helper.
+
+```bash
+# /secure/bootstrap.env contains DATABASE_URL and a reviewed BOOTSTRAP_INPUT secret.
+docker run --rm --env-file /secure/bootstrap.env kitloop-runtime:local node dist/bootstrap-cli.js
+```
+
+The bootstrap validates all entries and duplicate IDs before writing. One transaction holds a PostgreSQL advisory lock to serialize bootstrap invocations. Matching existing accounts keep their IDs/password hashes, even if a different input password is supplied. Existing roles and asset metadata must match; conflicting roles, changed metadata or retired assets abort the entire transaction. Matching assets and custodian assignments are inserted only if missing. The command provides no password-rotation or inventory-update mechanism. Those changes need a separate reviewed operation.
+
+Reusing a manifest is safe and does not reset accounts. Use a complete reviewed manifest for each batch, including referenced custodians. Passwords on existing users are still validated but do not change stored passwords. Bootstrap outputs no credentials or identifiers. Exit 0 means success, 2 means configuration/manifest/conflict failure, and 1 means an operational database failure. The demo seed remains blocked in production. Avoid shell tracing, environment dumps and secret-bearing CLI arguments.
+
+### Local production verification and CI
+
+Create a new temporary configuration path outside the repository using the test-only generator. It produces random synthetic credentials and a disposable manifest. It refuses to overwrite a file. Use Bash with Docker for the automated sequence below; the same smoke script is invoked by the Episode 4 workflow after its original checks.
+
+```bash
+runtime_test_dir="$(mktemp -d)"
+docker build --target server-test -t kitloop-runtime-check:local .
+docker run --rm --user "$(id -u):$(id -g)" -v "$runtime_test_dir:/test-output" kitloop-runtime-check:local \
+  node scripts/prepare-production-test.mjs /test-output/runtime.env
+export COMPOSE_PROJECT_NAME="kitloop-runtime-check-$(date +%s)"
+bash .github/scripts/production-smoke.sh "$runtime_test_dir/runtime.env"
+rm -f -- "$runtime_test_dir/runtime.env"
+rmdir -- "$runtime_test_dir"
+```
+
+The smoke script uses `docker-compose.production-test.yml` with a separate tmpfs database, single-port read-only production container and temporary session-state volume. Its default host port is 8083 (`RUNTIME_TEST_PORT` in the temporary file). The HTTPS origin `https://runtime.kitloop.test` is synthetic and used only to verify production Origin/cookie policy over Docker's internal HTTP transport, matching Cloud Run's TLS termination boundary. This does not verify browser TLS or a real Cloud Run endpoint.
+
+The generator runs with the host operator's UID/GID so its mode-0600 file remains readable by that operator on Linux. CI applies the same ownership rule for the GitHub runner and masks the generated secrets before other steps run.
+
+The checks cover root/deep-link SPA and JS assets, health/readiness, Secure-cookie attributes, CSRF/foreign-origin rejection, borrower permission checks, persisted session/request across SIGTERM restart, custodian checkout, loan/availability reads and logout. The script additionally requires the documented nonzero exits for missing/unreachable migration databases, missing bootstrap input, invalid production configuration, and the production demo-seed guard. It deletes only its own uniquely named containers/volumes on exit, including failures.
+
+Backend tests additionally cover manifest validation, salted hashes, reruns with changed input passwords, concurrent bootstrap calls, role-conflict rollback and asset-conflict preservation. See [production-runtime-review.md](production-runtime-review.md) for actual results, findings and the PR B handoff. [Hosted CI and screenshot evidence](evidence/README.md) records the tested implementation and merge SHAs for PR #32.
+
 ## Episode 4: CI on pull requests
 
 `.github/workflows/pull-request-ci.yml` runs for opened, updated, reopened and ready-for-review pull requests targeting `sprint-1-staging` or `main`. The check is named **Build, test and Docker smoke**. It checks out the PR merge commit and records both that SHA and the PR head SHA in the Actions run summary. A newer update cancels an older run for the same PR. Any failed build, lint, typecheck, test, migration or smoke command fails the job.
