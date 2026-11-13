@@ -1,5 +1,38 @@
 # Lab 5 deployment
 
+## Episode 4: CI on pull requests
+
+`.github/workflows/pull-request-ci.yml` runs for opened, updated, reopened and ready-for-review pull requests targeting `sprint-1-staging` or `main`. The check is named **Build, test and Docker smoke**. It checks out the PR merge commit and records both that SHA and the PR head SHA in the Actions run summary. A newer update cancels an older run for the same PR. Any failed build, lint, typecheck, test, migration or smoke command fails the job.
+
+The workflow builds the existing Docker stages using committed npm lockfiles. Server typecheck/compilation and frontend TypeScript/build/lint execute during image builds. Then it runs the backend integration and live readiness tests against the ephemeral `db-test` service, runs frontend tests, migrates/seeds a separate fresh application database, starts the stack and performs the HTTP smoke check. Tests run sequentially. The workflow uses a unique Compose project per run and attempt and cleans up containers, volumes and generated configuration even when a check fails.
+
+`.github/scripts/ci-env.sh` generates random synthetic credentials, masks them in Actions and writes configuration under the runner temporary directory, outside the Docker context. Compose loads it through `COMPOSE_ENV_FILES`. CI requires no repository secrets, host Node.js, host PostgreSQL or developer `.env`. The job token has `contents: read` and checkout does not persist credentials. Run logs and the SHA/status summary provide evidence; environment dumps and raw application logs are not uploaded as artifacts.
+
+To reproduce on Linux or Git Bash with a Linux Docker engine, first create a fresh temporary directory and an unused Compose project name. Use a free host port; the example uses 8080. Stop any existing stack bound to that port or adjust `WEB_PORT` and `APP_ORIGIN` in the temporary configuration together.
+
+```bash
+ci_temp_dir="$(mktemp -d)"
+export COMPOSE_PROJECT_NAME="kitloop-ci-local-$(date +%s)"
+export COMPOSE_ENV_FILES="$ci_temp_dir/kitloop-ci.env"
+# Suppress Actions masking directives when outside Actions; do not save this output.
+bash .github/scripts/ci-env.sh "$COMPOSE_ENV_FILES" >/dev/null
+docker compose --profile tools --profile test config --quiet
+docker compose --profile tools --profile test build --pull
+docker compose --profile test run --rm test
+docker compose --profile test run --rm client-test
+docker compose up -d --wait db
+docker compose run --rm tools npm run db:deploy
+docker compose run --rm tools npm run db:seed
+docker compose up -d --wait
+docker compose run --rm tools node scripts/verify-docker.mjs
+# Run cleanup even if an earlier command failed. This deletes only this CI project's data.
+docker compose --profile tools --profile test down --volumes --remove-orphans
+rm -f -- "$COMPOSE_ENV_FILES"
+rmdir -- "$ci_temp_dir"
+```
+
+On failure, open the failed Actions step and reproduce its command with the same tested commit and fresh test database. Keep the failure visible while diagnosing it. Earlier Docker verification recorded an intermittent concurrent-checkout HTTP 500; see `c-03-evidence.md`. CI does not retry or suppress test failures. Reviewers should verify the passing run link, tested merge/head SHAs and each step before merging. Making this check mandatory in branch protection is a separate repository setting controlled by maintainers.
+
 ## Episode 3: Docker containerization (R-01, R-02, C-03)
 
 Run these commands from the repository root with Git, Docker Engine/Desktop running Linux containers, and Docker Compose v2 or later. Windows Docker Desktop requires a working WSL 2 installation. Node.js and PostgreSQL on the host are unnecessary for this workflow.
