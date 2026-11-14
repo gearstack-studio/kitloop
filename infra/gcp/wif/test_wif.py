@@ -195,6 +195,18 @@ class SetupTests(unittest.TestCase):
                 wif.cloud("iam", "workload-identity-pools", "list")
             self.assertNotIn("sensitive", str(error.exception))
 
+    def test_service_account_diagnostics_preserve_safe_status_and_explain_missing_identity(self):
+        for status in ("PERMISSION_DENIED", "NOT_FOUND"):
+            result = subprocess.CompletedProcess([], 1, "", f"ERROR: {status}: sensitive fixture")
+            with self.subTest(status=status), patch.object(wif.subprocess, "run", return_value=result):
+                with self.assertRaises(RuntimeError) as error:
+                    wif.cloud("iam", "service-accounts", "describe", ACCOUNT)
+                message = str(error.exception)
+                self.assertIn(status, message)
+                self.assertIn(ACCOUNT, message)
+                self.assertIn("iam.serviceAccounts.get", message)
+                self.assertNotIn("sensitive", message)
+
     def test_apply_confirmation_and_retry(self):
         argv = ["wif.py", "apply", "--project-number", NUMBER, "--pool", ARGS.pool,
                 "--provider", ARGS.provider, "--service-account", ACCOUNT]

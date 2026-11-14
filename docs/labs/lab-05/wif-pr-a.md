@@ -27,7 +27,7 @@ Record the actual project number, provider resource and account after setup, the
 ## Validation
 
 - [x] Offline WIF tests pass locally, including negative claim scenarios and mocked setup guards.
-- [x] All 20 tests pass, including execution of the workflow's project-lookup script against mocked success/failure responses.
+- [x] All 21 tests pass, including service-account error diagnostics and execution of the workflow's project-lookup script against mocked success/failure responses.
 - [x] Actionlint 1.7.12 validates both workflows. Optional ShellCheck and Pyflakes integrations were disabled for this Windows run.
 - [x] Bash syntax, `git diff --check`, credential-file ignore checks and a credential-pattern scan of all 10 changed files pass.
 - [ ] Hosted PR CI passes on the pushed head.

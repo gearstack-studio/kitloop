@@ -72,7 +72,15 @@ def cloud(*args, json_output=True):
         capture_output=True, text=True, check=False,
     )
     if result.returncode:
-        raise RuntimeError(f"gcloud {' '.join(args[:3])} failed. Check operator IAM/API setup.")
+        status = re.search(r"\b(PERMISSION_DENIED|NOT_FOUND|UNAUTHENTICATED|INVALID_ARGUMENT|"
+                           r"FAILED_PRECONDITION|RESOURCE_EXHAUSTED|UNAVAILABLE):", result.stderr)
+        reason = f" ({status.group(1)})" if status else ""
+        hint = "Check operator IAM/API setup."
+        if args[:3] == ("iam", "service-accounts", "describe"):
+            hint = (f"Verify that {args[3]} exists and the active operator has "
+                    "iam.serviceAccounts.get. A missing account can also return PERMISSION_DENIED. "
+                    "Have an IAM administrator check the service account inventory before creating it.")
+        raise RuntimeError(f"gcloud {' '.join(args[:3])} failed{reason}. {hint}")
     return json.loads(result.stdout) if json_output else None
 
 

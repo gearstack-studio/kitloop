@@ -92,6 +92,24 @@ There is no JSON key or GitHub credential secret to upload. The auth action crea
 
 ## Verification and evidence
 
+If preflight stops at `gcloud iam service-accounts describe`, first have an operator with service-account inventory access run:
+
+```bash
+gcloud auth list --filter=status:ACTIVE --format='value(account)'
+gcloud iam service-accounts list --project=lab-5-cloud-deployment-514310 \
+  --filter='email=kitloop-wif-verifier@lab-5-cloud-deployment-514310.iam.gserviceaccount.com' \
+  --format='table(email,disabled)'
+```
+
+A failed list is a permission/API error, not proof that the account is absent. Google can return `PERMISSION_DENIED` for a missing service account as well as insufficient `iam.serviceAccounts.get`. If the list succeeds and confirms the proposed account is absent, an authorized IAM operator can create it:
+
+```bash
+gcloud iam service-accounts create kitloop-wif-verifier \
+  --project=lab-5-cloud-deployment-514310 --display-name='KitLoop WIF verifier'
+```
+
+Complete the #35 read-only role review/grant, then rerun preflight. Pool/provider `apply` never creates this prerequisite account. Stop after the first failed setup command rather than continuing through apply and verify. The offline plan prints proposed commands and does not execute them.
+
 Run offline checks from the repository root:
 
 ```bash
