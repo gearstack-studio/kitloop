@@ -369,3 +369,9 @@ The backend does not store uploads. For the current data model, database durabil
 ### Proposed GitHub issue completion comment
 
 Episode 2 cloud-readiness code is complete locally on `refactor/2-cloud-ready`. The API now has a PostgreSQL-backed `/api/ready` endpoint with 200/503 tests, binds the Cloud Run port on `0.0.0.0`, and has a production build/start path. The local demo seed is blocked in production; existing PostgreSQL sessions and authentication controls remain in place. Backend tests: 58/58 passed; frontend tests: 21/21 passed; both builds passed. Environment examples and `docs/labs/lab-05/deployment.md` document the verified settings. Docker, GCP resources, and CI/CD are pending later episodes. Confirm the reviewed commit SHA before posting this comment.
+
+## Episode 6 authentication preparation
+
+For GitHub OIDC and Workload Identity Federation setup, the read-only verification workflow,
+the IAM handoff and evidence requirements, see [the WIF runbook](../../../infra/gcp/wif/README.md).
+PR A is tracked in [issue #34](https://github.com/gearstack-studio/kitloop/issues/34).

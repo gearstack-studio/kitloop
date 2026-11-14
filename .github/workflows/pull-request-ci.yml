@@ -42,6 +42,9 @@ jobs:
           for script in infra/gcp/*.sh .github/scripts/*.sh; do bash -n "$script"; done
           bash infra/gcp/guards.test.sh
 
+      - name: Test WIF trust policy offline
+        run: python3 -B -m unittest discover -s infra/gcp/wif -p 'test_*.py' -v
+
       - name: Generate isolated synthetic configuration
         run: |
           config_file="$RUNNER_TEMP/kitloop-ci.env"

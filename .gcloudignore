@@ -1,4 +1,6 @@
 .git
+**/gha-creds-*.json
+**/__pycache__
 .github
 .agents
 .codex
