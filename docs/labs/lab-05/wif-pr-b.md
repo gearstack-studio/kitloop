@@ -18,10 +18,10 @@ Document the independent WIF verifier IAM review and prepare an exact GitHub rul
 
 ## IAM review
 
-- Reviewed the merged PR #36 trust condition and its numeric repository/owner IDs, staging ref, event and workflow restrictions, audience, dedicated pool design, and scoped impersonation member.
-- Defined the verifier's minimum resource permission as project `resourcemanager.projects.get`. The operator reports a matching custom role and project grant; its definition and effective policy are not independently inspected.
-- Direct and inherited GCP roles, user-managed keys, and the provider's actual JSON remain unverified because this environment has no `gcloud` or accessible Cloud Console session. The read-only inventory is in the runbook. No additional IAM grant is proposed until that audit.
-- Staging WIF [attempts 1 and 2](https://github.com/gearstack-studio/kitloop/actions/runs/43611041165) failed at project lookup. [Attempt 3](https://github.com/gearstack-studio/kitloop/actions/runs/43611041165/attempts/3) passed the authenticated lookup at the same SHA after the operator-reported grant. The earlier gcloud error was suppressed, so the exact failure cause is not proven.
+- Reviewed merged PR #36 and the [live WIF provider capture](evidence/iam/07-wif-provider-trust-condition.png): repository/owner IDs, staging ref, event and workflow restrictions, issuer, active state, and attribute mappings match the documented trust condition. Pool administration and other-provider inventory remain follow-up items.
+- [Evidence A](evidence/iam/01-wif-impersonation-policy.png) verifies the scoped `roles/iam.workloadIdentityUser` binding. [Evidence B](evidence/iam/02-verifier-project-binding.png) verifies the project-level `kitloopWifProjectLookup` grant to the verifier. [Evidence C](evidence/iam/03-custom-role-permissions.png) shows only `resourcemanager.projects.get` in that role. [Evidence D](evidence/iam/04-user-managed-keys.png) shows `[]` for user-managed keys at inspection time.
+- [Project metadata](evidence/iam/05-project-hierarchy.png) did not report `parent`. [Policy Analyzer evidence](evidence/iam/06-inherited-access-incomplete.png) shows Cloud Asset API enablement and the `NOT fully explored` warning. Inherited IAM access is **PARTIAL**, not exhaustively verified. The absence of `parent` and an empty incomplete result do not establish that inherited grants are absent. No further IAM grant is justified by the successful project lookup.
+- Staging WIF attempts [1 and 2](https://github.com/gearstack-studio/kitloop/actions/runs/43611041165) failed at project lookup; their raw gcloud error was suppressed. [Attempt 3](https://github.com/gearstack-studio/kitloop/actions/runs/43611041165/attempts/3) and its [screenshot](evidence/iam/08-wif-authentication-success.png) show success at `c75cdf1c00634e52070d32b90cc4047076316c04`. Hosted job steps confirm both OIDC authentication and read-only lookup passed. The earlier exact failure cause is not proven.
 
 ## Proposed merge gate
 
@@ -33,17 +33,20 @@ Document the independent WIF verifier IAM review and prepare an exact GitHub rul
 
 ## Verification and evidence
 
-- Local WIF offline suite: 28 tests passed on staging base `c75cdf1c00634e52070d32b90cc4047076316c04`. The ruleset JSON, required fields, document links, and whitespace were checked after these documentation changes. No tracked file changed.
+- Local WIF offline suite: 28 tests passed. Ruleset JSON, documentation links, screenshot integrity, redaction pixel bounds, and whitespace are checked before the local evidence commit. This PR has no Part B CI result until an authorized push.
 - Verified existing PR CI context and app from [PR #36 head checks](https://github.com/gearstack-studio/kitloop/commit/d6dd68a803a70770f4dd11cac935757d4104bb52/checks); [run 43610143485](https://github.com/gearstack-studio/kitloop/actions/runs/43610143485) passed on PR A. This is not a Part B CI result.
 - Current staging branch API reports no protection and no repository rulesets. No missing-approval, failing-check, or passing-eligibility demonstration has occurred after rule activation.
+- The [eight-image IAM evidence inventory](evidence/iam/README.md) records source, verification status, and limitations. Evidence A contains a deterministic mask over only the personal email; seven other screenshots are byte-identical to their sources. No raw project policy JSON or credential material is included.
 - See [IAM and merge-gate runbook](wif-iam-merge-gates.md) for the command list, evidence requirements, and follow-up actions. Record this PR's final head SHA and CI link after an authorized push.
 
 ## Remaining risks and reviewer checklist
 
-- [ ] Inspect live provider, service-account policy, effective roles, and user-managed keys; approve any IAM remediation separately.
+- [x] Review authentic screenshots of the direct policy, project binding, one-permission role, key list, provider condition, and successful WIF run.
+- [ ] Complete effective inherited-access analysis separately; approve any IAM remediation separately.
 - [ ] Review the proposed ruleset target, check name and GitHub Actions source, strict mode, review behavior, and two-person emergency recovery plan.
 - [ ] Obtain yiiipunn's explicit approval before any IAM or ruleset change; read back the applied settings afterward.
 - [ ] Prove missing approval and failing CI block merge, then prove eligibility after a passing check and fresh approval.
 - [x] Verify successful trusted WIF project lookup at staging SHA `c75cdf1c00634e52070d32b90cc4047076316c04` in attempt 3.
-- [ ] Audit the live role and grants, and confirm whether the missing project permission caused attempts 1 and 2; their raw error was not captured.
+- [x] Audit the displayed live role and direct grants.
+- [ ] Confirm the precise cause of attempts 1 and 2 if raw diagnostics become available; the sequence supports a missing read grant but does not prove it.
 - [ ] Confirm this PR changes only Episode 6 Part B documentation and the unapplied ruleset proposal. Issue 7 deployment remains out of scope.
