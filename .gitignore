@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+__pycache__/
+**/gha-creds-*.json
 
 .env
 .env.*

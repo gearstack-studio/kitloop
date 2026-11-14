@@ -1,0 +1,86 @@
+name: WIF Authentication Verification
+
+on:
+  push:
+    branches: [sprint-1-staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wif-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authenticate:
+    name: Verify keyless GCP authentication
+    if: >-
+      github.repository == 'gearstack-studio/kitloop' &&
+      github.ref == 'refs/heads/sprint-1-staging' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+    steps:
+      - name: Check out the trusted source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate required repository variables
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, 'infra/gcp/wif')
+          from wif import validate_workflow_config
+          validate_workflow_config(os.environ['WIF_PROVIDER'], os.environ['WIF_SERVICE_ACCOUNT'])
+          PY
+
+      - name: Authenticate using GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: lab-5-cloud-deployment-514310
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          audience: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
+      - name: Verify read-only access to the lab project
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          sys.path.insert(0, 'infra/gcp/wif')
+          from wif import PROJECT
+          result = subprocess.run(
+              ['gcloud', 'projects', 'describe', PROJECT, '--project=' + PROJECT, '--format=json'],
+              capture_output=True, text=True,
+          )
+          if result.returncode:
+              sys.exit('Read-only project verification failed. Check WIF and verifier IAM.')
+          project = json.loads(result.stdout)
+          number = os.environ['WIF_PROVIDER'].split('/')[1]
+          if (project.get('projectId') != PROJECT or str(project.get('projectNumber')) != number
+                  or project.get('lifecycleState') != 'ACTIVE'):
+              sys.exit('Returned project does not match the configured active lab project.')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## WIF authentication evidence\n\n')
+              summary.write('Result: PASS — authenticated read-only project lookup\n\n')
+              summary.write('Project: ' + PROJECT + '\n\n')
+              summary.write('Tested commit: ' + os.environ['GITHUB_SHA'] + '\n\n')
+              summary.write('Event: ' + os.environ['GITHUB_EVENT_NAME'] + '\n\n')
+              summary.write('Ref: ' + os.environ['GITHUB_REF'] + '\n')
+          PY
