@@ -1,0 +1,46 @@
+name: WIF Hosted Negative Probes
+
+on:
+  push:
+    branches: [feat/6-wif-integration]
+
+permissions:
+  contents: read
+
+jobs:
+  rejected-exchange:
+    name: Reject ${{ matrix.probe }}
+    if: github.repository == 'gearstack-studio/kitloop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        probe: [untrusted-ref, wrong-audience]
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      PROBE: ${{ matrix.probe }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require a real Google STS rejection
+        run: python3 -B infra/gcp/wif/probe.py "$PROBE"
+
+  missing-oidc-permission:
+    name: Reject missing OIDC permission
+    if: github.repository == 'gearstack-studio/kitloop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify runner withholds OIDC request capability
+        run: python3 -B infra/gcp/wif/probe.py missing-oidc-permission
