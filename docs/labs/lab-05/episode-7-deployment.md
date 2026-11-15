@@ -1,5 +1,7 @@
 # Episode 7: proposed main release deployment
 
+For this project's lack of an Organization, see the [standalone build security proposal](episode-7-standalone-build.md). Its revised IAM plan is pending explicit security approval; do not retry the historical Organization Policy mutation batch.
+
 For the latest observed controls, CI results and outstanding approval blockers, see the [2026-11-15 security review evidence](episode-7-security-review.md). Historical setup statements below are proposals, not a current cloud inventory.
 
 **Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).

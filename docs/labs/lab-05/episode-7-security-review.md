@@ -1,5 +1,7 @@
 # Episode 7 security review evidence
 
+The Organization Policy prerequisite below is historical. The standalone-project investigation proposes a [revised Cloud Build IAM approach](episode-7-standalone-build.md), requiring new explicit DEV4952 security review and separate execution authorization. It has not been approved or applied.
+
 Read-only inspection on 2026-11-15 for [Issue #38](https://github.com/gearstack-studio/kitloop/issues/38). This report records observed settings, not approval to activate production automation.
 
 ## Verified GitHub state
