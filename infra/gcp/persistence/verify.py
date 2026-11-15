@@ -111,7 +111,7 @@ def application_record(url, record_id):
     client = urllib.request.build_opener(NoRedirect(), urllib.request.HTTPCookieProcessor(jar))
 
     def request(path, body=None, csrf=None):
-        headers = {"Origin": url, "Accept": "application/json"}
+        headers = {"Origin": url, "Accept": "text/html" if path == "/" else "application/json"}
         if body is not None:
             headers["Content-Type"] = "application/json"
         if csrf:

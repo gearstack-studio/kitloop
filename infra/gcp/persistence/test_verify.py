@@ -114,6 +114,11 @@ class PersistenceTests(unittest.TestCase):
                     with self.assertRaisesRegex(verify.VerificationError, "missing"):
                         verify.application_record(URL, RECORD["id"])
                 calls = client.open.call_args_list
+                self.assertEqual(calls[0].args[0].get_header("Accept"), "text/html")
+                self.assertEqual(calls[0].args[0].get_header("Origin"), URL)
+                for call in calls[1:]:
+                    self.assertEqual(call.args[0].get_header("Accept"), "application/json")
+                    self.assertEqual(call.args[0].get_header("Origin"), URL)
                 self.assertEqual(calls[5].args[0].get_method(), "GET")
                 self.assertTrue(calls[-1].args[0].full_url.endswith("/api/auth/logout"))
                 self.assertEqual(calls[-1].args[0].get_method(), "POST")
