@@ -1,6 +1,6 @@
 # Lab 5 deployment
 
-**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).
+**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 #40](https://github.com/gearstack-studio/kitloop/issues/40) ([verification runbook](episode-8-persistence.md)). [Current status](README.md#episode-issue-register).
 
 ## Episode 7 release path (Issue #38, proposed)
 
@@ -16,7 +16,7 @@ The sections below retain their Episode 2 and Episode 5 implementation snapshots
 
 ## Episode 8 persistence tracking
 
-The handout's Episode 8 check remains open: record one non-sensitive item on the public service, verify it after an application restart and again after a reviewed main redeploy, and retain before-and-after evidence for C-05 / R-04. Rollback and roll-forward are recommended follow-up checks; traffic rollback does not undo migrations. A dedicated GitHub issue was not present at inspection, and the connected integration rejected creation with HTTP 403. The [proposed Episode 8 issue text](episode-8-issue.md) records the scope without claiming live verification.
+The handout's Episode 8 check remains open: record one non-sensitive item on the public service, verify it after an application restart and again after a reviewed main redeploy, and retain before-and-after evidence for C-05 / R-04. Rollback and roll-forward are recommended follow-up checks; traffic rollback does not undo migrations. The work is tracked in [issue #40](https://github.com/gearstack-studio/kitloop/issues/40). Follow the [Episode 8 verification runbook](episode-8-persistence.md) and [evidence register](evidence/persistence/README.md). The capture tool validates the selected record, source/image/revision, unchanged database instance and actual successful main deployment. Public deployment prerequisites are currently missing, so live C-05 remains blocked.
 
 ## Episode 5, PR B: first GCP deployment preparation
 
