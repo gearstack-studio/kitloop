@@ -150,7 +150,8 @@ case "$action" in
       candidate_url="$(jq -r --arg tag "$CANDIDATE_TAG" --arg revision "$revision" \
         '.status.traffic[]? | select(.tag == $tag and .revisionName == $revision) | .url' <<<"$service")"
       [[ "$candidate_url" == https://* ]] || die "Candidate URL for $revision is unavailable; traffic was not changed."
-      token="$(identity_token)"
+      # Cloud Run tag URLs accept tokens whose audience is the service URL, not the tag URL.
+      token="$(identity_token "$origin")"
       http_checks "$candidate_url" "$token" || die "Candidate $revision failed its checks; traffic was not changed."
       unset token
       gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" \

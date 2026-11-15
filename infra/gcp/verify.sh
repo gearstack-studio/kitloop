@@ -36,7 +36,7 @@ if [[ "$mode" == evidence ]]; then
 fi
 
 if [[ "$mode" == private ]]; then
-  token="$(identity_token)"
+  token="$(identity_token "$origin")"
   http_checks "$origin" "$token" || die 'Private HTTP checks failed.'
   unset token
 else
