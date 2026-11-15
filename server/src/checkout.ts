@@ -28,6 +28,17 @@ export function checkoutInput(body: unknown): { assetId: string; dueAt: Date } {
   return { assetId: body.assetId.trim(), dueAt };
 }
 
+// PostgreSQL aborts the losing Serializable transaction. Prisma reports this as P2034 for its own queries,
+// but as P2010 with the SQLSTATE in meta.code when the raw SELECT ... FOR UPDATE fails
+// (40001 serialization_failure, 40P01 deadlock_detected). P2002 is a unique-constraint race.
+// The aborted transaction is rolled back, so the loser leaves no loan and no status change.
+export function isCheckoutConflict(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (error.code === "P2002" || error.code === "P2034") return true;
+  const sqlState = (error.meta as { code?: unknown } | undefined)?.code;
+  return error.code === "P2010" && (sqlState === "40001" || sqlState === "40P01");
+}
+
 export function loanDto(loan: Loan) {
   return { ...loan, status: loan.returnedAt === null ? "ACTIVE" as const : "RETURNED" as const };
 }
@@ -67,7 +78,7 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return loanDto(loan);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(error.code)) {
+    if (isCheckoutConflict(error)) {
       throw new ApiError(409, "CHECKOUT_CONFLICT", "Another checkout changed this equipment. Refresh before trying again.");
     }
     throw error;
