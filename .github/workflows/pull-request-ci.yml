@@ -50,6 +50,9 @@ jobs:
       - name: Test persistence evidence guards offline
         run: python3 -B -m unittest discover -s infra/gcp/persistence -p 'test_*.py' -v
 
+      - name: Test standalone build permission safeguards offline
+        run: python3 -B -m unittest discover -s infra/gcp/deploy -p 'test_*.py' -v
+
       - name: Generate isolated synthetic configuration
         run: |
           config_file="$RUNNER_TEMP/kitloop-ci.env"

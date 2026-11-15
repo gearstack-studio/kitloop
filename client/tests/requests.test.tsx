@@ -52,4 +52,9 @@ describe('Borrow Request UI', () => {
     view.rerender(<Requests requests={[]} status="ready" onRetry={retry} />)
     expect(screen.getByText('No requests to show yet.')).toBeTruthy()
   })
+  it('tells a custodian with an empty queue that only assigned equipment is listed', () => {
+    render(<Requests requests={[]} status="ready" onRetry={vi.fn()} custodian />)
+    expect(screen.getByText(/No pending requests for the equipment assigned to you/)).toBeTruthy()
+    expect(screen.queryByText('No requests to show yet.')).toBeNull()
+  })
 })

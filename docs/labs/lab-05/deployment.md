@@ -393,3 +393,7 @@ Episode 2 cloud-readiness code is complete locally on `refactor/2-cloud-ready`. 
 For GitHub OIDC and Workload Identity Federation setup, the read-only verification workflow,
 the IAM handoff and evidence requirements, see [the WIF runbook](../../../infra/gcp/wif/README.md).
 PR A is tracked in [issue #34](https://github.com/gearstack-studio/kitloop/issues/34).
+
+## Episode 8 persistence evidence
+
+The [Episode 8 runbook](episode-8-persistence.md) and [evidence register](evidence/persistence/README.md) record passing baseline, controlled same-image restart and successful main redeployment observations for the same synthetic request. The private verifier's after-redeploy observation was captured at `2026-11-15T15:23:22.831879+00:00` for [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2). Original evidence is preserved. Live rollback/roll-forward remains unexecuted; explicit acceptance of the documented deferral and independent review remain pending. Issue #40 remains open.
