@@ -6,12 +6,14 @@ Issue [#40](https://github.com/gearstack-studio/kitloop/issues/40). Procedure: [
 | --- | --- | --- |
 | Public HTTP endpoints | [public-readiness.json](public-readiness.json) | PASS — root, health and readiness returned 200 |
 | Serving release identity, database and backup | Operator inventory and baseline snapshot | PENDING — capture from Cloud Shell |
-| Initial request created through UI | `baseline.json` and baseline screenshot | NOT RUN |
+| Initial request created through UI | [baseline-ui.png](baseline-ui.png); API/cloud `baseline.json` pending | UI RECORD OBSERVED — request is PENDING; full baseline capture remains pending |
 | Same record after controlled same-image restart | `after-restart.json` and screenshot | NOT RUN |
 | Same record after successful main pipeline redeploy | `after-redeploy.json`, screenshot and deployment attempt link | NOT RUN |
 | Compatible traffic rollback | `after-rollback.json` and screenshot, or approved deferral note | NOT RUN |
 | Roll-forward to the recorded main revision | `after-rollforward.json` and screenshot, or deferral note | NOT RUN |
 | Independent review | yiiipunn review link and evidence PR | PENDING |
+
+The operator-provided UI screenshot shows request `899544f9-d5a8-4248-829e-db75a44cbbf1`, asset `LAB5-CAMERA-001` (Lab 5 Test Camera), status `PENDING`, and submission time displayed as `11/15/2026, 3:26:23 PM`. The image was copied byte for byte without editing. Its crop excludes the address bar and account identity. The public origin was supplied separately by the operator and its endpoints were checked independently. Cloud revision/source and an authenticated API fingerprint still require the baseline capture procedure. Keep this selected record unchanged during the test sequence.
 
 The first URL checks returned 404 before deployment. The latest recorded public observation returns 200 for root, health and readiness. Main workflow [43687921737](https://github.com/gearstack-studio/kitloop/actions/runs/43687921737) passed CI but skipped its deployment job; a successful automated redeploy remains pending under #38. The JSON records HTTP readiness only, with `persistenceResult: NOT_RUN` and the running revision source SHA still awaiting cloud inventory.
 
