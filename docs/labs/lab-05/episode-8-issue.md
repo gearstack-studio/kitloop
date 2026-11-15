@@ -2,7 +2,7 @@
 
 **Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 #40](https://github.com/gearstack-studio/kitloop/issues/40) ([verification runbook](episode-8-persistence.md)). [Current status](README.md#episode-issue-register).
 
-**GitHub status:** [Issue #40](https://github.com/gearstack-studio/kitloop/issues/40) exists, assigned in its ownership section to DEV4952 with yiiipunn as reviewer. Branch `feat/8-persistence-rollback` prepares [the capture procedure](episode-8-persistence.md). Live verification is blocked until the public service and main deployment pipeline are operational. See [the evidence register](evidence/persistence/README.md).
+**GitHub status:** [Issue #40](https://github.com/gearstack-studio/kitloop/issues/40) exists, assigned in its ownership section to DEV4952 with yiiipunn as reviewer. Branch `feat/8-persistence-rollback` prepares [the capture procedure](episode-8-persistence.md). Public HTTP readiness now passes; the record baseline and cloud inventory are next. The first main workflow skipped deployment, so successful automated redeploy proof remains pending under #38. See [the evidence register](evidence/persistence/README.md).
 
 ## Objective
 
