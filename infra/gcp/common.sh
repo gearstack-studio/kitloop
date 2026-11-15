@@ -16,6 +16,7 @@ RUN_SA="kitloop-run@${PROJECT}.iam.gserviceaccount.com"
 MIGRATE_SA="kitloop-migrate@${PROJECT}.iam.gserviceaccount.com"
 BOOTSTRAP_SA="kitloop-bootstrap@${PROJECT}.iam.gserviceaccount.com"
 BUILD_SA="kitloop-build@${PROJECT}.iam.gserviceaccount.com"
+DEPLOY_SA="kitloop-wif-deploy@${PROJECT}.iam.gserviceaccount.com"
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT}/${REPOSITORY}"
 CONNECTION="${PROJECT}:${REGION}:${SQL_INSTANCE}"
 # Cloud SQL instance label written only after a verified production bootstrap execution.
@@ -35,6 +36,14 @@ require_gcloud() {
 }
 confirm() {
   local action="$1" answer
+  if [[ "${KITLOOP_AUTOMATED_RELEASE:-}" == 1 ]]; then
+    # Only release.sh may use this path. prepare.sh, bootstrap and publish stay interactive-only.
+    [[ "$(basename "${BASH_SOURCE[1]:-}")" == release.sh ]] ||
+      die 'Automated release mode is reserved for release.sh.'
+    source "$(dirname "${BASH_SOURCE[0]}")/deploy/guard.sh"
+    authorize_automated_release "$action"
+    return
+  fi
   [[ -t 0 ]] || die 'State-changing commands require an interactive terminal.'
   note "This will change GCP resources in $PROJECT ($REGION)."
   read -r -p "Type ${PROJECT}/${action} to continue: " answer
@@ -109,10 +118,67 @@ service_is_public() {
     die 'Cannot read the Cloud Run service IAM policy.'
   jq -e 'any(.bindings[]?; .role == "roles/run.invoker" and any(.members[]?; . == "allUsers"))' <<<"$policy" >/dev/null
 }
+# Decodes one base64url JWT segment (no signature check; Cloud Run verifies the signature).
+jwt_segment() {
+  local segment="${1//-/+}"
+  segment="${segment//_//}"
+  case $(( ${#segment} % 4 )) in 2) segment+='==' ;; 3) segment+='=' ;; 1) return 1 ;; esac
+  base64 -d <<<"$segment" 2>/dev/null
+}
+# Automated (GitHub Actions) path. google-github-actions/auth writes an external_account credential file
+# that impersonates the deployment account. gcloud print-identity-token cannot mint a Cloud Run ID token
+# with the service audience from that file, so the impersonated access token calls IAM Credentials
+# generateIdToken for the deployment account itself. Required, and granted separately after review:
+# iam.serviceAccounts.getOpenIdToken on DEPLOY_SA for DEPLOY_SA (roles/iam.serviceAccountOpenIdTokenCreator).
+deploy_identity_token() {
+  local audience="$1" credentials impersonation_url access request response token payload claims
+  [[ "${DEPLOY_SERVICE_ACCOUNT:-}" == "$DEPLOY_SA" ]] || die 'Unexpected deployment service account.'
+  credentials="${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"
+  [[ -n "$credentials" && "$credentials" == "${GOOGLE_APPLICATION_CREDENTIALS:-}" && -r "$credentials" ]] ||
+    die 'The GitHub WIF credential file is unavailable.'
+  impersonation_url="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$DEPLOY_SA:generateAccessToken"
+  jq -e --arg url "$impersonation_url" '
+    .type == "external_account" and .service_account_impersonation_url == $url
+  ' "$credentials" >/dev/null 2>&1 || die 'The GitHub WIF credential file targets the wrong identity.'
+  access="$(gcloud auth print-access-token --project="$PROJECT" 2>/dev/null)" ||
+    die 'Could not obtain a WIF-backed access token.'
+  [[ -n "$access" ]] || die 'Could not obtain a WIF-backed access token.'
+  request="$(jq -cn --arg audience "$audience" '{audience: $audience, includeEmail: true}')"
+  # The bearer token travels on stdin, never in argv. curl --fail never prints the response body.
+  response="$(curl --silent --show-error --fail --max-time 30 --request POST --header @- \
+    --header 'Content-Type: application/json' --data-binary "$request" \
+    "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$DEPLOY_SA:generateIdToken" \
+    <<<"Authorization: Bearer $access")" ||
+    die 'IAM Credentials could not generate the Cloud Run ID token.'
+  unset access
+  token="$(jq -er '.token | select(type == "string" and length > 0)' <<<"$response" 2>/dev/null)" ||
+    die 'IAM Credentials returned no ID token.'
+  unset response
+  [[ "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]] ||
+    die 'IAM Credentials returned an invalid ID token.'
+  IFS=. read -r _ payload _ <<<"$token"
+  claims="$(jwt_segment "$payload")" || die 'IAM Credentials returned an invalid ID token.'
+  jq -e --arg audience "$audience" --arg account "$DEPLOY_SA" '
+    .iss == "https://accounts.google.com" and .aud == $audience and
+    .email == $account and .email_verified == true and
+    (.exp | type == "number") and .exp > now
+  ' <<<"$claims" >/dev/null 2>&1 ||
+    die 'The ID token is not for the canonical Cloud Run audience and the deployment service account.'
+  printf '%s' "$token"
+}
+# Usage: identity_token AUDIENCE. AUDIENCE must be the canonical service URL, also when the request
+# goes to a candidate-tag URL. Prints the token to stdout only; callers keep it in memory.
 identity_token() {
-  local token
-  token="$(gcloud auth print-identity-token --project="$PROJECT")" || die 'Could not obtain an identity token.'
-  [[ -n "$token" ]] || die 'Could not obtain an identity token.'
+  local audience="${1:-}" token
+  [[ -n "$audience" && "$audience" == "$(canonical_url)" ]] ||
+    die 'ID-token audience must be the canonical Cloud Run service URL.'
+  if [[ "${KITLOOP_AUTOMATED_RELEASE:-}" == 1 ]]; then
+    token="$(deploy_identity_token "$audience")" || exit 1
+  else
+    # Cloud Shell operator flow (user account) remains unchanged for manual private checks.
+    token="$(gcloud auth print-identity-token --project="$PROJECT")" || die 'Could not obtain an identity token.'
+    [[ -n "$token" ]] || die 'Could not obtain an identity token.'
+  fi
   printf '%s' "$token"
 }
 # Usage: http_checks BASE_URL [IDENTITY_TOKEN]. The token is passed on stdin, never as an argument.

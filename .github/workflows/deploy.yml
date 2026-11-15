@@ -1,0 +1,132 @@
+name: Main Cloud Run Deployment
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kitloop-main-deployment
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Required build and test
+    uses: ./.github/workflows/pull-request-ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    name: Approved Cloud Run release
+    needs: ci
+    if: >-
+      ${{ needs.ci.result == 'success' &&
+          github.repository == 'gearstack-studio/kitloop' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          github.ref_protected == true &&
+          vars.LAB5_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    environment: lab5-production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      KITLOOP_AUTOMATED_RELEASE: '1'
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      DEPLOY_WIF_PROVIDER: ${{ vars.LAB5_DEPLOY_WIF_PROVIDER }}
+      DEPLOY_SERVICE_ACCOUNT: ${{ vars.LAB5_DEPLOY_SERVICE_ACCOUNT }}
+    steps:
+      - name: Check out the tested main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Confirm trusted release context
+        run: |
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          git switch -C main "$GITHUB_SHA"
+          bash infra/gcp/deploy/guard.sh
+          [[ "$DEPLOY_WIF_PROVIDER" =~ ^projects/610347790049/locations/global/workloadIdentityPools/kitloop-github-deploy/providers/[a-z][a-z0-9-]+$ ]]
+          [[ "$DEPLOY_SERVICE_ACCOUNT" == "kitloop-wif-deploy@lab-5-cloud-deployment-514310.iam.gserviceaccount.com" ]]
+
+      - name: Authenticate with the dedicated deployment identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: lab-5-cloud-deployment-514310
+          workload_identity_provider: ${{ vars.LAB5_DEPLOY_WIF_PROVIDER }}
+          audience: ${{ vars.LAB5_DEPLOY_WIF_PROVIDER }}
+          service_account: ${{ vars.LAB5_DEPLOY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
+      - name: Check existing release prerequisites
+        run: bash infra/gcp/deploy/preflight.sh
+
+      - name: Save currently serving revision
+        id: previous
+        run: |
+          service="$(gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json)"
+          previous="$(jq -r '[.status.traffic[]? | select((.percent // 0) > 0)] | if length == 1 and .[0].percent == 100 then .[0].revisionName else empty end' <<<"$service")"
+          [[ "$previous" =~ ^kitloop-[a-z0-9-]+$ ]]
+          printf 'revision=%s\n' "$previous" >> "$GITHUB_OUTPUT"
+
+      - name: Build both immutable images
+        id: build
+        run: bash infra/gcp/release.sh build
+
+      - name: Run checked-in database migrations
+        id: migrate
+        run: bash infra/gcp/release.sh migrate "$GITHUB_SHA"
+
+      - name: Deploy candidate, check readiness, then route traffic
+        id: release
+        run: bash infra/gcp/release.sh deploy "$GITHUB_SHA"
+
+      - name: Verify serving revision and HTTP health
+        id: verify
+        run: |
+          if gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json |
+            jq -e 'any(.bindings[]?; .role == "roles/run.invoker" and any(.members[]?; . == "allUsers"))' >/dev/null; then
+            bash infra/gcp/verify.sh public
+          else
+            bash infra/gcp/verify.sh private
+          fi
+
+      - name: Roll back traffic after a failed release or verification
+        id: rollback
+        if: ${{ failure() && (steps.release.outcome == 'failure' || steps.verify.outcome == 'failure') && steps.previous.outputs.revision != '' }}
+        run: bash infra/gcp/release.sh rollback "${{ steps.previous.outputs.revision }}"
+
+      - name: Record release evidence
+        if: always()
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          MIGRATE_OUTCOME: ${{ steps.migrate.outcome }}
+          RELEASE_OUTCOME: ${{ steps.release.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          ROLLBACK_OUTCOME: ${{ steps.rollback.outcome }}
+        run: |
+          {
+            printf '## Main Cloud Run release\n\n'
+            printf 'Source SHA: `%s`\n\n' "$GITHUB_SHA"
+            printf 'CI: passed; build: %s; migration: %s; deployment: %s; verification: %s; rollback: %s.\n\n' \
+              "$BUILD_OUTCOME" "$MIGRATE_OUTCOME" "$RELEASE_OUTCOME" "$VERIFY_OUTCOME" "$ROLLBACK_OUTCOME"
+            if [[ "$BUILD_OUTCOME" == success ]]; then
+              for kind in app migration; do
+                tag="asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-$kind:${GITHUB_SHA:0:12}"
+                digest="$(gcloud artifacts docker images describe "$tag" --project=lab-5-cloud-deployment-514310 --format='value(image_summary.fully_qualified_digest)' 2>/dev/null || true)"
+                [[ "$digest" == *@sha256:* ]] && printf '%s digest: `%s`\n\n' "$kind" "$digest"
+              done
+            fi
+            service="$(gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json 2>/dev/null || true)"
+            if [[ -n "$service" ]]; then
+              jq -r '.status.traffic[]? | select((.percent // 0) > 0) | "Serving revision: `\(.revisionName)` (\(.percent)%)"' <<<"$service"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

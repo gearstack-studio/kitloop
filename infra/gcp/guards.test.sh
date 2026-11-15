@@ -3,20 +3,47 @@
 # gcloud and curl on PATH record every invocation, while real jq evaluates Cloud Run v1-shaped JSON.
 # State-changing actions run through a real pseudo-terminal (util-linux `script`) so the typed
 # confirmation is exercised. Requires bash, jq, script and sha256sum (Linux, Cloud Shell or CI).
+# Fake ID tokens are unsigned JWT-shaped strings with real aud/email claims, so the fake Cloud Run can
+# reject a service-account token whose audience is not the canonical service URL.
 set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-for tool in jq script sha256sum git; do
+for tool in jq script sha256sum git base64; do
   command -v "$tool" >/dev/null 2>&1 || { printf 'FAIL: %s is required (run on Linux, Cloud Shell or CI)\n' "$tool" >&2; exit 1; }
 done
+# Manual-mode tests must not inherit a CI runner's automated-release or credential settings.
+unset KITLOOP_AUTOMATED_RELEASE DEPLOY_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDENTIALS CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
 
 PROJECT=lab-5-cloud-deployment-514310
 ORIGIN=https://kitloop-123456789012.asia-southeast1.run.app
-SHA1=0123456789ab SHA2=111111111111 SHA3=222222222222 SHA4=333333333333
+DEPLOY_SA="kitloop-wif-deploy@$PROJECT.iam.gserviceaccount.com"
+SHA1=0123456789ab SHA2=111111111111 SHA3=222222222222 SHA4=333333333333 SHA5=444444444444 SHA6=555555555555
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
 mkdir -p "$work/bin"
-export FAKE_STATE="$work/state" FAKE_LOG="$work/calls.log"
+export FAKE_STATE="$work/state" FAKE_LOG="$work/calls.log" FAKE_ORIGIN="$ORIGIN" FAKE_DEPLOY_SA="$DEPLOY_SA"
 export PATH="$work/bin:$PATH" SHELL=/bin/bash
+
+# fake-jwt AUDIENCE EMAIL [EXP_OFFSET_SECONDS]: unsigned Google-shaped ID token. The signature segment is a
+# sentinel so the suite can prove tokens never reach output or command-line arguments.
+cat >"$work/bin/fake-jwt" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+now="$(date +%s)"
+header="$(printf '%s' '{"alg":"RS256","kid":"fake","typ":"JWT"}' | b64url)"
+payload="$(jq -cn --arg aud "$1" --arg email "$2" --argjson now "$now" --argjson offset "${3:-3600}" '
+  {iss:"https://accounts.google.com", aud:$aud, azp:$email, email:$email, email_verified:true,
+   iat:$now, exp:($now + $offset), sub:"100000000000000000001"}' | b64url)"
+printf '%s.%s.FAKESIGSENTINEL\n' "$header" "$payload"
+FAKE
+# fake-jwt-claims TOKEN: prints the decoded payload, or nothing for a malformed token.
+cat >"$work/bin/fake-jwt-claims" <<'FAKE'
+#!/usr/bin/env bash
+IFS=. read -r _ p _ <<<"${1:-}"
+p="${p//-/+}"; p="${p//_//}"
+case $(( ${#p} % 4 )) in 2) p+='==' ;; 3) p+='=' ;; esac
+base64 -d <<<"$p" 2>/dev/null || true
+FAKE
 
 cat >"$work/bin/gcloud" <<'FAKE'
 #!/usr/bin/env bash
@@ -33,7 +60,23 @@ svc() { jq "$@" "$S/service.json" >"$S/tmp.json" && mv "$S/tmp.json" "$S/service
 case "$1 $2" in
   'config get-value') cat "$S/project" ;;
   'auth list') echo operator@example.invalid ;;
-  'auth print-identity-token') echo fake-identity-token ;;
+  'auth print-identity-token')
+    # A Cloud Shell user account gets a gcloud-audience user token, which Cloud Run accepts. From WIF
+    # external-account credentials this command sets no Cloud Run audience, so Cloud Run rejects the token.
+    if [[ -n "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}" ]]; then
+      fake-jwt 32555940559.apps.googleusercontent.com "$FAKE_DEPLOY_SA"
+    else
+      fake-jwt 32555940559.apps.googleusercontent.com operator@example.invalid
+    fi ;;
+  'auth print-access-token')
+    # External-account credentials: STS exchange, then generateAccessToken for the impersonated account.
+    creds="${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"
+    [[ -n "$creds" && -r "$creds" ]] || fail 'You do not currently have an active account selected.'
+    [[ ! -f "$S/access-fail" ]] || fail 'There was a problem refreshing auth tokens: STS token exchange was denied.'
+    sa="$(jq -r '(.service_account_impersonation_url // "")
+      | capture("/serviceAccounts/(?<sa>[^:/]+):generateAccessToken$").sa // empty' "$creds")"
+    [[ -n "$sa" ]] || fail 'The external account does not impersonate a service account.'
+    printf 'ya29.FAKEACCESSSENTINEL-%s\n' "$sa" ;;
   'projects describe') echo 123456789012 ;;
   'projects remove-iam-policy-binding'|'secrets remove-iam-policy-binding') echo "$*" >>"$S/revoked" ;;
   'artifacts docker')
@@ -134,15 +177,64 @@ FAKE
 
 cat >"$work/bin/curl" <<'FAKE'
 #!/usr/bin/env bash
-# Fake curl: 200 unless the URL matches curl-fail; 403 for an unauthenticated call to a private service.
-url="${*: -1}" auth=no
-for a in "$@"; do [[ "$a" != @- ]] || { IFS= read -r header || true; [[ "$header" != 'Authorization: Bearer '* ]] || auth=yes; }; done
+# Fake curl. Tokens are read from stdin (--header @-) and are never logged.
+# IAM Credentials: requires the deployment account's impersonated access token, the deployment account as
+# target and a non-empty audience, then answers according to $FAKE_STATE/iam-mode (default ok).
+# Cloud Run: 503 if the URL matches curl-fail; 403 without a token on a private service; 401 for a
+# service-account token whose audience is not the canonical service URL (candidate tag URLs included).
+args=("$@") url="${*: -1}" auth=no header='' bearer='' data=''
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[i]}" in
+    @-) IFS= read -r header || true ;;
+    --data-binary) data="${args[i + 1]:-}" ;;
+  esac
+done
+[[ "$header" != 'Authorization: Bearer '* ]] || { auth=yes; bearer="${header#Authorization: Bearer }"; }
+http_error() { printf 'curl: (22) The requested URL returned error: %s\n' "$1" >&2; exit 22; }
+if [[ "$url" == https://iamcredentials.googleapis.com/* ]]; then
+  target="${url#*/serviceAccounts/}" method="${url##*:}"
+  target="${target%:*}"
+  audience="$(jq -r '.audience // ""' <<<"$data" 2>/dev/null || true)"
+  printf 'curl iam %s sa=%s audience=%s\n' "$method" "$target" "$audience" >>"$FAKE_LOG"
+  [[ "$method" == generateIdToken ]] || http_error 404
+  [[ "$bearer" == "ya29.FAKEACCESSSENTINEL-$FAKE_DEPLOY_SA" ]] || http_error 401
+  [[ "$target" == "$FAKE_DEPLOY_SA" ]] || http_error 403
+  [[ -n "$audience" ]] || http_error 400
+  token_for() { jq -cn --arg t "$(fake-jwt "$@")" '{token: $t}'; }
+  case "$(cat "$FAKE_STATE/iam-mode" 2>/dev/null || echo ok)" in
+    ok) token_for "$audience" "$target" ;;
+    denied) http_error 403 ;;                     # missing iam.serviceAccounts.getOpenIdToken
+    unavailable) http_error 503 ;;
+    empty) echo '{}' ;;
+    blank) echo '{"token":""}' ;;
+    garbage) echo '<html>upstream proxy error</html>' ;;
+    malformed) echo '{"token":"not-a-jwt"}' ;;
+    wrong-audience) token_for "https://candidate---kitloop-abc123xyz-as.a.run.app" "$target" ;;
+    wrong-account) token_for "$audience" "kitloop-run@lab-5-cloud-deployment-514310.iam.gserviceaccount.com" ;;
+    expired) token_for "$audience" "$target" -60 ;;
+    *) http_error 500 ;;
+  esac
+  exit 0
+fi
 printf 'curl auth=%s %s\n' "$auth" "$url" >>"$FAKE_LOG"
-if [[ -f "$FAKE_STATE/curl-fail" ]] && grep -qF -f "$FAKE_STATE/curl-fail" <<<"$url"; then printf 503
-elif [[ "$auth" == no && ! -f "$FAKE_STATE/public" ]]; then printf 403
-else printf 200; fi
+status=200
+if [[ -f "$FAKE_STATE/curl-fail" ]] && grep -qF -f "$FAKE_STATE/curl-fail" <<<"$url"; then status=503
+elif [[ "$auth" == no ]]; then [[ -f "$FAKE_STATE/public" ]] || status=403
+else
+  claims="$(fake-jwt-claims "$bearer")"
+  [[ -n "$claims" ]] || claims='{}'
+  aud="$(jq -r '.aud // ""' <<<"$claims" 2>/dev/null || true)"
+  email="$(jq -r '.email // ""' <<<"$claims" 2>/dev/null || true)"
+  printf 'cloudrun aud=%s email=%s url=%s\n' "$aud" "$email" "$url" >>"$FAKE_LOG"
+  if [[ "$email" == *.gserviceaccount.com ]]; then
+    [[ "$aud" == "$FAKE_ORIGIN" ]] || status=401
+  elif [[ "$aud" != 32555940559.apps.googleusercontent.com || -z "$email" ]]; then
+    status=401
+  fi
+fi
+printf '%s' "$status"
 FAKE
-chmod +x "$work/bin/gcloud" "$work/bin/curl"
+chmod +x "$work/bin/gcloud" "$work/bin/curl" "$work/bin/fake-jwt" "$work/bin/fake-jwt-claims"
 
 reset_state() {
   rm -rf -- "$FAKE_STATE"
@@ -250,6 +342,10 @@ refused 'public verify while private'; out_has 'HTTP 403' 'private service passe
 run - bash "$script_dir/verify.sh" private
 ok 'private verify'; out_has "Serving revision: $first (100%)" 'serving revision not reported'
 log_has "curl auth=yes $ORIGIN/api/ready" 'private readiness not checked on canonical URL'
+log_has 'auth print-identity-token' 'manual private check no longer uses the operator identity token'
+log_lacks 'curl iam ' 'manual private check called IAM Credentials'
+log_has "cloudrun aud=32555940559.apps.googleusercontent.com email=operator@example.invalid url=$ORIGIN/api/ready" \
+  'manual private check did not send the operator token'
 release publish
 ok 'publish'; [[ -f "$FAKE_STATE/public" ]] || fail_test 'publish did not grant public access'
 log_has "curl auth=no $ORIGIN/api/ready" 'public readiness was not checked'
@@ -266,6 +362,8 @@ log_lacks 'kitloop-bootstrap' 'subsequent release required bootstrap'; log_lacks
 check_line="$(grep -n 'curl auth=yes https://candidate---' "$FAKE_LOG" | tail -n1 | cut -d: -f1 || true)"
 route_line="$(grep -n 'update-traffic' "$FAKE_LOG" | head -n1 | cut -d: -f1 || true)"
 [[ -n "$check_line" && -n "$route_line" && "$check_line" -lt "$route_line" ]] || fail_test 'traffic moved before candidate checks'
+log_has 'auth print-identity-token' 'manual candidate check no longer uses the operator identity token'
+log_lacks 'curl iam ' 'manual candidate check called IAM Credentials'
 [[ -f "$FAKE_STATE/public" ]] || fail_test 'redeploy removed public access'
 [[ "$(serving)" == "$second=100" ]] || fail_test "unexpected traffic $(serving)"
 jq -e --arg o "$ORIGIN" '.spec.containers[0].env | any(.name == "APP_ORIGIN" and .value == $o)' \
@@ -320,15 +418,162 @@ ok 'deploy after rollback pin'; [[ "$(serving)" == "$(revision_for "$SHA4")=100"
 [[ -f "$FAKE_STATE/public" ]] || fail_test 'deploy after rollback removed public access'
 pass 'a later deployment moves traffic away from a rollback-pinned revision'
 
+# --- Automated GitHub WIF release: Cloud Run ID token through IAM Credentials ----------------------
+# deploy.yml runs release.sh with KITLOOP_AUTOMATED_RELEASE=1 and the external_account credential file
+# written by google-github-actions/auth. A disposable clean checkout satisfies the trusted-context guard.
+fourth="$(revision_for "$SHA4")"
+trusted="$work/trusted"
+git init -q -b main "$trusted"
+git -C "$trusted" -c user.name=test -c user.email=test@example.invalid commit -q --allow-empty -m release
+git -C "$trusted" update-ref refs/remotes/origin/main "$(git -C "$trusted" rev-parse HEAD)"
+# write_creds FILE SERVICE_ACCOUNT: the shape google-github-actions/auth writes (no real secret inside).
+write_creds() {
+  jq -n --arg sa "$2" '{type:"external_account",
+    audience:"//iam.googleapis.com/projects/610347790049/locations/global/workloadIdentityPools/kitloop-github-deploy/providers/github",
+    subject_token_type:"urn:ietf:params:oauth:token-type:jwt", token_url:"https://sts.googleapis.com/v1/token",
+    service_account_impersonation_url:("https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/" + $sa + ":generateAccessToken"),
+    credential_source:{url:"https://pipelines.actions.example.invalid/idtoken",
+      headers:{Authorization:"Bearer FAKEGHAREQUESTSENTINEL"}, format:{type:"json", subject_token_field_name:"value"}}}' >"$1"
+}
+creds="$work/gha-creds.json"
+write_creds "$creds" "$DEPLOY_SA"
+write_creds "$work/other-creds.json" "kitloop-run@$PROJECT.iam.gserviceaccount.com"
+auto_env=(KITLOOP_AUTOMATED_RELEASE=1 GITHUB_ACTIONS=true GITHUB_EVENT_NAME=push
+  GITHUB_REPOSITORY=gearstack-studio/kitloop GITHUB_REPOSITORY_ID=1442734708 GITHUB_REPOSITORY_OWNER_ID=351405823
+  GITHUB_REF=refs/heads/main GITHUB_REF_PROTECTED=true
+  GITHUB_WORKFLOW_REF=gearstack-studio/kitloop/.github/workflows/deploy.yml@refs/heads/main
+  "GITHUB_SHA=$(git -C "$trusted" rev-parse HEAD)" "DEPLOY_SERVICE_ACCOUNT=$DEPLOY_SA"
+  "GOOGLE_APPLICATION_CREDENTIALS=$creds" "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$creds")
+# auto COMMAND...: no terminal, automated mode, from the trusted checkout. Prefix `env VAR=VALUE` to override.
+auto() {
+  : >"$FAKE_LOG"
+  set +e
+  OUT="$(cd "$trusted" && env "${auto_env[@]}" "$@" </dev/null 2>&1)"
+  RC=$?
+  set -e
+}
+# Access token, ID token signature and GitHub request token sentinels must never reach output or argv.
+no_secrets() {
+  local secret
+  for secret in FAKEACCESSSENTINEL FAKESIGSENTINEL FAKEGHAREQUESTSENTINEL; do
+    [[ "$OUT" != *"$secret"* ]] || fail_test "$1: a token or credential value reached the output"
+    log_lacks "$secret" "$1: a token or credential value was passed as a command argument"
+  done
+}
+line_of() { grep -nF -- "$1" "$FAKE_LOG" | head -n1 | cut -d: -f1 || true; }
+
+release migrate "$SHA5"; ok 'fifth migration'
+auto bash "$script_dir/release.sh" deploy "$SHA5"
+ok 'automated deploy with a WIF-minted ID token'
+fifth="$(revision_for "$SHA5")"
+log_lacks 'auth print-identity-token' 'automated release used gcloud print-identity-token'
+log_has "curl iam generateIdToken sa=$DEPLOY_SA audience=$ORIGIN" \
+  'ID token was not minted by IAM Credentials for the deployment account and canonical audience'
+log_has "cloudrun aud=$ORIGIN email=$DEPLOY_SA url=https://candidate---" \
+  'candidate-tag request did not carry a canonical-audience deployment token'
+iam_line="$(line_of 'curl iam generateIdToken')"; check_line="$(line_of 'curl auth=yes https://candidate---')"
+route_line="$(line_of 'update-traffic')"
+[[ -n "$iam_line" && -n "$check_line" && -n "$route_line" && "$iam_line" -lt "$check_line" && "$check_line" -lt "$route_line" ]] ||
+  fail_test 'automated order must be: mint ID token, check candidate, route traffic'
+[[ "$(serving)" == "$fifth=100" ]] || fail_test "unexpected traffic $(serving)"
+no_secrets 'automated deploy'
+pass 'automated candidate check uses IAM Credentials generateIdToken with the canonical service audience'
+
+auto bash -c 'source "$1"; identity_token "$2" >/dev/null' _ "$script_dir/common.sh" \
+  'https://candidate---kitloop-abc123xyz-as.a.run.app'
+refused 'tag URL as audience'; out_has 'audience must be the canonical' 'tag URL audience was accepted'
+log_lacks 'curl iam ' 'tag URL audience reached IAM Credentials'
+auto bash -c 'source "$1"; identity_token >/dev/null' _ "$script_dir/common.sh"
+refused 'missing audience'; out_has 'audience must be the canonical' 'missing audience was accepted'
+log_lacks 'curl iam ' 'missing audience reached IAM Credentials'
+pass 'identity_token rejects a missing or non-canonical audience before any token request'
+
+release migrate "$SHA6"; ok 'sixth migration'
+before="$(serving)"
+deploy6=(bash "$script_dir/release.sh" deploy "$SHA6")
+# auto_refused NAME EXPECTED_MESSAGE COMMAND...: the candidate is refused and traffic stays on the previous revision.
+auto_refused() {
+  local name="$1" message="$2"
+  shift 2
+  auto "$@"
+  refused "$name"; out_has "$message" "$name: unexpected failure reason"
+  out_has 'ERROR:' "$name: no error reported"
+  log_lacks 'update-traffic' "$name: traffic moved"
+  log_lacks 'curl auth=yes https://candidate---' "$name: candidate was called without a valid token"
+  [[ "$(serving)" == "$before" ]] || fail_test "$name: traffic changed to $(serving)"
+  no_secrets "$name"
+  rm -f "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json   # a retry within the same second reuses the suffix
+  pass "automated candidate refused, previous revision kept: $name"
+}
+auto_refused 'deployment account variable mismatch' 'Unexpected deployment service account' \
+  env "DEPLOY_SERVICE_ACCOUNT=kitloop-run@$PROJECT.iam.gserviceaccount.com" "${deploy6[@]}"
+auto_refused 'deployment account variable missing' 'Unexpected deployment service account' \
+  env DEPLOY_SERVICE_ACCOUNT= "${deploy6[@]}"
+auto_refused 'credential file missing' 'credential file is unavailable' \
+  env CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE= "${deploy6[@]}"
+auto_refused 'credential file impersonates another account' 'targets the wrong identity' \
+  env "GOOGLE_APPLICATION_CREDENTIALS=$work/other-creds.json" "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$work/other-creds.json" \
+  "${deploy6[@]}"
+log_lacks 'curl iam ' 'wrong-identity credentials reached IAM Credentials'
+touch "$FAKE_STATE/access-fail"
+auto_refused 'WIF access token unavailable' 'Could not obtain a WIF-backed access token' "${deploy6[@]}"
+rm -f "$FAKE_STATE/access-fail"
+for mode in denied unavailable; do
+  echo "$mode" >"$FAKE_STATE/iam-mode"
+  auto_refused "IAM Credentials HTTP error ($mode)" 'IAM Credentials could not generate' "${deploy6[@]}"
+done
+log_has "curl iam generateIdToken sa=$DEPLOY_SA audience=$ORIGIN" 'error path did not target the deployment account and canonical audience'
+for mode in empty blank garbage; do
+  echo "$mode" >"$FAKE_STATE/iam-mode"
+  auto_refused "IAM Credentials response without a token ($mode)" 'IAM Credentials returned no ID token' "${deploy6[@]}"
+done
+echo malformed >"$FAKE_STATE/iam-mode"
+auto_refused 'IAM Credentials malformed token' 'IAM Credentials returned an invalid ID token' "${deploy6[@]}"
+for mode in wrong-audience wrong-account expired; do
+  echo "$mode" >"$FAKE_STATE/iam-mode"
+  auto_refused "ID token claims ($mode)" 'not for the canonical Cloud Run audience' "${deploy6[@]}"
+done
+rm -f "$FAKE_STATE/iam-mode"
+
+echo 'https://candidate---' >"$FAKE_STATE/curl-fail"
+auto "${deploy6[@]}"
+refused 'automated candidate failing readiness'; out_has 'traffic was not changed' 'failed automated candidate message missing'
+log_lacks 'update-traffic' 'failed automated candidate received traffic'
+[[ "$(serving)" == "$before" ]] || fail_test 'failed automated candidate changed traffic'
+no_secrets 'automated candidate failing readiness'
+rm -f "$FAKE_STATE/curl-fail" "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json
+pass 'automated candidate with a valid token but failing readiness never receives traffic'
+
+# Private verification and rollback in the deploy job use the same flow against the canonical URL.
+rm -f "$FAKE_STATE/public"
+auto bash "$script_dir/verify.sh" private
+ok 'automated private verify'
+log_has "curl iam generateIdToken sa=$DEPLOY_SA audience=$ORIGIN" 'automated private verify did not mint through IAM Credentials'
+log_has "cloudrun aud=$ORIGIN email=$DEPLOY_SA url=$ORIGIN/api/ready" 'automated private readiness used the wrong token'
+log_lacks 'auth print-identity-token' 'automated private verify used gcloud print-identity-token'
+no_secrets 'automated private verify'
+echo denied >"$FAKE_STATE/iam-mode"
+auto bash "$script_dir/verify.sh" private
+refused 'automated private verify without getOpenIdToken'; out_has 'IAM Credentials could not generate' 'IAM denial not reported'
+log_lacks "curl auth=yes $ORIGIN" 'private service was called without a valid token'
+no_secrets 'automated private verify denied'
+rm -f "$FAKE_STATE/iam-mode"
+auto bash "$script_dir/release.sh" rollback "$fourth"
+ok 'automated rollback'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "automated rollback traffic $(serving)"
+log_has "curl iam generateIdToken sa=$DEPLOY_SA audience=$ORIGIN" 'automated rollback verification did not mint through IAM Credentials'
+no_secrets 'automated rollback'
+touch "$FAKE_STATE/public"
+pass 'automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed'
+
 # --- Build source restrictions --------------------------------------------------------------------
 repo="$work/repo"
-git init -q -b main "$repo"
+git init -q -b scratch "$repo"
 git -C "$repo" -c user.name=test -c user.email=test@example.invalid commit -q --allow-empty -m init
 OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC=0 || RC=$?
-refused 'build from unreviewed branch'; out_has 'Build from one of' 'build from main was not refused'
-git -C "$repo" checkout -q -b sprint-1-staging
+refused 'build from unreviewed branch'; out_has 'Build from one of' 'build from scratch was not refused'
+git -C "$repo" checkout -q -b main
 OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC=0 || RC=$?
-refused 'build of unpushed commit'; out_has 'is not on origin/sprint-1-staging' 'unpushed commit was not refused'
+refused 'build of unpushed commit'; out_has 'is not on origin/main' 'unpushed commit was not refused'
 pass 'build requires an allowed branch and a pushed commit'
 
 printf 'PASS: all GCP release guard tests\n'
