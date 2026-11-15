@@ -1,0 +1,67 @@
+{
+  "observedAt": "2026-11-15T11:43:00.503826+00:00",
+  "legacyBindings": [
+    {
+      "resource": "projects/lab-5-cloud-deployment-514310",
+      "role": "roles/cloudbuild.builds.builder",
+      "condition": null
+    }
+  ],
+  "deploymentActAsBindings": [
+    {
+      "resource": "kitloop-migrate@lab-5-cloud-deployment-514310.iam.gserviceaccount.com",
+      "role": "roles/iam.serviceAccountUser",
+      "condition": null
+    },
+    {
+      "resource": "kitloop-run@lab-5-cloud-deployment-514310.iam.gserviceaccount.com",
+      "role": "roles/iam.serviceAccountUser",
+      "condition": null
+    },
+    {
+      "resource": "kitloop-build@lab-5-cloud-deployment-514310.iam.gserviceaccount.com",
+      "role": "roles/iam.serviceAccountUser",
+      "condition": null
+    }
+  ],
+  "resourceCounts": {
+    "buckets": 1,
+    "repositories": 1,
+    "secrets": 3,
+    "serviceAccounts": 7,
+    "run-services": 1,
+    "run-jobs": 2
+  },
+  "limitations": [
+    "Read-only inventory covers project IAM and enumerated buckets, repositories, secrets, user-managed service accounts, and asia-southeast1 Run resources; it is not an exhaustive cross-project or external-group audit.",
+    "Cloud Asset inventory can lag; no logs do not prove non-use.",
+    "The Google-owned legacy account could not be described; this is not absence/disabled proof.",
+    "No live negative build submission, IAM removal or build-create grant was executed."
+  ],
+  "defaultComputeProjectRoles": [
+    "roles/editor"
+  ],
+  "hierarchy": [
+    {
+      "id": "lab-5-cloud-deployment-514310",
+      "type": "project"
+    }
+  ],
+  "defaultBuildServiceAccount": "610347790049-compute@developer.gserviceaccount.com",
+  "observedRegionalBuilds": [
+    {
+      "id": "a0a924d6-e851-42d8-91da-bb65f4d22506",
+      "serviceAccount": "kitloop-build@lab-5-cloud-deployment-514310.iam.gserviceaccount.com",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "80efc345-ecdf-4150-a51d-499ec93578c0",
+      "serviceAccount": "kitloop-build@lab-5-cloud-deployment-514310.iam.gserviceaccount.com",
+      "status": "SUCCESS"
+    }
+  ],
+  "globalBuildsInQueriedHistory": 0,
+  "triggersInGlobalAndAsiaSoutheast1": 0,
+  "computeInstances": 0,
+  "defaultPrincipalAuditEntriesInRetained30DayQuery": 0
+}
