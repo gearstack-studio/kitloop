@@ -1,0 +1,15 @@
+{
+  "phase": "baseline",
+  "recordId": "899544f9-d5a8-4248-829e-db75a44cbbf1",
+  "observedAt": "2026-11-15T09:04:12.831675+00:00",
+  "result": "PASS",
+  "url": "https://kitloop-610347790049.asia-southeast1.run.app",
+  "revision": "kitloop-284f41973f61-20261115080104",
+  "revisionCreatedAt": "2026-11-15T08:01:57.564525Z",
+  "imageDigest": "asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:132e2d25ebab34c3270ea45b7cc42a4fc5c836261d50a3e015980dc74b97c304",
+  "sourceSha": "284f41973f61a02e82d38bc9f425712ecd4e4afc",
+  "database": "lab-5-cloud-deployment-514310:asia-southeast1:kitloop-pg",
+  "backupId": "1794732111059",
+  "backupCompletedAt": "2026-11-15T08:43:12.278Z",
+  "recordFingerprint": "8ed64726bbc9291bc61aca6f41825e7e95cb5261d0ca03f0d1816e61ff9c81ed"
+}

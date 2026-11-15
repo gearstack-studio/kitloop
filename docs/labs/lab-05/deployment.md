@@ -1,6 +1,6 @@
 # Lab 5 deployment
 
-**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).
+**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 #40](https://github.com/gearstack-studio/kitloop/issues/40) ([verification runbook](episode-8-persistence.md)). [Current status](README.md#episode-issue-register).
 
 ## Episode 7 release path (Issue #38, proposed)
 
@@ -16,7 +16,7 @@ The sections below retain their Episode 2 and Episode 5 implementation snapshots
 
 ## Episode 8 persistence tracking
 
-The handout's Episode 8 check remains open: record one non-sensitive item on the public service, verify it after an application restart and again after a reviewed main redeploy, and retain before-and-after evidence for C-05 / R-04. Rollback and roll-forward are recommended follow-up checks; traffic rollback does not undo migrations. A dedicated GitHub issue was not present at inspection, and the connected integration rejected creation with HTTP 403. The [proposed Episode 8 issue text](episode-8-issue.md) records the scope without claiming live verification.
+The handout's Episode 8 check remains open: record one non-sensitive item on the public service, verify it after an application restart and again after a reviewed main redeploy, and retain before-and-after evidence for C-05 / R-04. Rollback and roll-forward are recommended follow-up checks; traffic rollback does not undo migrations. The work is tracked in [issue #40](https://github.com/gearstack-studio/kitloop/issues/40). Follow the [Episode 8 verification runbook](episode-8-persistence.md) and [evidence register](evidence/persistence/README.md). The capture tool validates the selected record, source/image/revision, unchanged database instance and actual successful main deployment. Public HTTP readiness now passes. Selected-record baseline, cloud metadata and live restart/redeploy evidence remain pending; the first main workflow skipped its deploy job.
 
 ## Episode 5, PR B: first GCP deployment preparation
 
@@ -393,3 +393,7 @@ Episode 2 cloud-readiness code is complete locally on `refactor/2-cloud-ready`. 
 For GitHub OIDC and Workload Identity Federation setup, the read-only verification workflow,
 the IAM handoff and evidence requirements, see [the WIF runbook](../../../infra/gcp/wif/README.md).
 PR A is tracked in [issue #34](https://github.com/gearstack-studio/kitloop/issues/34).
+
+## Episode 8 persistence evidence
+
+The [Episode 8 runbook](episode-8-persistence.md) and [evidence register](evidence/persistence/README.md) record passing baseline, controlled same-image restart and successful main redeployment observations for the same synthetic request. The private verifier's after-redeploy observation was captured at `2026-11-15T15:23:22.831879+00:00` for [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2). Original evidence is preserved. Live rollback/roll-forward remains unexecuted; explicit acceptance of the documented deferral and independent review remain pending. Issue #40 remains open.

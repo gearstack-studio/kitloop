@@ -1,8 +1,8 @@
-# Proposed issue: [Lab 5] Episode 8 Verify Persistence and Rollback
+# Episode 8 - Verify Persistence and Rollback (Issue #40)
 
-**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).
+**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 #40](https://github.com/gearstack-studio/kitloop/issues/40) ([verification runbook](episode-8-persistence.md)). [Current status](README.md#episode-issue-register).
 
-**GitHub status:** No dedicated Episode 8 issue was found among the repository's Issues on 15 November 2026. The GitHub integration rejected issue creation with `403 Resource not accessible by integration`. This file records the proposed issue text; it is **not** a GitHub issue or proof of completed work. Confirm the developer and reviewer with the team before opening it. Apply the `lab5` label.
+**GitHub status:** [Issue #40](https://github.com/gearstack-studio/kitloop/issues/40) exists, assigned in its ownership section to DEV4952 with yiiipunn as reviewer. Branch `feat/8-persistence-rollback` prepares [the capture procedure](episode-8-persistence.md). Public HTTP readiness now passes; the record baseline and cloud inventory are next. The first main workflow skipped deployment, so successful automated redeploy proof remains pending under #38. See [the evidence register](evidence/persistence/README.md).
 
 ## Objective
 
@@ -34,4 +34,4 @@ Verify that a KitLoop record created on the public GCP service survives an appli
 
 ## Safety and ownership
 
-This tracking draft does not authorize a GCP restart, deployment, rollback, IAM change, billable resource, or branch-rule change. Obtain the required approvals before live operations. Assign a developer and reviewer before work begins; both team members' contributions should be traceable through issues, PRs, checks, and review.
+Obtain authorization for each live restart, deployment or traffic change before execution. The capture tool performs read-only inventory and selected-record checks with a temporary login session. Both team members' contributions and actual results must be traceable through issues, PRs, checks and review. Keep #40 open until its live acceptance checks and review are complete.
