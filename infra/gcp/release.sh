@@ -6,7 +6,7 @@ require_gcloud
 require_command jq
 
 # Branches whose pushed commits may be built and released.
-RELEASE_BRANCHES=(feat/5-first-gcp-deployment sprint-1-staging)
+RELEASE_BRANCHES=(main)
 VERIFIED_EXECUTION=''
 
 # A release must use a completed execution of the exact immutable image.

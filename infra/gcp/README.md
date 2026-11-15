@@ -1,6 +1,6 @@
 # Episode 5 GCP release tooling
 
-These scripts prepare `lab-5-cloud-deployment-514310` in `asia-southeast1` for a **single** KitLoop Cloud Run service. Run them in Google Cloud Shell from a clean clone of the reviewed feature branch. Nothing here runs automatically. `preflight.sh` and `verify.sh` are read-only; each state-changing `prepare.sh` or `release.sh` action requires a matching typed confirmation. Stop on any error.
+These scripts prepare `lab-5-cloud-deployment-514310` in `asia-southeast1` for a **single** KitLoop Cloud Run service. For a release, use a clean clone of the reviewed `main` commit in Google Cloud Shell. `preflight.sh` and `verify.sh` are read-only; each state-changing `prepare.sh` or `release.sh` action requires a matching typed confirmation. Stop on any error. Episode 7 proposes a guarded GitHub Actions path for subsequent **main-only** `build`, `migrate`, `deploy` and `rollback` actions; it is disabled pending review and approval. See [Episode 7 deployment design](../../docs/labs/lab-05/episode-7-deployment.md).
 
 ## Cost and permission gate
 
@@ -27,7 +27,7 @@ Cloud Run cannot use the Compose hostname `api` or deploy the two Compose servic
 
 ## Ordered Cloud Shell runbook
 
-1. Clone the reviewed, **pushed** commit of `feat/5-first-gcp-deployment` (or, after merge, `sprint-1-staging`) and confirm `git status --porcelain` is empty. `release.sh build` refuses other branches, dirty trees and commits that are not on the matching `origin/` branch. Record the full source SHA.
+1. Merge the reviewed feature PR into staging, then a reviewed release PR from staging into main. Clone the reviewed, **pushed main commit** and confirm `git status --porcelain` is empty. `release.sh build` refuses non-main branches, dirty trees and commits that are not on `origin/main`. Record the full source SHA.
 2. Run `gcloud config set project lab-5-cloud-deployment-514310`, then `bash infra/gcp/preflight.sh`. Review billing, budgets, trial status, quota and prices manually. Obtain explicit approval for resource and IAM creation. Use `set -e` in the Cloud Shell release session so a failed step stops the sequence.
 3. Run `bash infra/gcp/prepare.sh apis`, then `registry`, `identity` and `build-source`. Required APIs: Cloud Run, Artifact Registry, Cloud Build, Cloud Storage, Cloud SQL Admin, Secret Manager, IAM, Compute Engine, Service Networking, and Cloud Logging. The source bucket is private, uses uniform bucket access, and has a seven-day object lifecycle.
 4. Check all project, peered, and organization IP ranges. Choose a non-overlapping Cloud Run subnet CIDR (at least `/26` is prudent for Direct VPC egress) and a private-service-access range. Run `bash infra/gcp/prepare.sh network SUBNET_CIDR PSA_BASE_IP PSA_PREFIX`. This creates a dedicated VPC, subnet, allocated range and private services access. On partial failure, inspect resources before retrying; the script will not delete or overwrite them.

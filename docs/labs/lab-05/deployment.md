@@ -1,8 +1,26 @@
 # Lab 5 deployment
 
+**Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).
+
+## Episode 7 release path (Issue #38, proposed)
+
+The updated CPE 334 Lab 5 handout requires a reviewed feature Pull Request into staging, a reviewed release Pull Request from staging into main, a required passing CI check on main, and deployment **only from main**. The public URL must show a visible change, and the running revision must be traceable to the main release commit (R-07, R-08, C-06). A separate cloud staging environment is not required.
+
+The proposed [main deployment workflow](../../../.github/workflows/deploy.yml) runs the existing CI again on a main push, then waits for the protected main ref, explicit `LAB5_DEPLOY_ENABLED=true`, and `lab5-production` Environment approval. It uses a dedicated WIF deployment identity, the Episode 5 build/migration/deploy scripts, immutable image digests, candidate health and readiness checks, and traffic rollback on failure. See the [Episode 7 design and IAM contract](episode-7-deployment.md). Bootstrap and public publish remain manual.
+
+The existing release script uses a 12-character commit prefix as each registry tag, then resolves and deploys the immutable digest. The workflow records the **full** main commit SHA with both digests and the serving revision. This differs from the handout's recommended full-SHA image tag but still identifies each release under R-08 without changing the Episode 5 image naming contract. Rollback routes traffic to a previously verified ready revision; it does not reverse migrations.
+
+This workflow is **not active or live-tested**. On 15 November 2026, read-only GitHub branch metadata showed neither main nor staging protected. No deployment IAM grant, WIF provider, GitHub Environment, or repository ruleset was changed here. Before enabling, verify required passing `Build, test and Docker smoke` on main, one teammate approval, safe ruleset recovery, and actual Environment protection. The first public Episode 5 release and bootstrap must already exist. An authorized release test must record the feature PR, release PR, CI run, Environment approval, main SHA, Cloud Build result, image digests, migration execution, serving Cloud Run revision, and public URL HTTP checks. C-06 remains unverified until the visible change and matching revision are observed.
+
+The sections below retain their Episode 2 and Episode 5 implementation snapshots. Their pending-work statements describe those earlier changes at the time; use the [current Lab 5 evidence index](README.md) for present verification status.
+
+## Episode 8 persistence tracking
+
+The handout's Episode 8 check remains open: record one non-sensitive item on the public service, verify it after an application restart and again after a reviewed main redeploy, and retain before-and-after evidence for C-05 / R-04. Rollback and roll-forward are recommended follow-up checks; traffic rollback does not undo migrations. A dedicated GitHub issue was not present at inspection, and the connected integration rejected creation with HTTP 403. The [proposed Episode 8 issue text](episode-8-issue.md) records the scope without claiming live verification.
+
 ## Episode 5, PR B: first GCP deployment preparation
 
-**Status:** Repository-side cloud tooling is prepared. No Cloud SQL instance, Secret Manager secret, service account, Artifact Registry repository, Cloud Build, Cloud Run job, or service has been created or verified by this work. The CPE334 Student Guide V1.1 and rubric were not available in the workspace; confirm their Episode 5 acceptance details before release.
+**Status:** Repository-side cloud tooling is prepared. No Cloud SQL instance, Secret Manager secret, service account, Artifact Registry repository, Cloud Build, Cloud Run job, or service has been created or verified by this work. The updated Lab 5 handout is now available; its separate Student Guide V1.1 was not available locally.
 
 ### Architecture and integration boundary
 
@@ -20,7 +38,7 @@ The database plan uses a dedicated VPC and subnet, private services access, and 
 
 Cloud Build stages source in a dedicated private Cloud Storage bucket with a seven-day object lifecycle; bucket storage and operations may incur charges. The build service account receives object read access only on that bucket.
 
-Run from a clean clone of the reviewed `feat/5-first-gcp-deployment` commit. Every `prepare.sh` and `release.sh` action prompts for its exact project/action before changing anything. Inspect all existing and peered IP ranges before choosing the two example placeholders below; **do not copy an overlapping range**. Stop at the cost/approval gate before `prepare.sh apis`. Keep `set -e` enabled for the sequence so a failed migration cannot be followed by bootstrap or deployment.
+Run the first release from a clean clone of the reviewed main commit, after the feature PR enters staging and a release PR enters main. Every manual `prepare.sh` and `release.sh` action prompts for its exact project/action before changing anything. Inspect all existing and peered IP ranges before choosing the two example placeholders below; **do not copy an overlapping range**. Stop at the cost/approval gate before `prepare.sh apis`. Keep `set -e` enabled for the sequence so a failed migration cannot be followed by bootstrap or deployment.
 
 ```bash
 set -e

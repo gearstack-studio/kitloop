@@ -4,12 +4,13 @@ on:
   pull_request:
     branches: [sprint-1-staging, main]
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pull-request-ci-${{ github.event.pull_request.number }}
+  group: pull-request-ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -27,11 +28,11 @@ jobs:
 
       - name: Record tested commits
         env:
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           {
             printf '## KitLoop CI evidence\n\n'
-            printf 'PR head SHA: %s\n\n' "$PR_HEAD_SHA"
+            printf 'Source or PR head SHA: %s\n\n' "$PR_HEAD_SHA"
             printf 'Tested merge SHA: %s\n\n' "$(git rev-parse HEAD)"
           } >> "$GITHUB_STEP_SUMMARY"
           docker version
@@ -39,7 +40,8 @@ jobs:
 
       - name: Validate GCP release tooling offline
         run: |
-          for script in infra/gcp/*.sh .github/scripts/*.sh; do bash -n "$script"; done
+          for script in infra/gcp/*.sh infra/gcp/deploy/*.sh .github/scripts/*.sh; do bash -n "$script"; done
+          bash infra/gcp/deploy/guard.test.sh
           bash infra/gcp/guards.test.sh
 
       - name: Test WIF trust policy offline

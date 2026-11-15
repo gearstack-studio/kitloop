@@ -322,13 +322,13 @@ pass 'a later deployment moves traffic away from a rollback-pinned revision'
 
 # --- Build source restrictions --------------------------------------------------------------------
 repo="$work/repo"
-git init -q -b main "$repo"
+git init -q -b scratch "$repo"
 git -C "$repo" -c user.name=test -c user.email=test@example.invalid commit -q --allow-empty -m init
 OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC=0 || RC=$?
-refused 'build from unreviewed branch'; out_has 'Build from one of' 'build from main was not refused'
-git -C "$repo" checkout -q -b sprint-1-staging
+refused 'build from unreviewed branch'; out_has 'Build from one of' 'build from scratch was not refused'
+git -C "$repo" checkout -q -b main
 OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC=0 || RC=$?
-refused 'build of unpushed commit'; out_has 'is not on origin/sprint-1-staging' 'unpushed commit was not refused'
+refused 'build of unpushed commit'; out_has 'is not on origin/main' 'unpushed commit was not refused'
 pass 'build requires an allowed branch and a pushed commit'
 
 printf 'PASS: all GCP release guard tests\n'

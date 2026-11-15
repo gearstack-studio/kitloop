@@ -35,6 +35,14 @@ require_gcloud() {
 }
 confirm() {
   local action="$1" answer
+  if [[ "${KITLOOP_AUTOMATED_RELEASE:-}" == 1 ]]; then
+    # Only release.sh may use this path. prepare.sh, bootstrap and publish stay interactive-only.
+    [[ "$(basename "${BASH_SOURCE[1]:-}")" == release.sh ]] ||
+      die 'Automated release mode is reserved for release.sh.'
+    source "$(dirname "${BASH_SOURCE[0]}")/deploy/guard.sh"
+    authorize_automated_release "$action"
+    return
+  fi
   [[ -t 0 ]] || die 'State-changing commands require an interactive terminal.'
   note "This will change GCP resources in $PROJECT ($REGION)."
   read -r -p "Type ${PROJECT}/${action} to continue: " answer
