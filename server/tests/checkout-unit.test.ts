@@ -1,5 +1,26 @@
+import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { checkoutInput, loanDto, validateDueDate } from "../src/checkout.js";
+import { checkoutInput, isCheckoutConflict, loanDto, validateDueDate } from "../src/checkout.js";
+
+const prismaError = (code: string, meta?: Record<string, unknown>) =>
+  new Prisma.PrismaClientKnownRequestError("synthetic", { code, clientVersion: "test", meta });
+
+describe("Checkout concurrency error mapping", () => {
+  it("treats serialization failures and deadlocks from the raw row lock as checkout conflicts", () => {
+    // Observed on PostgreSQL 17 for the losing concurrent checkout: P2010 with SQLSTATE 40001.
+    expect(isCheckoutConflict(prismaError("P2010", { code: "40001",
+      message: "could not serialize access due to concurrent update" }))).toBe(true);
+    expect(isCheckoutConflict(prismaError("P2010", { code: "40P01" }))).toBe(true);
+    expect(isCheckoutConflict(prismaError("P2034"))).toBe(true);
+    expect(isCheckoutConflict(prismaError("P2002"))).toBe(true);
+  });
+  it("leaves every other database or application error unmapped", () => {
+    for (const error of [prismaError("P2010", { code: "42P01" }), prismaError("P2010"), prismaError("P2025"),
+      new Error("40001"), { code: "P2010", meta: { code: "40001" } }, null]) {
+      expect(isCheckoutConflict(error)).toBe(false);
+    }
+  });
+});
 
 describe("Checkout validation and loan projection", () => {
   it("accepts an explicit Asset ID and a timezone-aware due date", () => {
