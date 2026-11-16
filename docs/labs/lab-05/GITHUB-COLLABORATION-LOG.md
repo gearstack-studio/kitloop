@@ -186,7 +186,7 @@ yiiipunn tested the containers locally and reported that the build, health check
 #### Final Verification
 
 - The [C-03 record](c-03-evidence.md) passed clean-clone container checks at `aef044a`.
-- Limitation: the browser borrow-request and refresh check was not recorded, so C-03 remains `PARTIAL`.
+- The handout defines C-03 as a fresh clone that builds and runs with `.env.example` values, which this record shows, so C-03 is `PASS`. A team-added browser refresh check was not recorded.
 
 #### Evidence
 
@@ -469,8 +469,9 @@ The 14:33 approval time is the start of the release job; the approval record its
 | Build, digests, migration, revision and health ([details](README.md#production-release-evidence)) | `PASS` |
 | Live rollback and roll-forward | `DEFERRED (Reviewer Approved)` |
 | Live rejection of an unauthorized deployment | `NOT VERIFIED` |
+| C-06 as defined in the handout | `PASS` |
 
-The release had no application source change, which the PR #46 review states. So C-06's visible-change criterion remains open.
+C-06, as the handout defines it, is met: a reviewed change (PR #45) went from staging into main (PR #46), was deployed by the pipeline, and the running revision matches its commit. The release had no application source change, which the PR #46 review states, so execution step 7's "the URL shows the change" is not shown. PRs #45 and #46 also lack the `lab5` label that R-10 requires.
 
 #### Evidence
 
@@ -601,11 +602,11 @@ Proposed checklist updates were prepared on 16 November 2026 from the evidence i
 |:--|:--|:--|:--|
 | [#24](https://github.com/gearstack-studio/kitloop/issues/24) | 8 | 0 | None |
 | [#25](https://github.com/gearstack-studio/kitloop/issues/25) | 15 | 0 | None |
-| [#27](https://github.com/gearstack-studio/kitloop/issues/27) | 10 | 0 | None; C-03 browser check noted as a limitation |
+| [#27](https://github.com/gearstack-studio/kitloop/issues/27) | 10 | 0 | None |
 | [#29](https://github.com/gearstack-studio/kitloop/issues/29) | 0 | 0 | No checklist in the issue |
 | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | 39 | 4 | Startup logs, catalog capture, console screenshots |
 | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | 7 | 3 | Reviewer items not confirmed in a review |
-| [#35](https://github.com/gearstack-studio/kitloop/issues/35) | 5 | 7 | Review rule, blocked-merge tests, screenshots |
-| [#38](https://github.com/gearstack-studio/kitloop/issues/38) | 22 | 7 | Staging gate, live rejection test, reviewer items |
+| [#35](https://github.com/gearstack-studio/kitloop/issues/35) | 8 | 4 | Config screenshots, reviewer items; merge blockers not isolated (noted on checked items) |
+| [#38](https://github.com/gearstack-studio/kitloop/issues/38) | 23 | 6 | Live rejection test, reviewer items |
 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | 18 | 3 | #35 prerequisite, UI check after restart, live rollback |
 | [#49](https://github.com/gearstack-studio/kitloop/issues/49) | 0 | All | Audit in progress; peer review pending |

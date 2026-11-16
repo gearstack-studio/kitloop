@@ -2,24 +2,35 @@
 
 Audit date: 16 November 2026, [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49). Status labels follow the [evidence index](README.md#status-vocabulary).
 
-The official handout and rubric are not stored in this repository. Rows use the requirement IDs quoted in the existing Lab 5 documents. R-03, R-05 and R-06 are not cited anywhere in the repository; map them against the handout before submission.
+Requirement wording follows the updated CPE 334 Lab 5 handout (`01_SE_Lab_5_updated.pdf`, Sections 4.1 and 8). The handout is course material and is not committed here. For checks, `PASS` means the behavior is verified; whether the handout's required evidence form exists is shown in the [evidence index](README.md#required-check-status).
 
-## Handout requirements and checks
+## Handout requirements
 
 | Requirement | Implementation | Evidence | Status | Remaining gap |
 |:--|:--|:--|:--|:--|
-| R-01, R-02: containerized build and local Compose run | [Dockerfile](../../../Dockerfile), [docker-compose.yml](../../../docker-compose.yml), PR [#28](https://github.com/gearstack-studio/kitloop/pull/28) | [C-03 record](c-03-evidence.md), [CI run 43263932716](https://github.com/gearstack-studio/kitloop/actions/runs/43263932716) | `PASS` | None for the build; see C-03 |
-| R-04: data persists across restart and redeploy | Cloud SQL `kitloop-pg`, [verify.py](../../../infra/gcp/persistence/verify.py), PR [#41](https://github.com/gearstack-studio/kitloop/pull/41) | [Persistence register](evidence/persistence/README.md) | `PASS` | None |
-| R-07: reviewed feature PR to staging, reviewed release PR to main | PRs [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#45](https://github.com/gearstack-studio/kitloop/pull/45), release PR [#46](https://github.com/gearstack-studio/kitloop/pull/46) | Approving reviews on final heads | `PASS` | None |
-| R-08: deploy only from main, revision traceable to commit | [deploy.yml](../../../.github/workflows/deploy.yml), [release.sh](../../../infra/gcp/release.sh) | [Run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2), revision `kitloop-be72f87e15a6-20261115143840` | `PASS` | Registry tag is a 12-character SHA prefix; full SHA is recorded in evidence |
-| R-09 to R-11: both teammates' issue, PR, review, test and deployment work | Issue and PR history | [Collaboration record](README.md#collaboration-record) | `PASS` | Confirm against the handout's exact per-person criteria |
+| R-01: Docker image builds and runs from a clean clone | [Dockerfile](../../../Dockerfile), [docker-compose.yml](../../../docker-compose.yml), PR [#28](https://github.com/gearstack-studio/kitloop/pull/28) | [C-03 record](c-03-evidence.md), [CI run 43263932716](https://github.com/gearstack-studio/kitloop/actions/runs/43263932716) | `PASS` | None |
+| R-02: settings from the environment, documented, no secret committed | `.env.example` files, [deployment.md](deployment.md) variable tables | [C-03 record](c-03-evidence.md), credential scans in [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49) audit | `PASS` | None |
+| R-03: public URL; domain workflow through UI, API and database | Cloud Run service `kitloop`, Cloud SQL `kitloop-pg` | [Baseline UI](evidence/persistence/baseline-ui.png), [persistence observations](evidence/persistence/README.md), [rejection probes](evidence/public-access/README.md) | `PASS` | Screenshots with the URL visible (C-04) |
+| R-04: persistent database survives restart and redeploy | Cloud SQL `kitloop-pg`, [verify.py](../../../infra/gcp/persistence/verify.py), PR [#41](https://github.com/gearstack-studio/kitloop/pull/41) | [Persistence register](evidence/persistence/README.md) | `PASS` | After-phase UI screenshots (C-05) |
+| R-05: build and tests on every relevant PR | [pull-request-ci.yml](../../../.github/workflows/pull-request-ci.yml) | [Run 43618541536](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | None |
+| R-06: passing check required; shown with a failing PR from a temporary branch | `main` protection; staging ruleset 27310627 | [PR #50 merge state](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test), [failed run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) | `PASS` | Blocked-merge screenshot; missing approval was a second blocker |
+| R-07: release from main through review, CI, merge, deployment | [deploy.yml](../../../.github/workflows/deploy.yml), PR [#45](https://github.com/gearstack-studio/kitloop/pull/45), release PR [#46](https://github.com/gearstack-studio/kitloop/pull/46) | [Run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) with environment approval | `PASS` | None |
+| R-08: identify each release commit; documented release procedure | [release.sh](../../../infra/gcp/release.sh), [deployment.md](deployment.md#find-the-running-commit) | Revision `kitloop-be72f87e15a6-20261115143840`, [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | `PASS` | Registry tag is a 12-character SHA prefix; the full SHA is recorded in the run |
+| R-09: issues, board, branches, teammate-reviewed PRs, release PR; specific reviews | Issue and PR history | [Collaboration record](README.md#collaboration-record), [collaboration log](GITHUB-COLLABORATION-LOG.md) | `PARTIAL` | Four approvals state no specific check or finding |
+| R-10: `lab5` labels; history kept | Labels; no rewritten history | [Collaboration record](README.md#collaboration-record) | `PARTIAL` | PRs #26, #44, #45 and #46 lack `lab5` |
+| R-11: both members take part in every activity | Issue and PR authorship and review | [Collaboration log](GITHUB-COLLABORATION-LOG.md#collaboration-patterns) | `PASS` | None |
 | R-12: public repository | `gearstack-studio/kitloop` | [Repository page](https://github.com/gearstack-studio/kitloop), API `visibility: public` | `PASS` | None |
-| C-01: PR build and tests | [pull-request-ci.yml](../../../.github/workflows/pull-request-ci.yml) | [Run 43618541536](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | None |
-| C-02: failing required CI blocks merge | Main required check; staging ruleset 27310627 | [PR #50 merge state](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test), [failed run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) | `PASS` | Missing approval was a second blocker; no merge-box screenshot |
-| C-03: clean clone, Docker and configuration | `.env.example` files, Compose profiles | [C-03 record](c-03-evidence.md) | `PARTIAL` | Browser refresh check not recorded |
-| C-04: public URL, sign-in, domain action, rejection | Cloud Run service `kitloop` | [baseline-ui.png](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Live role-based denial not run (CI covers it) |
-| C-05: record survives restart and redeploy | As R-04 | [baseline](evidence/persistence/baseline.json), [restart](evidence/persistence/after-restart.json), [redeploy](evidence/persistence/after-redeploy.json) | `PASS` | None |
-| C-06: reviewed main release, matching revision, visible change | As R-07 and R-08 | [Release evidence](README.md#production-release-evidence), [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | `PARTIAL`, requires confirmation | No visible change; whether C-06 requires one [needs confirmation](evidence-gaps.md#c-06-requirement-confirmation) |
+
+## Handout checks
+
+| Check | Covers | Evidence | Behavior | Remaining gap |
+|:--|:--|:--|:--|:--|
+| C-01: normal PR runs build and all tests, which pass | R-05 | [Run 43618541536](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) | `PASS` | None |
+| C-02: failing PR from a temporary branch cannot be merged | R-06 | [PR #50 evidence](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test) | `PASS` | Merge-button screenshot; causes not isolated |
+| C-03: fresh clone builds and runs with `.env.example` values | R-01, R-02 | [C-03 record](c-03-evidence.md) | `PASS` | None |
+| C-04: sign-in, main action and one rejection on the public URL | R-03 | [Baseline UI](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Screenshots with the URL visible |
+| C-05: record survives restart and redeploy | R-04 | [baseline](evidence/persistence/baseline.json), [restart](evidence/persistence/after-restart.json), [redeploy](evidence/persistence/after-redeploy.json) | `PASS` | After-phase screenshots |
+| C-06: reviewed change from staging to main, deployed, revision matches commit | R-07 to R-10 | PRs [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46), [release evidence](README.md#production-release-evidence) | `PASS` | `lab5` labels on #45 and #46; step 7 visible change |
 
 ## Episode implementation evidence
 

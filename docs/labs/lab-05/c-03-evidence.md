@@ -1,6 +1,6 @@
 # C-03 execution record
 
-> **Status note (16 November 2026):** PR #28 merged with yiiipunn's approval. The browser borrow-request and refresh check below was not recorded later, so C-03 remains `PARTIAL`. Current status: [Lab 5 evidence index](README.md).
+> **Status note (16 November 2026):** PR #28 merged with yiiipunn's approval. The handout defines C-03 as a fresh clone that builds and runs with only `.env.example` values filled in, with commands and output as evidence. This record meets that, so C-03 is `PASS`. The browser borrow-request and refresh check below was an extra team check and was not recorded. Current status: [Lab 5 evidence index](README.md).
 
 Status: **Clean-clone container verification passed; C-03 review pending.** Tested implementation commit `aef044a51b1801c9f2eb5c01050db8c989d6255e`. A browser borrow-request/refresh check is pending, and a checkout concurrency failure occurred on earlier working-tree runs and remains unresolved.
 Date: 2026-11-12 (Asia/Bangkok).

@@ -1,8 +1,8 @@
 # KitLoop Lab 5 evidence index
 
-Audit date: 16 November 2026 (Asia/Bangkok), tracked in [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49). The updated CPE 334 Lab 5 handout is the requirement source. Its release path is a reviewed feature PR into staging, a reviewed release PR from staging into main, and deployment **only from main**, with the serving Cloud Run revision traceable to that main commit (R-07, R-08, C-06). A separate cloud staging environment is optional.
+Audit date: 16 November 2026 (Asia/Bangkok), tracked in [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49). The requirement source is the updated CPE 334 Lab 5 handout (`01_SE_Lab_5_updated.pdf`). Its rubric weights are CI and quality gate 30, Docker and reproducible configuration 20, GCP deployment and persistence 35, and repeatable release pipeline 15. Releases follow a reviewed feature PR into staging, a reviewed release PR into main, and deployment **only from main** (R-07, R-08, C-06). A separate cloud staging environment is not required.
 
-The official handout and grading rubric are not stored in this repository. Requirement IDs below are the R-xx and C-xx identifiers already quoted in the Lab 5 documents. The complete mapping is in the [requirement traceability matrix](traceability.md).
+The handout is course material and is not committed to this repository. Requirement and check wording below follows its Sections 4.1, 7, 8 and 12. The complete mapping is in the [requirement traceability matrix](traceability.md).
 
 ## Status vocabulary
 
@@ -25,26 +25,35 @@ An issue's closed state records tracking only. It does not prove that the episod
 |:--|:--|:--|:--|:--|
 | 1. GCP account and cost control | [#24](https://github.com/gearstack-studio/kitloop/issues/24) | None | `PASS` | Screenshots exist only as [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906), not repository files |
 | 2. Cloud readiness | [#25](https://github.com/gearstack-studio/kitloop/issues/25) | [#26](https://github.com/gearstack-studio/kitloop/pull/26) | `COMPLETE` | None recorded |
-| 3. Docker containerization | [#27](https://github.com/gearstack-studio/kitloop/issues/27) | [#28](https://github.com/gearstack-studio/kitloop/pull/28) | `PARTIAL` | C-03 browser refresh check not recorded |
+| 3. Docker containerization | [#27](https://github.com/gearstack-studio/kitloop/issues/27) | [#28](https://github.com/gearstack-studio/kitloop/pull/28) | `PASS` | None for the handout check; a team-added browser refresh check was not recorded |
 | 4. CI on pull requests | [#29](https://github.com/gearstack-studio/kitloop/issues/29) | [#30](https://github.com/gearstack-studio/kitloop/pull/30) | `PASS` | None |
-| 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | First-release Cloud Build ID and console screenshots not in repository |
+| 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | [Console screenshots](evidence/console/README.md) pending |
 | 6A. GitHub OIDC and WIF | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | [#36](https://github.com/gearstack-studio/kitloop/pull/36) | `PASS` | Inherited-access analysis is partial |
 | 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Inherited-access analysis is partial; merge gates now verified |
-| 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | No visible UI change in the release; live rollback `DEFERRED` |
+| 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | Step 7 "URL shows the change" not shown; #44 to #46 lack the `lab5` label; live rollback `DEFERRED` |
 | 8. Persistence and rollback | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | `PASS` | Live rollback `DEFERRED (Reviewer Approved)`; issue still open |
 
 Step 9 of the handout is the final documentation and PDF submission. It is tracked by Issue #49, not by an episode issue.
 
 ## Required check status
 
-| Check | Evidence | Result | Notes |
+The handout (Section 8) defines each check and the evidence it expects. **Behavior** records whether the check itself was verified. **Handout evidence** records whether the expected evidence form exists.
+
+| Check | Evidence | Behavior | Handout evidence |
 |:--|:--|:--|:--|
-| C-01: PR build and tests | [PR #37 CI run](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | Job context `Build, test and Docker smoke` |
-| C-02: failing CI blocks merge | [Disposable PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test), [run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) | `PASS` | Required check failed and GitHub reported `BLOCKED`; the missing approval was a second blocker |
-| C-03: clean clone, Docker and configuration | [C-03 execution record](c-03-evidence.md), [PR A hosted CI](evidence/README.md) | `PARTIAL` | Browser refresh check not recorded |
-| C-04: public URL, sign-in, action, rejection | [Baseline UI screenshot](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Unauthenticated read and write attempts returned 401; live role-based denial not run |
-| C-05: record survives restart and redeploy | [Persistence register](evidence/persistence/README.md) | `PASS` | Same record, database and fingerprint in all three phases |
-| C-06: reviewed main release and matching revision | [Release PR #46](https://github.com/gearstack-studio/kitloop/pull/46), [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) | `PARTIAL`, requires confirmation | Revision matches main SHA; no visible change, which may not be required ([confirmation needed](evidence-gaps.md#c-06-requirement-confirmation)) |
+| C-01: PR build and tests pass | [PR #37 CI run](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | Met: CI run link and test summary |
+| C-02: failing PR cannot be merged | [Disposable PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test), [failed run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) | `PASS` | `PARTIAL`: PR link and failed check present; blocked merge recorded through the API, no screenshot |
+| C-03: fresh clone builds and runs | [C-03 execution record](c-03-evidence.md), [PR A hosted CI](evidence/README.md) | `PASS` | Met: commands and output |
+| C-04: sign-in, main action, rejection on the public URL | [Baseline UI](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | `PARTIAL`: screenshots with the URL visible are missing |
+| C-05: record survives restart and redeploy | [Persistence register](evidence/persistence/README.md) | `PASS` | `PARTIAL`: before screenshot only; after phases are API records |
+| C-06: reviewed change from staging to main, deployed, revision matches commit | [PR #45](https://github.com/gearstack-studio/kitloop/pull/45), [release PR #46](https://github.com/gearstack-studio/kitloop/pull/46), [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) | `PASS` | Met: PR links, pipeline run, revision `kitloop-be72f87e15a6-20261115143840` |
+
+Notes:
+
+- **C-02:** when the merge state was captured, both the failing required check and the missing approval (`REVIEW_REQUIRED`) were active. GitHub reports `BLOCKED` without separating the causes. The handout's reference setup also requires both a passing check and one approval, but the CI cause alone is not isolated.
+- **C-04:** the baseline screenshot crops out the address bar, and the rejection evidence is JSON. Both behaviors are verified, but the handout asks for screenshots with the URL visible.
+- **C-05:** after-restart and after-redeploy UI screenshots were never taken and cannot be recreated.
+- **C-06:** the check does not require a visible change. Execution step 7 does ("the URL shows the change"), and release `be72f87` changed no application code. PRs #45 and #46 also lack the `lab5` label that R-10 requires.
 
 ## Production release evidence
 
@@ -113,19 +122,23 @@ Both teammates authored issues and PRs, and each Lab 5 PR has an approving revie
 | [#47](https://github.com/gearstack-studio/kitloop/pull/47), [#48](https://github.com/gearstack-studio/kitloop/pull/48) | yiiipunn | staging | DEV4952 | Sync main back into staging |
 | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | DEV4952 | staging | yiiipunn | Episode 8 persistence evidence |
 
+Handout gaps in this record:
+
+- **R-09, specific reviews:** four approvals state no specific check or finding: [#26](https://github.com/gearstack-studio/kitloop/pull/26#pullrequestreview-5873577028) ("Approve"), the first of two on [#33](https://github.com/gearstack-studio/kitloop/pull/33#pullrequestreview-5896073874) ("Ok kub"), [#43](https://github.com/gearstack-studio/kitloop/pull/43#pullrequestreview-5909496249) ("LGTM") and [#44](https://github.com/gearstack-studio/kitloop/pull/44#pullrequestreview-5910352309) ("Overall look good kub"). The other reviews are specific.
+- **R-10, labels:** all 10 Lab 5 issues carry `lab5`. PRs [#26](https://github.com/gearstack-studio/kitloop/pull/26), [#44](https://github.com/gearstack-studio/kitloop/pull/44), [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46) do not.
+
 ## Missing evidence
 
 Each item below is missing or incomplete. None is fabricated or replaced by a substitute. The [evidence gap matrix](evidence-gaps.md) gives the safe next action for each.
 
-1. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Copy them into the repository only after masking the email addresses visible in the IAM image.
-2. Episode 5: GCP Console screenshots of the Cloud Run service, Cloud SQL instance and backups, Artifact Registry and Cloud Build. A [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png) exists.
-3. C-02: a merge-box screenshot. The blocked state is [recorded through the API](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test).
-4. C-03: the browser borrow-request and refresh check.
-5. C-04: optional live role-based denial. Unauthenticated rejection is [recorded](evidence/public-access/README.md).
-6. C-06: a visible application change on the public URL, if the handout requires one. This [needs confirmation](evidence-gaps.md#c-06-requirement-confirmation) before any release.
-7. Episode 7: a screenshot of the `lab5-production` approval panel. The [run summary](evidence/deployment/release-run-43717180011-summary.png) and [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) are now in the repository.
-8. Episode 8: UI screenshots taken after the restart and the redeploy were never saved and cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence). API observations PASS.
-9. Architecture and CI/CD diagrams captured for the PDF report; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
+1. C-02: a screenshot of the blocked merge button. PR #50 is closed, so its merge box can no longer be captured.
+2. C-04: screenshots of sign-in, the request action and a rejection with the public URL visible.
+3. C-05: after-restart and after-redeploy UI screenshots, which cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence).
+4. Episode 5: [GCP Console captures](evidence/console/README.md) of the service, database, backups, registry, build and migration job.
+5. Episode 7: a visible change on the public URL (execution step 7) and a screenshot of the `lab5-production` approval panel.
+6. R-09 and R-10: the non-specific reviews and missing PR labels listed under [Collaboration record](#collaboration-record).
+7. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Mask the email addresses in the IAM image before copying it into the PDF or repository.
+8. Architecture and CI/CD diagrams for the PDF; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
 
 ## Document map
 
@@ -133,7 +146,8 @@ Each item below is missing or incomplete. None is fabricated or replaced by a su
 |:--|:--|
 | [traceability.md](traceability.md) | Requirement-to-evidence matrix and diagrams |
 | [evidence-gaps.md](evidence-gaps.md) | Evidence gap matrix, approval-gated test plans and ruleset history |
-| [evidence/deployment/README.md](evidence/deployment/README.md), [evidence/public-access/README.md](evidence/public-access/README.md) | Release, first-release and public rejection evidence with provenance |
+| [evidence/deployment/README.md](evidence/deployment/README.md), [evidence/public-access/README.md](evidence/public-access/README.md), [evidence/merge-gate/README.md](evidence/merge-gate/README.md) | Release, public rejection, ruleset and C-02 evidence with provenance |
+| [evidence/console/README.md](evidence/console/README.md) | Pending GCP Console capture checklist |
 | [GITHUB-COLLABORATION-LOG.md](GITHUB-COLLABORATION-LOG.md) | Issue, PR, review and approval history for every Lab 5 issue |
 | [deployment.md](deployment.md) | Stack, environment settings and episode deployment runbooks |
 | [episode-7-deployment.md](episode-7-deployment.md) | Release workflow, WIF and IAM contract |

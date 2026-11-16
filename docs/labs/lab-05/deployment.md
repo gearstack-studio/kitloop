@@ -10,11 +10,20 @@ The [main deployment workflow](../../../.github/workflows/deploy.yml) runs the e
 
 The existing release script uses a 12-character commit prefix as each registry tag, then resolves and deploys the immutable digest. The workflow records the **full** main commit SHA with both digests and the serving revision. This differs from the handout's recommended full-SHA image tag but still identifies each release under R-08 without changing the Episode 5 image naming contract. Rollback routes traffic to a previously verified ready revision; it does not reverse migrations.
 
-**Current status (16 November 2026):** the workflow released protected-main commit `be72f87e15a6ea0efdac75ac38e51ad2e5a03949` in [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) after DEV4952 approved the `lab5-production` environment. The serving revision is `kitloop-be72f87e15a6-20261115143840`. `LAB5_DEPLOY_ENABLED` was restored to `false` afterwards. The release had no application source change, so C-06's visible-change criterion remains open; see the [evidence index](README.md#production-release-evidence).
+**Current status (16 November 2026):** the workflow released protected-main commit `be72f87e15a6ea0efdac75ac38e51ad2e5a03949` in [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) after DEV4952 approved the `lab5-production` environment. The serving revision is `kitloop-be72f87e15a6-20261115143840`. `LAB5_DEPLOY_ENABLED` was restored to `false` afterwards. This meets C-06 as the handout defines it. The release had no application source change, so execution step 7's "the URL shows the change" is not shown; see the [evidence index](README.md#required-check-status).
 
 The rest of this paragraph is the pre-activation checklist from 15 November, kept for reference. Before enabling, verify required passing `Build, test and Docker smoke` on main, one teammate approval, safe ruleset recovery, and actual Environment protection. The first public Episode 5 release and bootstrap must already exist. An authorized release test must record the feature PR, release PR, CI run, Environment approval, main SHA, Cloud Build result, image digests, migration execution, serving Cloud Run revision, and public URL HTTP checks. The matching revision is now observed; the visible change is not.
 
 The sections below retain their Episode 2 and Episode 5 implementation snapshots. Their pending-work statements describe those earlier changes at the time; use the [current Lab 5 evidence index](README.md) for present verification status.
+
+### Find the running commit
+
+Each release can be traced from the public URL back to its `main` commit (R-08):
+
+1. Run `bash infra/gcp/verify.sh public` from a checkout with `gcloud` access to the project. It prints `Serving revision: <name> (<percent>%)` for every revision receiving traffic.
+2. Read the commit prefix from the revision name. [release.sh](../../../infra/gcp/release.sh) names each revision `kitloop-<first 12 characters of the commit SHA>-<UTC timestamp>`, so `kitloop-be72f87e15a6-20261115143840` serves commit `be72f87e15a6...`.
+3. Confirm the full SHA in the matching **Main Cloud Run Deployment** run summary, which records the full source SHA, both image digests and the serving revision. Images are tagged with the same 12-character prefix and deployed by digest.
+4. Without `gcloud`, the Cloud Run console's **Revisions** tab shows the same revision name and traffic share.
 
 ## Episode 8 persistence tracking
 

@@ -1,18 +1,21 @@
 # Lab 5 evidence gap matrix
 
-Assessment: 16 November 2026, [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49). Status labels follow the [evidence index](README.md#status-vocabulary). Every action marked **approval required** changes GitHub, GCP or production state and has not been performed.
+Assessment: 16 November 2026, [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49). Status labels follow the [evidence index](README.md#status-vocabulary). Expected evidence follows the handout, Sections 8 and 12. Every action marked **approval required** changes GitHub, GCP or production state and has not been performed.
 
 ## Matrix
 
-| Requirement | Expected evidence | Existing evidence | Missing proof | Safe next action | Status |
+| Requirement | Expected evidence (handout) | Existing evidence | Missing proof | Safe next action | Status |
 |:--|:--|:--|:--|:--|:--|
-| C-02: failing CI blocks merge | PR page showing merge blocked by a failing required check | [PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test): required check failed twice, merge state `BLOCKED` | Merge-box screenshot; isolation from the missing-approval blocker | None required | `PASS` |
-| C-04: public URL, sign-in, action, rejection | Public sign-in, a valid action and a rejected action | [Baseline UI](evidence/persistence/baseline-ui.png) and authenticated observations; [rejection probes](evidence/public-access/README.md) returned 401 | Live role-based denial (optional) | None required | `PASS` |
-| C-06: reviewed release and matching revision | Reviewed `main` release; serving revision tied to its commit; visible change if the handout requires it | Revision `kitloop-be72f87e15a6-20261115143840` matches `be72f87` ([log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt)) | A visible application change, **if required** | [Confirm the handout wording](#c-06-requirement-confirmation) first | `PARTIAL`, requires confirmation |
-| Episode 5: GCP Console screenshots | Cloud Run, Cloud SQL, backups, Artifact Registry, Cloud Build, migration job | [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png), JSON metadata, release log | Console captures | [Capture list](#episode-5-console-captures); read-only | `PARTIAL` |
-| Episode 7: release summary | Run summary for the production release | [Run summary screenshot](evidence/deployment/release-run-43717180011-summary.png), [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | Environment approval panel screenshot | Capture the run's approval panel; read-only | `PASS` |
-| Episode 8: UI after restart and redeploy | Same request visible in the UI after each operation | API observations PASS for all three phases; baseline UI screenshot only | Historical UI captures after restart and redeploy do not exist | [Episode 8 note](#episode-8-ui-evidence) | `PARTIAL` |
-| Staging ruleset: review and last-push approval | Active `pull_request` rule with one approval and last-push approval; strict checks | [Restored as version 57946025](evidence/merge-gate/README.md#staging-ruleset-restoration), read back and matched to 57871331 | None | None required | `PASS` |
+| C-02 (R-06): failing PR cannot be merged | PR link; failed check and blocked merge; screenshot of the blocked merge button | [PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test): required check failed twice, merge state `BLOCKED` | Merge-button screenshot; CI cause not isolated from `REVIEW_REQUIRED` | A new disposable PR with a teammate approval, **approval required** | Behavior `PASS`; evidence `PARTIAL` |
+| C-04 (R-03): sign-in, main action, rejection on the public URL | Screenshots with the URL visible | [Baseline UI](evidence/persistence/baseline-ui.png) (URL cropped out), [rejection probes](evidence/public-access/README.md) (JSON) | Screenshots of sign-in, a request and a rejection with the URL visible | Capture in a browser with a synthetic account; read-only except one test request | Behavior `PASS`; evidence `PARTIAL` |
+| C-05 (R-04): record survives restart and redeploy | Before and after screenshots | Baseline screenshot; API records for all three phases | After-phase screenshots | None possible; see [Episode 8 note](#episode-8-ui-evidence) | Behavior `PASS`; evidence `PARTIAL` |
+| C-06 (R-07 to R-10): reviewed change deployed; revision matches commit | PR links, pipeline run, GCP revision | PR #45, release PR #46, [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2), [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | None for C-06 | None required | `PASS` |
+| Execution step 7: "the URL shows the change" | Visible change on the public URL | None; release `be72f87` changed no application code | A visible change | [Smallest visible release](#c-06-handout-finding), **approval required** | `NOT VERIFIED` |
+| R-09: specific teammate reviews | Every review states a specific check, question, finding or reason | Most approvals are specific | Four approvals are not (#26, first #33, #43, #44) | Cannot be changed retroactively; disclose | `PARTIAL` |
+| R-10: `lab5` labels on Lab 5 issues and PRs | Labels on every Lab 5 issue and PR | All 10 issues and 13 of 17 PRs | `lab5` on PRs #26, #44, #45, #46 | Add the label, **approval required** | `PARTIAL` |
+| Episode 5: GCP Console screenshots | Console settings a link cannot show | [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png), JSON metadata, release log | Console captures | [Capture checklist](evidence/console/README.md); read-only | `PENDING` |
+| Episode 7: environment approval panel | Screenshot of the `lab5-production` approval | Approval recorded by the run approvals API | Screenshot | Capture the run's approval panel; read-only | `PARTIAL` |
+| Staging ruleset: review and last-push approval | Active review rule; strict checks | [Restored as version 57946025](evidence/merge-gate/README.md#staging-ruleset-restoration) | None | None required | `PASS` |
 
 ## Staging ruleset restoration
 
@@ -94,42 +97,23 @@ No historical record shows GitHub refusing a merge. PR #42 failed CI, but it was
 
 Do not attempt to merge the PR, not even to show the refusal. If a protection were misconfigured, a merge attempt would put a failing test on staging.
 
-## C-06 requirement confirmation
+## C-06 handout finding
 
-The official handout is not in this repository, so the wording of C-06 cannot be checked here.
+The handout (`01_SE_Lab_5_updated.pdf`) was located on 16 November 2026. Its wording settles the earlier question:
 
-- The visible-change criterion first appears in our own paraphrase of the handout, added to [deployment.md](deployment.md#episode-7-release-path-issue-38) in commit `0753ec8` (PR #39).
-- The [Episode 8 draft](episode-8-issue.md) describes C-06 without it: reviewed feature and release PRs, required CI, the deployment run, and a serving revision tied to the main commit.
+| Source | Wording | Effect |
+|:--|:--|:--|
+| Section 8, C-06 | "A reviewed change goes from staging into main and is deployed, and the running revision matches its commit." Evidence: PR links, pipeline run, GCP revision. | Met by PR #45, release PR #46, run 43717180011 attempt 2 and revision `kitloop-be72f87e15a6-20261115143840`. |
+| Section 12, Part 4 (15 points) | One labelled change from Issue to PR into staging with a specific teammate review, release PR into main, CI and deployment; pipeline run and running revision showing the release commit. | Met, except that PRs #45 and #46 lack the `lab5` label. |
+| Section 7, step 7 "Done when" | "The URL shows the change and you can show which commit is running." | Not met: release `be72f87` changed no application code. |
 
-**Requires confirmation against the handout or rubric:**
+C-06 is therefore `PASS`. The visible change belongs to execution step 7, not to the graded check, and remains `NOT VERIFIED`.
 
-| If C-06 requires | Then |
-|:--|:--|
-| Reviewed release and matching revision only | Mark C-06 `PASS` from existing evidence. No release is needed. |
-| A visible change shown on the public URL | A new reviewed release is needed. Release `be72f87` changed no application code. |
-
-If a release is needed, the smallest suitable change is a UI footer showing the deployed short commit SHA. It is visible, and it makes the revision-to-commit link visible too. It would go through a feature PR, a release PR into `main` and an approved `lab5-production` deployment. That deployment runs Cloud Build, the migration job and a traffic change, so it needs explicit authorization.
+If the team wants step 7 fully shown, the smallest suitable change is a UI footer with the deployed short commit SHA. It would go through a labelled feature PR, a release PR into `main` and an approved `lab5-production` deployment. That deployment runs Cloud Build, the migration job and a traffic change, so it needs explicit authorization.
 
 ## Episode 5 console captures
 
-No browser session with GCP access is available to this audit, and `gcloud` is not installed locally. An authorized operator can capture these read-only pages. All are in project `lab-5-cloud-deployment-514310`, region `asia-southeast1`.
-
-| File to save | Console page | Must show |
-|:--|:--|:--|
-| `e5-01-cloud-run-revisions.png` | [Cloud Run service revisions](https://console.cloud.google.com/run/detail/asia-southeast1/kitloop/revisions?project=lab-5-cloud-deployment-514310) | Revision `kitloop-be72f87e15a6-20261115143840` at 100%, earlier revisions, image digest |
-| `e5-02-cloud-run-networking.png` | Same service, **Networking** tab | Ingress setting and VPC egress |
-| `e5-03-cloud-sql-overview.png` | [Cloud SQL `kitloop-pg` overview](https://console.cloud.google.com/sql/instances/kitloop-pg/overview?project=lab-5-cloud-deployment-514310) | PostgreSQL 17, tier, region, private IP only |
-| `e5-04-cloud-sql-backups.png` | [Cloud SQL backups](https://console.cloud.google.com/sql/instances/kitloop-pg/backups?project=lab-5-cloud-deployment-514310) | Automated backups enabled, backup `1794732111059` |
-| `e5-05-artifact-registry.png` | [Artifact Registry `kitloop`](https://console.cloud.google.com/artifacts/docker/lab-5-cloud-deployment-514310/asia-southeast1/kitloop?project=lab-5-cloud-deployment-514310) | `kitloop-app` and `kitloop-migration` with digests `f149e6db...` and `e35d9834...` |
-| `e5-06-cloud-build.png` | [Cloud Build history](https://console.cloud.google.com/cloud-build/builds;region=asia-southeast1?project=lab-5-cloud-deployment-514310) | Build `676619ea-a64f-4e49-89d5-cdb2a884a312`, SUCCESS |
-| `e5-07-migration-job.png` | [Cloud Run job `kitloop-migrate` executions](https://console.cloud.google.com/run/jobs/details/asia-southeast1/kitloop-migrate/executions?project=lab-5-cloud-deployment-514310) | Execution `kitloop-migrate-4d8sw` succeeded |
-| `e5-08-secret-manager.png` | [Secret Manager list](https://console.cloud.google.com/security/secret-manager?project=lab-5-cloud-deployment-514310) | Secret **names** only |
-
-Capture rules:
-- Crop out account emails and avatars.
-- Never open a secret version's value, the Cloud SQL users page or a connection string.
-- Name each file as above and record its capture time in `evidence/console/README.md`.
-- These captures show the state at capture time. Label them as current state, not as first-release evidence.
+The capture list, direct URLs, file names, expected content and redaction rules are in the [GCP Console capture checklist](evidence/console/README.md). No browser session with GCP access is available to this audit, and `gcloud` is not installed locally.
 
 ## Episode 8 UI evidence
 
