@@ -44,7 +44,7 @@ Step 9 of the handout is the final documentation and PDF submission. It is track
 | C-03: clean clone, Docker and configuration | [C-03 execution record](c-03-evidence.md), [PR A hosted CI](evidence/README.md) | `PARTIAL` | Browser refresh check not recorded |
 | C-04: public URL, sign-in, action, rejection | [Baseline UI screenshot](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Unauthenticated read and write attempts returned 401; live role-based denial not run |
 | C-05: record survives restart and redeploy | [Persistence register](evidence/persistence/README.md) | `PASS` | Same record, database and fingerprint in all three phases |
-| C-06: reviewed main release and matching revision | [Release PR #46](https://github.com/gearstack-studio/kitloop/pull/46), [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) | `PARTIAL` | Revision matches main SHA; the release had no visible application change |
+| C-06: reviewed main release and matching revision | [Release PR #46](https://github.com/gearstack-studio/kitloop/pull/46), [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) | `PARTIAL`, requires confirmation | Revision matches main SHA; no visible change, which may not be required ([confirmation needed](evidence-gaps.md#c-06-requirement-confirmation)) |
 
 ## Production release evidence
 
@@ -88,7 +88,7 @@ Read on 16 November 2026 with repository-admin access through the GitHub API. Th
 | `main` | Strict required check `Build, test and Docker smoke` (app 15368); no force pushes or deletions | `PASS` |
 | `main` review rules | One approving review, stale-review dismissal, code-owner review, administrators included; last-push approval off | `PASS` |
 | `sprint-1-staging` ruleset 27310627 | Active, no bypass actors; deletion, non-fast-forward and required check rules; strict check policy off | `PARTIAL` |
-| Staging PR review rule | Removed at 13:26:03Z and 15:45:00Z on 15 November, restored only in between; absent now | `NOT VERIFIED`; restoring it needs authorization |
+| Staging PR review rule | Removed at 13:26:03Z and 15:45:00Z on 15 November, restored only in between; absent now | `NOT VERIFIED`; [restoration plan](evidence-gaps.md#staging-ruleset-restoration) needs authorization |
 | `lab5-production` environment | Required reviewer DEV4952, self-review prevented, admin bypass disabled, custom branch policy | `PASS` |
 
 ## Collaboration record
@@ -119,10 +119,10 @@ Each item below is missing or incomplete. None is fabricated or replaced by a su
 
 1. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Copy them into the repository only after masking the email addresses visible in the IAM image.
 2. Episode 5: GCP Console screenshots of the Cloud Run service, Cloud SQL instance and backups, Artifact Registry and Cloud Build. A [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png) exists.
-3. C-02: a captured blocked merge. An [isolated test plan](evidence-gaps.md#c-02-isolated-merge-gate-test) awaits approval.
+3. C-02: a captured blocked merge. A [disposable PR test plan](evidence-gaps.md#c-02-disposable-failing-ci-test) awaits approval.
 4. C-03: the browser borrow-request and refresh check.
 5. C-04: optional live role-based denial. Unauthenticated rejection is [recorded](evidence/public-access/README.md).
-6. C-06: a visible application change on the public URL. A [smallest visible release](evidence-gaps.md#c-06-smallest-visible-release) awaits approval.
+6. C-06: a visible application change on the public URL, if the handout requires one. This [needs confirmation](evidence-gaps.md#c-06-requirement-confirmation) before any release.
 7. Episode 7: a screenshot of the `lab5-production` approval panel. The [run summary](evidence/deployment/release-run-43717180011-summary.png) and [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) are now in the repository.
 8. Episode 8: UI screenshots taken after the restart and the redeploy were never saved and cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence). API observations PASS.
 9. Architecture and CI/CD diagrams captured for the PDF report; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
