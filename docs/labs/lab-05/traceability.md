@@ -25,7 +25,7 @@ The official handout and rubric are not stored in this repository. Rows use the 
 
 | Requirement | Implementation | Evidence | Status | Remaining gap |
 |:--|:--|:--|:--|:--|
-| E1: billing, budget and teammate access | GCP project `lab-5-cloud-deployment-514310` | Billing and APIs checked in [#31 prerequisites](https://github.com/gearstack-studio/kitloop/issues/31) | `PARTIAL` | Credits, budget alerts and IAM grant evidence missing |
+| E1: billing, budget and teammate access | GCP project `lab-5-cloud-deployment-514310` | [Free Trial, billing, budget and IAM screenshots](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906), [DEV4952 access confirmation](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6855081953) | `PASS` | Screenshots are issue attachments, not repository files |
 | E2: `/api/ready`, `0.0.0.0` and `PORT` binding, safe seeds | PR [#26](https://github.com/gearstack-studio/kitloop/pull/26) | Readiness 200 and 503 tests in every CI backend run | `COMPLETE` | None |
 | E4: CI on pull requests | PR [#30](https://github.com/gearstack-studio/kitloop/pull/30) | [Run 43263932716](https://github.com/gearstack-studio/kitloop/actions/runs/43263932716) | `PASS` | None |
 | E5: Artifact Registry, Cloud SQL, Secret Manager, first release | PRs [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [infra/gcp](../../../infra/gcp/README.md) | [public-readiness.json](evidence/persistence/public-readiness.json), [first deployment comment](https://github.com/gearstack-studio/kitloop/pull/41#issuecomment-6891599464) | `PASS` | First-release build ID and console screenshots not in repository |

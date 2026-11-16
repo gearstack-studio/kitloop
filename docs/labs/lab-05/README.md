@@ -23,7 +23,7 @@ An issue's closed state records tracking only. It does not prove that the episod
 
 | Episode | Issue | Main PRs | Status | Remaining gap |
 |:--|:--|:--|:--|:--|
-| 1. GCP account and cost control | [#24](https://github.com/gearstack-studio/kitloop/issues/24) | None | `PARTIAL` | No evidence of Free Trial credits, budget alerts or teammate IAM grant |
+| 1. GCP account and cost control | [#24](https://github.com/gearstack-studio/kitloop/issues/24) | None | `PASS` | Screenshots exist only as [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906), not repository files |
 | 2. Cloud readiness | [#25](https://github.com/gearstack-studio/kitloop/issues/25) | [#26](https://github.com/gearstack-studio/kitloop/pull/26) | `COMPLETE` | None recorded |
 | 3. Docker containerization | [#27](https://github.com/gearstack-studio/kitloop/issues/27) | [#28](https://github.com/gearstack-studio/kitloop/pull/28) | `PARTIAL` | C-03 browser refresh check not recorded |
 | 4. CI on pull requests | [#29](https://github.com/gearstack-studio/kitloop/issues/29) | [#30](https://github.com/gearstack-studio/kitloop/pull/30) | `PASS` | None |
@@ -117,7 +117,7 @@ Both teammates authored issues and PRs, and each Lab 5 PR has an approving revie
 
 Each item below is absent from the repository and from public GitHub records. None is fabricated or replaced by a substitute.
 
-1. Episode 1: Free Trial credit, billing, budget alert and teammate IAM screenshots.
+1. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Copy them into the repository only after masking the email addresses visible in the IAM image.
 2. Episode 5: first-release Cloud Build ID, Cloud Run and Cloud SQL console screenshots, and backup configuration screenshot.
 3. C-02: a screenshot of a PR whose merge is blocked by a failing required check or a missing approval.
 4. C-03: the browser borrow-request and refresh check.
@@ -132,6 +132,7 @@ Each item below is absent from the repository and from public GitHub records. No
 | Document | Purpose |
 |:--|:--|
 | [traceability.md](traceability.md) | Requirement-to-evidence matrix and diagrams |
+| [GITHUB-COLLABORATION-LOG.md](GITHUB-COLLABORATION-LOG.md) | Issue, PR, review and approval history for every Lab 5 issue |
 | [deployment.md](deployment.md) | Stack, environment settings and episode deployment runbooks |
 | [episode-7-deployment.md](episode-7-deployment.md) | Release workflow, WIF and IAM contract |
 | [episode-7-security-review.md](episode-7-security-review.md) | Point-in-time security inventory, 15 November |
