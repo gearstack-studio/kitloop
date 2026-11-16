@@ -47,7 +47,7 @@ Requirement wording follows the updated CPE 334 Lab 5 handout (`01_SE_Lab_5_upda
 | E7: dedicated deployment identity through WIF | `kitloop-wif-deploy`, provider `kitloop-github-deploy` | Release job step "Authenticate with the dedicated deployment identity": success | `PASS` | None |
 | E7: Cloud Build and immutable digests | [release.sh](../../../infra/gcp/release.sh), [standalone build](episode-7-standalone-build.md) | Build `676619ea-a64f-4e49-89d5-cdb2a884a312` SUCCESS and digests in the [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | `PASS` | None |
 | E7: migration execution | `kitloop-migrate` job | Execution `kitloop-migrate-4d8sw` completed ([job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt)) | `PASS` | Pending-migration count is suppressed by the wrapper |
-| E7: environment approval gate | `lab5-production` | Run approvals: DEV4952 approved | `PASS` | Screenshot not captured |
+| E7: environment approval gate | `lab5-production` | Run approvals: DEV4952 approved; [approval screenshot](evidence/deployment/release-run-43717180011-environment-approval.png) | `PASS` | None |
 | E7: unauthorized deployment rejected | Trusted-job guard and WIF condition | Offline guard tests in CI; [Episode 6 negative probes](https://github.com/gearstack-studio/kitloop/actions/runs/43610138984) | `NOT VERIFIED` live | No live rejection run against the deployment provider |
 | E7 and E8: rollback | `release.sh rollback`, automatic failure rollback step | CI rollback tests; [DEV4952 acceptance](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896877114) | `DEFERRED (Reviewer Approved)` | Live rollback and roll-forward not executed |
 

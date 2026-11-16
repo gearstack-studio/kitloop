@@ -27,7 +27,7 @@ An issue's closed state records tracking only. It does not prove that the episod
 | 2. Cloud readiness | [#25](https://github.com/gearstack-studio/kitloop/issues/25) | [#26](https://github.com/gearstack-studio/kitloop/pull/26) | `COMPLETE` | None recorded |
 | 3. Docker containerization | [#27](https://github.com/gearstack-studio/kitloop/issues/27) | [#28](https://github.com/gearstack-studio/kitloop/pull/28) | `PASS` | None for the handout check; a team-added browser refresh check was not recorded |
 | 4. CI on pull requests | [#29](https://github.com/gearstack-studio/kitloop/issues/29) | [#30](https://github.com/gearstack-studio/kitloop/pull/30) | `PASS` | None |
-| 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | [Console screenshots](evidence/console/README.md) pending |
+| 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | [Console captures](evidence/console/README.md): 6 of 8 verified; networking and Cloud SQL overview pending |
 | 6A. GitHub OIDC and WIF | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | [#36](https://github.com/gearstack-studio/kitloop/pull/36) | `PASS` | Inherited-access analysis is partial |
 | 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Inherited-access analysis is partial; merge gates now verified |
 | 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | Step 7 "URL shows the change" not shown; live rollback `DEFERRED` |
@@ -63,7 +63,7 @@ The authorized production release is [Main Cloud Run Deployment run 43717180011,
 |:--|:--|:--|
 | Release PR | [#46](https://github.com/gearstack-studio/kitloop/pull/46), approved by DEV4952 at `53d2532` | GitHub review record |
 | Protected-main SHA | `be72f87e15a6ea0efdac75ac38e51ad2e5a03949` | Workflow run and deployment record |
-| Environment approval | `lab5-production`, approved by DEV4952 | Run approvals API |
+| Environment approval | `lab5-production`, approved by DEV4952 | Run approvals API and [approval screenshot](evidence/deployment/release-run-43717180011-environment-approval.png) |
 | CI job | [Build, test and Docker smoke](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/job/132842505247): success | Job steps |
 | Release job | [Approved Cloud Run release](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/job/132843368366): success | Job steps |
 | Cloud Build | `676619ea-a64f-4e49-89d5-cdb2a884a312`, SUCCESS | [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) |
@@ -134,8 +134,8 @@ Each item below is missing or incomplete. None is fabricated or replaced by a su
 1. C-02: a screenshot of the blocked merge button. PR #50 is closed, so its merge box can no longer be captured.
 2. C-04: screenshots of sign-in, the request action and a rejection with the public URL visible.
 3. C-05: after-restart and after-redeploy UI screenshots, which cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence).
-4. Episode 5: [GCP Console captures](evidence/console/README.md) of the service, database, backups, registry, build and migration job.
-5. Episode 7: a visible change on the public URL (execution step 7) and a screenshot of the `lab5-production` approval panel.
+4. Episode 5: the Cloud Run networking and Cloud SQL overview [Console captures](evidence/console/README.md#still-needed). Six of eight are verified.
+5. Episode 7: a visible change on the public URL (execution step 7). The `lab5-production` approval is [captured](evidence/deployment/release-run-43717180011-environment-approval.png).
 6. R-09: the non-specific reviews listed under [Collaboration record](#collaboration-record). They cannot be changed retroactively.
 7. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Mask the email addresses in the IAM image before copying it into the PDF or repository.
 8. Architecture and CI/CD diagrams for the PDF; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
