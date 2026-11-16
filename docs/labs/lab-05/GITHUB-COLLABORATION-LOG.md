@@ -9,7 +9,7 @@ Two developers, **yiiipunn** and **DEV4952**, delivered Lab 5 between 10 and 16 
 | Measure | Count |
 |:--|:--|
 | Lab 5 Issues | 10 (8 closed, 2 open) |
-| Related Pull Requests | 16, all merged |
+| Related Pull Requests | 16 merged, plus 1 disposable test PR closed unmerged (#50) |
 | Formal GitHub reviews | 18: 17 `APPROVED`, 1 `CHANGES_REQUESTED`, 0 `COMMENTED`, 0 `DISMISSED` |
 | Inline review comments | 0 |
 | Review cycles with requested changes | 2 (PR #39 by comment, PR #42 by formal review) |
@@ -54,7 +54,7 @@ PR types: **impl** implementation, **docs** documentation or evidence, **sec** s
 | 6B | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | yiiipunn | [#37](https://github.com/gearstack-studio/kitloop/pull/37) sec | DEV4952 | `APPROVED` | CLOSED |
 | 7 | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | yiiipunn | [#39](https://github.com/gearstack-studio/kitloop/pull/39) impl, [#44](https://github.com/gearstack-studio/kitloop/pull/44) sec, [#45](https://github.com/gearstack-studio/kitloop/pull/45) sec, [#46](https://github.com/gearstack-studio/kitloop/pull/46) rel, [#47](https://github.com/gearstack-studio/kitloop/pull/47) sync, [#48](https://github.com/gearstack-studio/kitloop/pull/48) sync | DEV4952 | `APPROVED`; #39 changes requested by comment | CLOSED |
 | 8 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | DEV4952 | [#41](https://github.com/gearstack-studio/kitloop/pull/41) docs | yiiipunn | `APPROVED` | OPEN |
-| Final | [#49](https://github.com/gearstack-studio/kitloop/issues/49) | yiiipunn | None yet; branch `docs/lab5-final-audit` | Pending | None yet | OPEN |
+| Final | [#49](https://github.com/gearstack-studio/kitloop/issues/49) | yiiipunn | [#50](https://github.com/gearstack-studio/kitloop/pull/50) test, closed unmerged; docs PR not yet opened | None | No reviews | OPEN |
 
 PRs #44 to #48 also reference Issue #40 in their descriptions. Issue #24 is the only closed Lab 5 Issue with no related PR, because its work was account and billing setup.
 
@@ -390,7 +390,7 @@ DEV4952 approved only the audit and preparation scope. The review states that in
 #### Final Verification
 
 - Direct IAM bindings, the custom role, the absence of keys and the provider trust condition are verified by screenshots. The inherited-access analysis is `PARTIAL`.
-- Ruleset 27310627 is active. Its [version history](evidence-gaps.md#staging-ruleset-history) shows the PR review rule removed at 13:26:03Z, restored at 13:57:25Z and removed again at 15:45:00Z on 15 November.
+- Ruleset 27310627 is active. Its [version history](evidence-gaps.md#staging-ruleset-history) shows the PR review rule removed at 13:26:03Z, restored at 13:57:25Z and removed again at 15:45:00Z on 15 November. It was [restored](evidence/merge-gate/README.md#staging-ruleset-restoration) on 16 November at 06:42:21Z as version 57946025.
 - No blocked-merge demonstration is recorded.
 
 #### Evidence
@@ -557,13 +557,24 @@ All phases record request `899544f9-d5a8-4248-829e-db75a44cbbf1`, database `lab-
 
 #### Related Pull Requests
 
-No PR has been opened yet.
+| PR | Purpose | Author | Base Branch | Merge Status |
+|:--|:--|:--|:--|:--|
+| [#50](https://github.com/gearstack-studio/kitloop/pull/50) | Disposable C-02 merge-gate test (intentional failure) | yiiipunn | `sprint-1-staging` | CLOSED, not merged |
+
+The documentation PR has not been opened yet.
 
 #### Review & Approval Timeline
 
 | Date (UTC) | Actor | Event | Outcome | Evidence |
 |:--|:--|:--|:--|:--|
 | 2026-11-16 03:59 | yiiipunn | Issue created | OPEN | [#49](https://github.com/gearstack-studio/kitloop/issues/49) |
+| 2026-11-16 06:42 | yiiipunn | Staging ruleset restored (authorized) | Version 57946025 | [Evidence](evidence/merge-gate/README.md#staging-ruleset-restoration) |
+| 2026-11-16 06:43 | yiiipunn | PR #50 opened as draft with an intentional failing test | Draft | [PR #50](https://github.com/gearstack-studio/kitloop/pull/50) |
+| 2026-11-16 06:45 | GitHub Actions | CI on `92c2da9` | **failure** (intentional) | [Run 43818714683](https://github.com/gearstack-studio/kitloop/actions/runs/43818714683) |
+| 2026-11-16 06:45 | yiiipunn | PR #50 marked ready for review | Ready | PR timeline |
+| 2026-11-16 06:47 | GitHub Actions | CI after ready for review | **failure** (intentional) | [Run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) |
+| 2026-11-16 06:48 | GitHub | Merge state captured | `BLOCKED` | [c02-pr50-merge-state.json](evidence/merge-gate/c02-pr50-merge-state.json) |
+| 2026-11-16 06:49 | yiiipunn | PR #50 closed without merging; branch deleted | CLOSED | [PR #50](https://github.com/gearstack-studio/kitloop/pull/50) |
 
 #### Final Verification
 

@@ -29,7 +29,7 @@ An issue's closed state records tracking only. It does not prove that the episod
 | 4. CI on pull requests | [#29](https://github.com/gearstack-studio/kitloop/issues/29) | [#30](https://github.com/gearstack-studio/kitloop/pull/30) | `PASS` | None |
 | 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | First-release Cloud Build ID and console screenshots not in repository |
 | 6A. GitHub OIDC and WIF | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | [#36](https://github.com/gearstack-studio/kitloop/pull/36) | `PASS` | Inherited-access analysis is partial |
-| 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Blocked-merge demonstration missing; staging review rule not active now |
+| 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Inherited-access analysis is partial; merge gates now verified |
 | 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | No visible UI change in the release; live rollback `DEFERRED` |
 | 8. Persistence and rollback | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | `PASS` | Live rollback `DEFERRED (Reviewer Approved)`; issue still open |
 
@@ -40,7 +40,7 @@ Step 9 of the handout is the final documentation and PDF submission. It is track
 | Check | Evidence | Result | Notes |
 |:--|:--|:--|:--|
 | C-01: PR build and tests | [PR #37 CI run](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | Job context `Build, test and Docker smoke` |
-| C-02: failing CI blocks merge | [Failing run on PR #42](https://github.com/gearstack-studio/kitloop/actions/runs/43683951193), [main protection](#branch-protection-observed-on-16-november-2026) | `PARTIAL` | Required check is configured on main; GitHub's blocked-merge state was not captured |
+| C-02: failing CI blocks merge | [Disposable PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test), [run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) | `PASS` | Required check failed and GitHub reported `BLOCKED`; the missing approval was a second blocker |
 | C-03: clean clone, Docker and configuration | [C-03 execution record](c-03-evidence.md), [PR A hosted CI](evidence/README.md) | `PARTIAL` | Browser refresh check not recorded |
 | C-04: public URL, sign-in, action, rejection | [Baseline UI screenshot](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Unauthenticated read and write attempts returned 401; live role-based denial not run |
 | C-05: record survives restart and redeploy | [Persistence register](evidence/persistence/README.md) | `PASS` | Same record, database and fingerprint in all three phases |
@@ -87,8 +87,8 @@ Read on 16 November 2026 with repository-admin access through the GitHub API. Th
 |:--|:--|:--|
 | `main` | Strict required check `Build, test and Docker smoke` (app 15368); no force pushes or deletions | `PASS` |
 | `main` review rules | One approving review, stale-review dismissal, code-owner review, administrators included; last-push approval off | `PASS` |
-| `sprint-1-staging` ruleset 27310627 | Active, no bypass actors; deletion, non-fast-forward and required check rules; strict check policy off | `PARTIAL` |
-| Staging PR review rule | Removed at 13:26:03Z and 15:45:00Z on 15 November, restored only in between; absent now | `NOT VERIFIED`; [restoration plan](evidence-gaps.md#staging-ruleset-restoration) needs authorization |
+| `sprint-1-staging` ruleset 27310627 | Restored on 16 November as version 57946025: active, no bypass actors; deletion, non-fast-forward, strict required check | `PASS` |
+| Staging PR review rule | 1 approval, last-push approval, stale dismissal, thread resolution; [restored and read back](evidence/merge-gate/README.md#staging-ruleset-restoration). Removed twice on 15 November before restoration | `PASS` |
 | `lab5-production` environment | Required reviewer DEV4952, self-review prevented, admin bypass disabled, custom branch policy | `PASS` |
 
 ## Collaboration record
@@ -119,7 +119,7 @@ Each item below is missing or incomplete. None is fabricated or replaced by a su
 
 1. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Copy them into the repository only after masking the email addresses visible in the IAM image.
 2. Episode 5: GCP Console screenshots of the Cloud Run service, Cloud SQL instance and backups, Artifact Registry and Cloud Build. A [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png) exists.
-3. C-02: a captured blocked merge. A [disposable PR test plan](evidence-gaps.md#c-02-disposable-failing-ci-test) awaits approval.
+3. C-02: a merge-box screenshot. The blocked state is [recorded through the API](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test).
 4. C-03: the browser borrow-request and refresh check.
 5. C-04: optional live role-based denial. Unauthenticated rejection is [recorded](evidence/public-access/README.md).
 6. C-06: a visible application change on the public URL, if the handout requires one. This [needs confirmation](evidence-gaps.md#c-06-requirement-confirmation) before any release.

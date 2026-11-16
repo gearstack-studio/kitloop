@@ -6,15 +6,17 @@ Assessment: 16 November 2026, [Issue #49](https://github.com/gearstack-studio/ki
 
 | Requirement | Expected evidence | Existing evidence | Missing proof | Safe next action | Status |
 |:--|:--|:--|:--|:--|:--|
-| C-02: failing CI blocks merge | PR page showing merge blocked by a failing required check | Required check on `main` and in the staging ruleset (verified with admin access); failing [run 43683951193](https://github.com/gearstack-studio/kitloop/actions/runs/43683951193) on PR #42 | A captured `BLOCKED` merge state; `main` protection during PR #42 is not recorded | [Disposable C-02 PR](#c-02-disposable-failing-ci-test), **approval required** | `PARTIAL` |
+| C-02: failing CI blocks merge | PR page showing merge blocked by a failing required check | [PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test): required check failed twice, merge state `BLOCKED` | Merge-box screenshot; isolation from the missing-approval blocker | None required | `PASS` |
 | C-04: public URL, sign-in, action, rejection | Public sign-in, a valid action and a rejected action | [Baseline UI](evidence/persistence/baseline-ui.png) and authenticated observations; [rejection probes](evidence/public-access/README.md) returned 401 | Live role-based denial (optional) | None required | `PASS` |
 | C-06: reviewed release and matching revision | Reviewed `main` release; serving revision tied to its commit; visible change if the handout requires it | Revision `kitloop-be72f87e15a6-20261115143840` matches `be72f87` ([log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt)) | A visible application change, **if required** | [Confirm the handout wording](#c-06-requirement-confirmation) first | `PARTIAL`, requires confirmation |
 | Episode 5: GCP Console screenshots | Cloud Run, Cloud SQL, backups, Artifact Registry, Cloud Build, migration job | [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png), JSON metadata, release log | Console captures | [Capture list](#episode-5-console-captures); read-only | `PARTIAL` |
 | Episode 7: release summary | Run summary for the production release | [Run summary screenshot](evidence/deployment/release-run-43717180011-summary.png), [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | Environment approval panel screenshot | Capture the run's approval panel; read-only | `PASS` |
 | Episode 8: UI after restart and redeploy | Same request visible in the UI after each operation | API observations PASS for all three phases; baseline UI screenshot only | Historical UI captures after restart and redeploy do not exist | [Episode 8 note](#episode-8-ui-evidence) | `PARTIAL` |
-| Staging ruleset: review and last-push approval | Active `pull_request` rule with one approval and last-push approval; strict checks | Rule present in versions 57862071 and 57871331; current version 57878159 rechecked 16 November | `pull_request` rule absent; strict checks off | [Restoration plan](#staging-ruleset-restoration), **approval required** | `NOT VERIFIED` |
+| Staging ruleset: review and last-push approval | Active `pull_request` rule with one approval and last-push approval; strict checks | [Restored as version 57946025](evidence/merge-gate/README.md#staging-ruleset-restoration), read back and matched to 57871331 | None | None required | `PASS` |
 
 ## Staging ruleset restoration
+
+**Applied on 16 November 2026 at 06:42:21 UTC** after explicit authorization. The read-back matches version 57871331 by rule type; see the [merge-gate evidence](evidence/merge-gate/README.md#staging-ruleset-restoration). The plan below is kept as the reviewed record.
 
 ### Current state, rechecked 16 November 2026
 
@@ -57,6 +59,8 @@ Expected after step 3: rule types `deletion`, `non_fast_forward`, `pull_request`
 If GitHub rejects a parameter copied from the stored state (`dismissal_restriction`, `required_reviewers` or `require_extra_approval_for_unattributed_changes`), the request fails without changing anything. Then apply the reviewed proposal [wif-iam-merge-gates-ruleset.json](wif-iam-merge-gates-ruleset.json), which produced this state when it was first applied, and repeat step 3.
 
 ## C-02 disposable failing-CI test
+
+**Run on 16 November 2026** after explicit authorization, as [PR #50](https://github.com/gearstack-studio/kitloop/pull/50). Both CI runs failed on the intentional test, GitHub reported `BLOCKED`, and the PR was closed without merging. Results and limits are in the [merge-gate evidence](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test). The plan below is kept as the reviewed record.
 
 No historical record shows GitHub refusing a merge. PR #42 failed CI, but it was merged only after a passing rerun, and `main` protection at that time is not recorded. The test below touches no protected branch and no cloud resource; `deploy.yml` runs only on pushes to `main`. Run it **after** the ruleset restoration, so that the evidence reflects the final configuration.
 
@@ -133,7 +137,7 @@ UI screenshots taken at the restart and redeploy times were not saved, and they 
 
 ## Staging ruleset history
 
-Read with repository-admin access on 16 November 2026 from the ruleset history API. All four versions were saved by yiiipunn.
+Read with repository-admin access on 16 November 2026 from the ruleset history API. All five versions were saved by yiiipunn; the fifth is the authorized restoration.
 
 | Version | Saved (UTC) | `pull_request` rule | Strict checks | Merges while active |
 |:--|:--|:--|:--|:--|
@@ -141,6 +145,7 @@ Read with repository-admin access on 16 November 2026 from the ruleset history A
 | 57869562 | 2026-11-15 13:26:03 | Removed | On | [#47](https://github.com/gearstack-studio/kitloop/pull/47) (13:26:38), [#48](https://github.com/gearstack-studio/kitloop/pull/48) (13:35:04) |
 | 57871331 | 2026-11-15 13:57:25 | Restored, same settings | On | None |
 | 57878159 | 2026-11-15 15:45:00 | Removed | Off | [#41](https://github.com/gearstack-studio/kitloop/pull/41) (15:45:19) |
+| 57946025 | 2026-11-16 06:42:21 | Restored to version 57871331 settings | On | None at capture time |
 
 Each removal was saved less than a minute before a merge. Every one of those PRs had an `APPROVED` review from the other developer. For PR #41, the approving reviewer (yiiipunn) had also pushed the last commit (`4c71c07`), which a last-push approval rule does not accept from the same person. The ruleset has no bypass actors, and the required check rule stayed active throughout.
 
