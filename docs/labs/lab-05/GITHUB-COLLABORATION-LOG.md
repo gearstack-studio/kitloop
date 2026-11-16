@@ -303,7 +303,8 @@ The hosted run passed build, tests, migrations, HTTP smoke checks and cleanup. T
 
 - [PR A hosted CI screenshots](evidence/README.md)
 - [Baseline revision and digest](evidence/persistence/baseline.json)
-- **TODO:** Cloud Run service, Cloud SQL instance and first-release Cloud Build screenshots from the GCP console.
+- [First release in Cloud Shell](evidence/deployment/first-release-publish-cloud-shell.png), copied from the PR #41 comment attachment
+- **TODO:** Cloud Run service, Cloud SQL instance and Cloud Build screenshots from the GCP console; see [capture instructions](evidence-gaps.md#episode-5-console-captures).
 - **TODO:** screenshot of PR #42's `CHANGES_REQUESTED` review followed by the approval.
 
 ## Episode 6: WIF, IAM and merge gates
@@ -389,7 +390,7 @@ DEV4952 approved only the audit and preparation scope. The review states that in
 #### Final Verification
 
 - Direct IAM bindings, the custom role, the absence of keys and the provider trust condition are verified by screenshots. The inherited-access analysis is `PARTIAL`.
-- Ruleset 27310627 is active. On 16 November its public rules showed no PR review rule; see the [evidence index](README.md#branch-protection-observed-on-16-november-2026).
+- Ruleset 27310627 is active. Its [version history](evidence-gaps.md#staging-ruleset-history) shows the PR review rule removed at 13:26:03Z, restored at 13:57:25Z and removed again at 15:45:00Z on 15 November.
 - No blocked-merge demonstration is recorded.
 
 #### Evidence
@@ -475,7 +476,8 @@ The release had no application source change, which the PR #46 review states. So
 
 - [Successful deployment screenshot](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896256486) (issue attachment)
 - [Security review](episode-7-security-review.md), [standalone build proposal](episode-7-standalone-build.md), [deployment design](episode-7-deployment.md)
-- **TODO:** screenshots of the environment approval and of the release job summary for run 43717180011 attempt 2.
+- [Run summary screenshot](evidence/deployment/release-run-43717180011-summary.png) and [release job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt)
+- **TODO:** screenshot of the `lab5-production` environment approval panel for run 43717180011 attempt 2.
 
 ## Episode 8: Persistence and rollback
 

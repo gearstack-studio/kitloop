@@ -1,0 +1,46 @@
+{
+  "check": "C-04 public rejection probes",
+  "observedAt": "2026-11-16T05:05:52.408197+00:00",
+  "origin": "https://kitloop-610347790049.asia-southeast1.run.app",
+  "method": "Unauthenticated HTTPS requests with no cookie, CSRF token or credentials. No data was created or changed.",
+  "servingRevision": "not observable from HTTP responses; last recorded revision kitloop-be72f87e15a6-20261115143840",
+  "observations": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "purpose": "public health",
+      "status": 200,
+      "errorCode": null,
+      "contentType": "application/json; charset=utf-8",
+      "setCookieReturned": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/requests/mine",
+      "purpose": "protected read without a session",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "contentType": "application/json; charset=utf-8",
+      "setCookieReturned": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/requests/pending",
+      "purpose": "custodian read without a session",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "contentType": "application/json; charset=utf-8",
+      "setCookieReturned": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests",
+      "purpose": "create request without a session; rejected by requireAuth before any database access",
+      "status": 401,
+      "errorCode": "UNAUTHENTICATED",
+      "contentType": "application/json; charset=utf-8",
+      "setCookieReturned": false
+    }
+  ],
+  "result": "PASS"
+}

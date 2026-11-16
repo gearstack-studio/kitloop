@@ -42,7 +42,7 @@ Step 9 of the handout is the final documentation and PDF submission. It is track
 | C-01: PR build and tests | [PR #37 CI run](https://github.com/gearstack-studio/kitloop/actions/runs/43618541536) and later PR runs | `PASS` | Job context `Build, test and Docker smoke` |
 | C-02: failing CI blocks merge | [Failing run on PR #42](https://github.com/gearstack-studio/kitloop/actions/runs/43683951193), [main protection](#branch-protection-observed-on-16-november-2026) | `PARTIAL` | Required check is configured on main; GitHub's blocked-merge state was not captured |
 | C-03: clean clone, Docker and configuration | [C-03 execution record](c-03-evidence.md), [PR A hosted CI](evidence/README.md) | `PARTIAL` | Browser refresh check not recorded |
-| C-04: public URL, sign-in, action, rejection | [Baseline UI screenshot](evidence/persistence/baseline-ui.png), [public readiness](evidence/persistence/public-readiness.json) | `PARTIAL` | Public sign-in and request creation shown; a public rejection case is not recorded |
+| C-04: public URL, sign-in, action, rejection | [Baseline UI screenshot](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Unauthenticated read and write attempts returned 401; live role-based denial not run |
 | C-05: record survives restart and redeploy | [Persistence register](evidence/persistence/README.md) | `PASS` | Same record, database and fingerprint in all three phases |
 | C-06: reviewed main release and matching revision | [Release PR #46](https://github.com/gearstack-studio/kitloop/pull/46), [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) | `PARTIAL` | Revision matches main SHA; the release had no visible application change |
 
@@ -57,16 +57,16 @@ The authorized production release is [Main Cloud Run Deployment run 43717180011,
 | Environment approval | `lab5-production`, approved by DEV4952 | Run approvals API |
 | CI job | [Build, test and Docker smoke](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/job/132842505247): success | Job steps |
 | Release job | [Approved Cloud Run release](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/job/132843368366): success | Job steps |
-| Cloud Build | `676619ea-a64f-4e49-89d5-cdb2a884a312`, SUCCESS | [Release record comment](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896493578) |
+| Cloud Build | `676619ea-a64f-4e49-89d5-cdb2a884a312`, SUCCESS | [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) |
 | App image digest | `sha256:f149e6dba8e94305b2ee817f4c371cd5764ebdf5b2224cd1f16b42677ebeb46b` | Release record and [after-redeploy.json](evidence/persistence/after-redeploy.json) |
-| Migration image digest | `sha256:e35d98349622aba0d38ec04600c84f889eab779fa4b67b025437be6c85233114` | Release record comment |
-| Migration execution | `kitloop-migrate-4d8sw`, one success, zero failures | Release record comment |
+| Migration image digest | `sha256:e35d98349622aba0d38ec04600c84f889eab779fa4b67b025437be6c85233114` | [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) |
+| Migration execution | `kitloop-migrate-4d8sw`, completed successfully | [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) |
 | Serving revision | `kitloop-be72f87e15a6-20261115143840`, Ready, 100% traffic | Release record and after-redeploy.json |
 | Health | `/`, `/api/health`, `/api/ready` returned HTTP 200 | Release job verification step and release record |
 | Automatic rollback step | Skipped because release and verification succeeded | Job steps |
 | Deployment gate after release | `LAB5_DEPLOY_ENABLED=false`, read back after the run | Release record comment |
 
-The build, migration and digest values come from the operator's release record on Issue #38. The job logs that contain them require repository access; the public job step list confirms each step's result.
+The build, digest, migration, candidate and traffic values are confirmed by the release job's own log, read with repository access on 16 November 2026, and match the operator's [release record](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896493578). The [run summary screenshot](evidence/deployment/release-run-43717180011-summary.png) shows the same result.
 
 ## Persistence and rollback
 
@@ -81,14 +81,14 @@ All three phases record request `899544f9-d5a8-4248-829e-db75a44cbbf1`, database
 
 ## Branch protection observed on 16 November 2026
 
-These values come from unauthenticated reads of the public GitHub API. Review requirements for classic branch protection are visible only to repository administrators.
+Read on 16 November 2026 with repository-admin access through the GitHub API. The staging ruleset's version history is in the [evidence gap matrix](evidence-gaps.md#staging-ruleset-history).
 
 | Control | Observed state | Status |
 |:--|:--|:--|
-| `main` | Protected; required check `Build, test and Docker smoke` (app 15368), enforced for everyone | `PASS` for the required check |
-| `main` review rules | One fresh approval, code-owner review and admin enforcement are reported in the [restoration record](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6895828916) | `NOT VERIFIED` independently |
-| `sprint-1-staging` ruleset 27310627 | Active; deletion, non-fast-forward and required check rules; strict check policy off | `PARTIAL` |
-| Staging PR review rule | Absent from the ruleset since its update at 2026-11-15T15:45:00Z, although the restoration record lists it | `NOT VERIFIED`; needs administrator review |
+| `main` | Strict required check `Build, test and Docker smoke` (app 15368); no force pushes or deletions | `PASS` |
+| `main` review rules | One approving review, stale-review dismissal, code-owner review, administrators included; last-push approval off | `PASS` |
+| `sprint-1-staging` ruleset 27310627 | Active, no bypass actors; deletion, non-fast-forward and required check rules; strict check policy off | `PARTIAL` |
+| Staging PR review rule | Removed at 13:26:03Z and 15:45:00Z on 15 November, restored only in between; absent now | `NOT VERIFIED`; restoring it needs authorization |
 | `lab5-production` environment | Required reviewer DEV4952, self-review prevented, admin bypass disabled, custom branch policy | `PASS` |
 
 ## Collaboration record
@@ -115,16 +115,16 @@ Both teammates authored issues and PRs, and each Lab 5 PR has an approving revie
 
 ## Missing evidence
 
-Each item below is absent from the repository and from public GitHub records. None is fabricated or replaced by a substitute.
+Each item below is missing or incomplete. None is fabricated or replaced by a substitute. The [evidence gap matrix](evidence-gaps.md) gives the safe next action for each.
 
 1. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Copy them into the repository only after masking the email addresses visible in the IAM image.
-2. Episode 5: first-release Cloud Build ID, Cloud Run and Cloud SQL console screenshots, and backup configuration screenshot.
-3. C-02: a screenshot of a PR whose merge is blocked by a failing required check or a missing approval.
+2. Episode 5: GCP Console screenshots of the Cloud Run service, Cloud SQL instance and backups, Artifact Registry and Cloud Build. A [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png) exists.
+3. C-02: a captured blocked merge. An [isolated test plan](evidence-gaps.md#c-02-isolated-merge-gate-test) awaits approval.
 4. C-03: the browser borrow-request and refresh check.
-5. C-04: a public-URL rejection case, such as a Borrower denied a Custodian action.
-6. C-06: a visible application change on the public URL in the main release.
-7. Episode 7: screenshots of the environment approval and release job summary; raw job logs are visible only with repository access.
-8. Episode 8: UI screenshots of the same record after restart and after redeploy (API observations exist).
+5. C-04: optional live role-based denial. Unauthenticated rejection is [recorded](evidence/public-access/README.md).
+6. C-06: a visible application change on the public URL. A [smallest visible release](evidence-gaps.md#c-06-smallest-visible-release) awaits approval.
+7. Episode 7: a screenshot of the `lab5-production` approval panel. The [run summary](evidence/deployment/release-run-43717180011-summary.png) and [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) are now in the repository.
+8. Episode 8: UI screenshots taken after the restart and the redeploy were never saved and cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence). API observations PASS.
 9. Architecture and CI/CD diagrams captured for the PDF report; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
 
 ## Document map
@@ -132,6 +132,8 @@ Each item below is absent from the repository and from public GitHub records. No
 | Document | Purpose |
 |:--|:--|
 | [traceability.md](traceability.md) | Requirement-to-evidence matrix and diagrams |
+| [evidence-gaps.md](evidence-gaps.md) | Evidence gap matrix, approval-gated test plans and ruleset history |
+| [evidence/deployment/README.md](evidence/deployment/README.md), [evidence/public-access/README.md](evidence/public-access/README.md) | Release, first-release and public rejection evidence with provenance |
 | [GITHUB-COLLABORATION-LOG.md](GITHUB-COLLABORATION-LOG.md) | Issue, PR, review and approval history for every Lab 5 issue |
 | [deployment.md](deployment.md) | Stack, environment settings and episode deployment runbooks |
 | [episode-7-deployment.md](episode-7-deployment.md) | Release workflow, WIF and IAM contract |
