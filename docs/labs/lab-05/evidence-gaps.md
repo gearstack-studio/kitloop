@@ -12,7 +12,7 @@ Assessment: 16 November 2026, [Issue #49](https://github.com/gearstack-studio/ki
 | C-06 (R-07 to R-10): reviewed change deployed; revision matches commit | PR links, pipeline run, GCP revision | PR #45, release PR #46, [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2), [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | None for C-06 | None required | `PASS` |
 | Execution step 7: "the URL shows the change" | Visible change on the public URL | None; release `be72f87` changed no application code | A visible change | [Smallest visible release](#c-06-handout-finding), **approval required** | `NOT VERIFIED` |
 | R-09: specific teammate reviews | Every review states a specific check, question, finding or reason | Most approvals are specific | Four approvals are not (#26, first #33, #43, #44) | Cannot be changed retroactively; disclose | `PARTIAL` |
-| R-10: `lab5` labels on Lab 5 issues and PRs | Labels on every Lab 5 issue and PR | All 10 issues and 13 of 17 PRs | `lab5` on PRs #26, #44, #45, #46 | Add the label, **approval required** | `PARTIAL` |
+| R-10: `lab5` labels on Lab 5 issues and PRs | Labels on every Lab 5 issue and PR | All 10 issues and all 17 PRs; #26, #44, #45 and #46 labelled retroactively on 2026-11-16 at 08:08 UTC | None | None required | `PASS` |
 | Episode 5: GCP Console screenshots | Console settings a link cannot show | [Cloud Shell first-release capture](evidence/deployment/first-release-publish-cloud-shell.png), JSON metadata, release log | Console captures | [Capture checklist](evidence/console/README.md); read-only | `PENDING` |
 | Episode 7: environment approval panel | Screenshot of the `lab5-production` approval | Approval recorded by the run approvals API | Screenshot | Capture the run's approval panel; read-only | `PARTIAL` |
 | Staging ruleset: review and last-push approval | Active review rule; strict checks | [Restored as version 57946025](evidence/merge-gate/README.md#staging-ruleset-restoration) | None | None required | `PASS` |
@@ -104,7 +104,7 @@ The handout (`01_SE_Lab_5_updated.pdf`) was located on 16 November 2026. Its wor
 | Source | Wording | Effect |
 |:--|:--|:--|
 | Section 8, C-06 | "A reviewed change goes from staging into main and is deployed, and the running revision matches its commit." Evidence: PR links, pipeline run, GCP revision. | Met by PR #45, release PR #46, run 43717180011 attempt 2 and revision `kitloop-be72f87e15a6-20261115143840`. |
-| Section 12, Part 4 (15 points) | One labelled change from Issue to PR into staging with a specific teammate review, release PR into main, CI and deployment; pipeline run and running revision showing the release commit. | Met, except that PRs #45 and #46 lack the `lab5` label. |
+| Section 12, Part 4 (15 points) | One labelled change from Issue to PR into staging with a specific teammate review, release PR into main, CI and deployment; pipeline run and running revision showing the release commit. | Met. PRs #45 and #46 carry `lab5`, labelled retroactively on 2026-11-16 at 08:08 UTC. |
 | Section 7, step 7 "Done when" | "The URL shows the change and you can show which commit is running." | Not met: release `be72f87` changed no application code. |
 
 C-06 is therefore `PASS`. The visible change belongs to execution step 7, not to the graded check, and remains `NOT VERIFIED`.

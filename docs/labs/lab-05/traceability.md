@@ -17,7 +17,7 @@ Requirement wording follows the updated CPE 334 Lab 5 handout (`01_SE_Lab_5_upda
 | R-07: release from main through review, CI, merge, deployment | [deploy.yml](../../../.github/workflows/deploy.yml), PR [#45](https://github.com/gearstack-studio/kitloop/pull/45), release PR [#46](https://github.com/gearstack-studio/kitloop/pull/46) | [Run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2) with environment approval | `PASS` | None |
 | R-08: identify each release commit; documented release procedure | [release.sh](../../../infra/gcp/release.sh), [deployment.md](deployment.md#find-the-running-commit) | Revision `kitloop-be72f87e15a6-20261115143840`, [job log excerpt](evidence/deployment/release-run-43717180011-log-excerpt.txt) | `PASS` | Registry tag is a 12-character SHA prefix; the full SHA is recorded in the run |
 | R-09: issues, board, branches, teammate-reviewed PRs, release PR; specific reviews | Issue and PR history | [Collaboration record](README.md#collaboration-record), [collaboration log](GITHUB-COLLABORATION-LOG.md) | `PARTIAL` | Four approvals state no specific check or finding |
-| R-10: `lab5` labels; history kept | Labels; no rewritten history | [Collaboration record](README.md#collaboration-record) | `PARTIAL` | PRs #26, #44, #45 and #46 lack `lab5` |
+| R-10: `lab5` labels; history kept | Labels; no rewritten history | [Collaboration record](README.md#collaboration-record) | `PASS` | PRs #26, #44, #45 and #46 were labelled retroactively on 2026-11-16 at 08:08 UTC |
 | R-11: both members take part in every activity | Issue and PR authorship and review | [Collaboration log](GITHUB-COLLABORATION-LOG.md#collaboration-patterns) | `PASS` | None |
 | R-12: public repository | `gearstack-studio/kitloop` | [Repository page](https://github.com/gearstack-studio/kitloop), API `visibility: public` | `PASS` | None |
 
@@ -30,7 +30,7 @@ Requirement wording follows the updated CPE 334 Lab 5 handout (`01_SE_Lab_5_upda
 | C-03: fresh clone builds and runs with `.env.example` values | R-01, R-02 | [C-03 record](c-03-evidence.md) | `PASS` | None |
 | C-04: sign-in, main action and one rejection on the public URL | R-03 | [Baseline UI](evidence/persistence/baseline-ui.png), [rejection probes](evidence/public-access/README.md) | `PASS` | Screenshots with the URL visible |
 | C-05: record survives restart and redeploy | R-04 | [baseline](evidence/persistence/baseline.json), [restart](evidence/persistence/after-restart.json), [redeploy](evidence/persistence/after-redeploy.json) | `PASS` | After-phase screenshots |
-| C-06: reviewed change from staging to main, deployed, revision matches commit | R-07 to R-10 | PRs [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46), [release evidence](README.md#production-release-evidence) | `PASS` | `lab5` labels on #45 and #46; step 7 visible change |
+| C-06: reviewed change from staging to main, deployed, revision matches commit | R-07 to R-10 | PRs [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46), [release evidence](README.md#production-release-evidence) | `PASS` | Step 7 visible change (not part of C-06) |
 
 ## Episode implementation evidence
 

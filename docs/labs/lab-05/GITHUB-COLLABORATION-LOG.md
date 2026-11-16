@@ -471,7 +471,7 @@ The 14:33 approval time is the start of the release job; the approval record its
 | Live rejection of an unauthorized deployment | `NOT VERIFIED` |
 | C-06 as defined in the handout | `PASS` |
 
-C-06, as the handout defines it, is met: a reviewed change (PR #45) went from staging into main (PR #46), was deployed by the pipeline, and the running revision matches its commit. The release had no application source change, which the PR #46 review states, so execution step 7's "the URL shows the change" is not shown. PRs #45 and #46 also lack the `lab5` label that R-10 requires.
+C-06, as the handout defines it, is met: a reviewed change (PR #45) went from staging into main (PR #46), was deployed by the pipeline, and the running revision matches its commit. The release had no application source change, which the PR #46 review states, so execution step 7's "the URL shows the change" is not shown. PRs #45 and #46 carry the `lab5` label, labelled retroactively on 2026-11-16 at 08:08 UTC.
 
 #### Evidence
 

@@ -30,7 +30,7 @@ An issue's closed state records tracking only. It does not prove that the episod
 | 5. First GCP deployment | [#31](https://github.com/gearstack-studio/kitloop/issues/31) | [#32](https://github.com/gearstack-studio/kitloop/pull/32), [#33](https://github.com/gearstack-studio/kitloop/pull/33), [#42](https://github.com/gearstack-studio/kitloop/pull/42) | `PASS` | [Console screenshots](evidence/console/README.md) pending |
 | 6A. GitHub OIDC and WIF | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | [#36](https://github.com/gearstack-studio/kitloop/pull/36) | `PASS` | Inherited-access analysis is partial |
 | 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Inherited-access analysis is partial; merge gates now verified |
-| 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | Step 7 "URL shows the change" not shown; #44 to #46 lack the `lab5` label; live rollback `DEFERRED` |
+| 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | Step 7 "URL shows the change" not shown; live rollback `DEFERRED` |
 | 8. Persistence and rollback | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | `PASS` | Live rollback `DEFERRED (Reviewer Approved)`; issue still open |
 
 Step 9 of the handout is the final documentation and PDF submission. It is tracked by Issue #49, not by an episode issue.
@@ -53,7 +53,7 @@ Notes:
 - **C-02:** when the merge state was captured, both the failing required check and the missing approval (`REVIEW_REQUIRED`) were active. GitHub reports `BLOCKED` without separating the causes. The handout's reference setup also requires both a passing check and one approval, but the CI cause alone is not isolated.
 - **C-04:** the baseline screenshot crops out the address bar, and the rejection evidence is JSON. Both behaviors are verified, but the handout asks for screenshots with the URL visible.
 - **C-05:** after-restart and after-redeploy UI screenshots were never taken and cannot be recreated.
-- **C-06:** the check does not require a visible change. Execution step 7 does ("the URL shows the change"), and release `be72f87` changed no application code. PRs #45 and #46 also lack the `lab5` label that R-10 requires.
+- **C-06:** the check does not require a visible change. Execution step 7 does ("the URL shows the change"), and release `be72f87` changed no application code. PRs #45 and #46 carry the `lab5` label that R-10 requires, labelled retroactively on 2026-11-16 at 08:08 UTC.
 
 ## Production release evidence
 
@@ -125,7 +125,7 @@ Both teammates authored issues and PRs, and each Lab 5 PR has an approving revie
 Handout gaps in this record:
 
 - **R-09, specific reviews:** four approvals state no specific check or finding: [#26](https://github.com/gearstack-studio/kitloop/pull/26#pullrequestreview-5873577028) ("Approve"), the first of two on [#33](https://github.com/gearstack-studio/kitloop/pull/33#pullrequestreview-5896073874) ("Ok kub"), [#43](https://github.com/gearstack-studio/kitloop/pull/43#pullrequestreview-5909496249) ("LGTM") and [#44](https://github.com/gearstack-studio/kitloop/pull/44#pullrequestreview-5910352309) ("Overall look good kub"). The other reviews are specific.
-- **R-10, labels:** all 10 Lab 5 issues carry `lab5`. PRs [#26](https://github.com/gearstack-studio/kitloop/pull/26), [#44](https://github.com/gearstack-studio/kitloop/pull/44), [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46) do not.
+- **R-10, labels:** all 10 Lab 5 issues and all 17 Lab 5 PRs now carry `lab5`. PRs [#26](https://github.com/gearstack-studio/kitloop/pull/26), [#44](https://github.com/gearstack-studio/kitloop/pull/44), [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46) were labelled retroactively on 2026-11-16 at 08:08 UTC by yiiipunn; their existing labels, content, reviews and states were not changed.
 
 ## Missing evidence
 
@@ -136,7 +136,7 @@ Each item below is missing or incomplete. None is fabricated or replaced by a su
 3. C-05: after-restart and after-redeploy UI screenshots, which cannot be recreated; see the [Episode 8 note](evidence-gaps.md#episode-8-ui-evidence).
 4. Episode 5: [GCP Console captures](evidence/console/README.md) of the service, database, backups, registry, build and migration job.
 5. Episode 7: a visible change on the public URL (execution step 7) and a screenshot of the `lab5-production` approval panel.
-6. R-09 and R-10: the non-specific reviews and missing PR labels listed under [Collaboration record](#collaboration-record).
+6. R-09: the non-specific reviews listed under [Collaboration record](#collaboration-record). They cannot be changed retroactively.
 7. Episode 1: the Free Trial, billing, budget and IAM screenshots are [issue attachments](https://github.com/gearstack-studio/kitloop/issues/24#issuecomment-6853959906) only. Mask the email addresses in the IAM image before copying it into the PDF or repository.
 8. Architecture and CI/CD diagrams for the PDF; the Mermaid sources are in the [traceability matrix](traceability.md#architecture-and-release-pipeline).
 
