@@ -1,5 +1,7 @@
 # PR A production runtime review
 
+> **Status note (16 November 2026):** The intermittent concurrent-checkout HTTP 500 noted below was reproduced on PR #42 ([run 43683951193](https://github.com/gearstack-studio/kitloop/actions/runs/43683951193)) and fixed by [PR #43](https://github.com/gearstack-studio/kitloop/pull/43), which maps PostgreSQL serialization failures to HTTP 409. Current status: [Lab 5 evidence index](README.md).
+
 ## Baseline and scope
 
 Work date: 2026-11-13 (Asia/Bangkok). Repository `gearstack-studio/kitloop`, issue [#31](https://github.com/gearstack-studio/kitloop/issues/31).

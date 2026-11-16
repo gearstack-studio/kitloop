@@ -1,5 +1,7 @@
 # Episode 7: proposed main release deployment
 
+> **Status note (16 November 2026):** The workflow is now active and released protected-main commit `be72f87` in [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2). Statements below that it is not activated or verified, and that main and staging are unprotected, describe the state before that release. Live rollback is `DEFERRED (Reviewer Approved)`. Current status: [Lab 5 evidence index](README.md).
+
 For this project's lack of an Organization, see the [standalone build security proposal](episode-7-standalone-build.md). Its revised IAM plan is pending explicit security approval; do not retry the historical Organization Policy mutation batch.
 
 For the latest observed controls, CI results and outstanding approval blockers, see the [2026-11-15 security review evidence](episode-7-security-review.md). Historical setup statements below are proposals, not a current cloud inventory.

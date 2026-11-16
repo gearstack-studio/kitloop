@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-11-16T06:48:51.811737+00:00",
+  "command": "gh pr view 50 --json number,url,state,isDraft,mergeable,mergeStateStatus,reviewDecision,headRefOid,baseRefName,statusCheckRollup",
+  "number": 50,
+  "url": "https://github.com/gearstack-studio/kitloop/pull/50",
+  "state": "OPEN",
+  "isDraft": false,
+  "mergeable": "MERGEABLE",
+  "mergeStateStatus": "BLOCKED",
+  "reviewDecision": "REVIEW_REQUIRED",
+  "headRefOid": "92c2da90cd86d453812dcea9f088ee6e851513bb",
+  "baseRefName": "sprint-1-staging",
+  "statusCheckRollup": [
+    {
+      "name": "Build, test and Docker smoke",
+      "workflowName": "Pull Request CI",
+      "status": "COMPLETED",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://github.com/gearstack-studio/kitloop/actions/runs/43818714683/job/133136578688",
+      "completedAt": "2026-11-16T06:45:15Z"
+    },
+    {
+      "name": "Build, test and Docker smoke",
+      "workflowName": "Pull Request CI",
+      "status": "COMPLETED",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://github.com/gearstack-studio/kitloop/actions/runs/43819010572/job/133137507436",
+      "completedAt": "2026-11-16T06:47:57Z"
+    }
+  ]
+}

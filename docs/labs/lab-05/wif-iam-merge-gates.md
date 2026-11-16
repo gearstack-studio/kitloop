@@ -1,4 +1,6 @@
-# Episode 6 Part B — WIF IAM review and staging merge gates
+# Episode 6 Part B: WIF IAM review and staging merge gates
+
+> **Status note (16 November 2026):** The ruleset proposal below was applied as ruleset 27310627. Its review rule was removed twice on 15 November and [restored on 16 November](evidence/merge-gate/README.md#staging-ruleset-restoration) as version 57946025, matching this proposal. See the [Lab 5 evidence index](README.md).
 
 Issue: [#35](https://github.com/gearstack-studio/kitloop/issues/35). PR A: [#36](https://github.com/gearstack-studio/kitloop/pull/36). Owner: yiiipunn. Reviewer: DEV4952.
 

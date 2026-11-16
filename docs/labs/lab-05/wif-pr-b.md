@@ -1,4 +1,6 @@
-# Proposed PR — Episode 6 Part B
+# Proposed PR: Episode 6 Part B
+
+> **Status note (16 November 2026):** PR #37 merged into staging as `7ea2c84`. The proposed ruleset was later applied as ruleset 27310627. Its review rule was removed twice on 15 November and [restored on 16 November](evidence/merge-gate/README.md#staging-ruleset-restoration) as version 57946025. The failing-PR test below was run as [PR #50](evidence/merge-gate/README.md#c-02-disposable-failing-ci-test). Current status: [Lab 5 evidence index](README.md).
 
 **Title:** `[Lab 5] Review WIF IAM and prepare staging merge gates`
 
