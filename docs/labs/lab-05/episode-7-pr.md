@@ -1,5 +1,7 @@
 # [Lab 5] Automate Cloud Run deployment through GitHub Actions
 
+> **Status note (16 November 2026):** This is the PR #39 description as reviewed. PR #39 merged into staging as `ca597ff`. The live release later succeeded in [run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2). Issue #40 exists for Episode 8, so the "E8 pending" link below is historical. Current status: [Lab 5 evidence index](README.md).
+
 **Lab 5 issue register:** [E1 #24](https://github.com/gearstack-studio/kitloop/issues/24) · [E2 #25](https://github.com/gearstack-studio/kitloop/issues/25) · [E3 #27](https://github.com/gearstack-studio/kitloop/issues/27) · [E4 #29](https://github.com/gearstack-studio/kitloop/issues/29) · [E5 #31](https://github.com/gearstack-studio/kitloop/issues/31) · [E6 #34](https://github.com/gearstack-studio/kitloop/issues/34), [#35](https://github.com/gearstack-studio/kitloop/issues/35) · [E7 #38](https://github.com/gearstack-studio/kitloop/issues/38) · [E8 pending](episode-8-issue.md) (local draft, no GitHub issue). [Current status](README.md#episode-issue-register).
 
 Part of #38. Base: `sprint-1-staging`; head: `feat/7-automated-deployment`. Reviewer: DEV4952. Label: `lab5`.

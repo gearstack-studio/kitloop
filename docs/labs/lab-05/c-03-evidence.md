@@ -1,7 +1,8 @@
 # C-03 execution record
 
-Status: **Clean-clone container verification passed; C-03 review pending.** Tested implementation commit `aef044a51b1801c9f2eb5c01050db8c989d6255e`. A browser borrow-request/refresh check is pending, and a checkout concurrency failure occurred on earlier working-tree runs and remains unresolved.
+> **Status note (16 November 2026):** PR #28 merged with yiiipunn's approval. The browser borrow-request and refresh check below was not recorded later, so C-03 remains `PARTIAL`. Current status: [Lab 5 evidence index](README.md).
 
+Status: **Clean-clone container verification passed; C-03 review pending.** Tested implementation commit `aef044a51b1801c9f2eb5c01050db8c989d6255e`. A browser borrow-request/refresh check is pending, and a checkout concurrency failure occurred on earlier working-tree runs and remains unresolved.
 Date: 2026-11-12 (Asia/Bangkok).
 
 Implementation branch: `docker-containerization-for-kitloop`, based on `sprint-1-staging` at `17316f808bdc11044adc4faaf3c748b7679ae377`.

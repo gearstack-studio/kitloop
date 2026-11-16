@@ -1,4 +1,6 @@
-# Proposed PR — Episode 6 Part B
+# Proposed PR: Episode 6 Part B
+
+> **Status note (16 November 2026):** PR #37 merged into staging as `7ea2c84`. A staging ruleset (27310627) was later created, but on 16 November its review rule was absent and no blocked-merge test was recorded. See the [Lab 5 evidence index](README.md).
 
 **Title:** `[Lab 5] Review WIF IAM and prepare staging merge gates`
 

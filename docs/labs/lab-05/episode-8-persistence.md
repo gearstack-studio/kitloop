@@ -1,4 +1,4 @@
-# Episode 8 — live persistence and traffic recovery
+# Episode 8: live persistence and traffic recovery
 
 Issue [#40](https://github.com/gearstack-studio/kitloop/issues/40). Developer DEV4952, reviewer yiiipunn. Branch `feat/8-persistence-rollback`, integrated with `sprint-1-staging`.
 
@@ -8,7 +8,7 @@ The selected request **passed baseline, controlled same-image restart and main-p
 
 All three reports match request `899544f9-d5a8-4248-829e-db75a44cbbf1`, database `lab-5-cloud-deployment-514310:asia-southeast1:kitloop-pg` and fingerprint `8ed64726bbc9291bc61aca6f41825e7e95cb5261d0ca03f0d1816e61ff9c81ed`. The restart uses a new revision with the baseline image/source. The redeployment uses source `be72f87e15a6ea0efdac75ac38e51ad2e5a03949`, revision `kitloop-be72f87e15a6-20261115143840` and app digest `sha256:f149e6dba8e94305b2ee817f4c371cd5764ebdf5b2224cd1f16b42677ebeb46b`, linked to [successful run 43717180011 attempt 2](https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/attempts/2). The earlier skipped deployment is historical, not redeployment proof.
 
-[Issue #40's verified evidence](https://github.com/gearstack-studio/kitloop/issues/40#issuecomment-6896828582) records artifact checksums and comparison results. Live rollback/roll-forward was **NOT EXECUTED**; [the proposed deferral](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896642784) awaits explicit DEV4952 acceptance. Independent yiiipunn review and this evidence PR's merge remain pending. No new cloud operation or credential access was performed to prepare this documentation update.
+[Issue #40's verified evidence](https://github.com/gearstack-studio/kitloop/issues/40#issuecomment-6896828582) records artifact checksums and comparison results. Live rollback/roll-forward was **NOT EXECUTED**. Its status is `DEFERRED (Reviewer Approved)`: DEV4952 [accepted the deferral](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6896877114) on 2026-11-15 with the limitation that live rollback remains unverified. yiiipunn approved this evidence in [PR #41](https://github.com/gearstack-studio/kitloop/pull/41), merged into `sprint-1-staging` as `959f3fa`. No new cloud operation or credential access was performed to prepare this documentation update.
 
 This branch prepares a read-only evidence capture tool and its offline regression tests. `infra/gcp/persistence/verify.py` reads Cloud Run, Artifact Registry and Cloud SQL metadata, checks a selected application record, and writes sanitized JSON. It prompts for a synthetic borrower's password without saving it, keeps cookies in memory, and attempts logout after each observation. It does not create the domain record or change cloud resources.
 
@@ -101,4 +101,4 @@ python3 -B -m unittest discover -s infra/gcp/persistence -p 'test_*.py' -v
 git diff --check
 ```
 
-CI runs these model/HTTP-mock tests without cloud credentials. They cover phase order, changed records, restart image consistency, exact rollback targets, skipped deployment jobs, stale revisions, split traffic, immutable-image/source matching, sanitization and non-overwriting evidence. They do not establish live C-05. Keep #40 open until baseline/restart/redeploy evidence and yiiipunn's review exist.
+CI runs these model/HTTP-mock tests without cloud credentials. They cover phase order, changed records, restart image consistency, exact rollback targets, skipped deployment jobs, stale revisions, split traffic, immutable-image/source matching, sanitization and non-overwriting evidence. They do not establish live C-05; the live result is recorded under [Current evidence](#current-evidence).

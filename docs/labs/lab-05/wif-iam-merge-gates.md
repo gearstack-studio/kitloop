@@ -1,4 +1,6 @@
-# Episode 6 Part B — WIF IAM review and staging merge gates
+# Episode 6 Part B: WIF IAM review and staging merge gates
+
+> **Status note (16 November 2026):** The ruleset proposal below was later applied as ruleset 27310627. On 16 November its public rules showed deletion, non-fast-forward and the required check, without the PR review rule. See the [Lab 5 evidence index](README.md).
 
 Issue: [#35](https://github.com/gearstack-studio/kitloop/issues/35). PR A: [#36](https://github.com/gearstack-studio/kitloop/pull/36). Owner: yiiipunn. Reviewer: DEV4952.
 
