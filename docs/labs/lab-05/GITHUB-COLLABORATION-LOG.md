@@ -1,16 +1,16 @@
 # Lab 5 GitHub collaboration log
 
-Record date: 16 November 2026. Repository: [gearstack-studio/kitloop](https://github.com/gearstack-studio/kitloop). Tracked in [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49).
+Record date: 16 November 2026, last updated at 16:20 UTC after PR #51 merged, Issues #40 and #49 closed and the project board was corrected. Repository: [gearstack-studio/kitloop](https://github.com/gearstack-studio/kitloop). Tracked in [Issue #49](https://github.com/gearstack-studio/kitloop/issues/49).
 
 ## Overview
 
-Two developers, **yiiipunn** and **DEV4952**, delivered Lab 5 between 10 and 16 November 2026 through 10 GitHub Issues and 16 merged Pull Requests. Every PR was reviewed by the other developer. Responsibilities alternated by episode, and Episode 5 was split so that both developers contributed to the first deployment.
+Two developers, **yiiipunn** and **DEV4952**, delivered Lab 5 between 10 and 16 November 2026 through 10 GitHub Issues and 17 merged Pull Requests. Every merged PR was reviewed by the other developer. Responsibilities alternated by episode, and Episode 5 was split so that both developers contributed to the first deployment.
 
 | Measure | Count |
 |:--|:--|
-| Lab 5 Issues | 10 (8 closed, 2 open) |
-| Related Pull Requests | 16 merged, plus 1 disposable test PR closed unmerged (#50) |
-| Formal GitHub reviews | 18: 17 `APPROVED`, 1 `CHANGES_REQUESTED`, 0 `COMMENTED`, 0 `DISMISSED` |
+| Lab 5 Issues | 10, all closed |
+| Related Pull Requests | 17 merged, plus 1 disposable test PR closed unmerged (#50) |
+| Formal GitHub reviews | 19: 18 `APPROVED`, 1 `CHANGES_REQUESTED`, 0 `COMMENTED`, 0 `DISMISSED` |
 | Inline review comments | 0 |
 | Review cycles with requested changes | 2 (PR #39 by comment, PR #42 by formal review) |
 | Production environment approvals | 1 (DEV4952, run 43717180011 attempt 2) |
@@ -22,7 +22,7 @@ Two developers, **yiiipunn** and **DEV4952**, delivered Lab 5 between 10 and 16 
 - People are identified by GitHub login only.
 - A merged PR is never treated as approved without a recorded `APPROVED` review. Approvals given in comments are labelled as comments.
 - Screenshots marked **TODO** do not exist yet. None were created for this log.
-- Each closure is verified by two GitHub records: the issue's `closed_by` and the timeline `closed` event. Their actors match for all eight closed issues, and their timestamps differ by at most 2 seconds; the tables use the issue's `closed_at` minute. All closures were manual, with no closing commit or PR keyword, and no issue was reopened.
+- Each closure is verified by two GitHub records: the issue's `closed_by` and the timeline `closed` event. Their actors match for all ten closed issues, and their timestamps differ by at most 2 seconds; the tables use the issue's `closed_at` minute. All closures were manual, with no closing commit or PR keyword, and no issue was reopened.
 
 ## Contents
 
@@ -36,6 +36,7 @@ Two developers, **yiiipunn** and **DEV4952**, delivered Lab 5 between 10 and 16 
 - [Episode 7: Automated deployment](#episode-7-automated-deployment)
 - [Episode 8: Persistence and rollback](#episode-8-persistence-and-rollback)
 - [Final documentation](#final-documentation)
+- [Project board](#project-board)
 - [Collaboration patterns](#collaboration-patterns)
 - [Issue checklist change log](#issue-checklist-change-log)
 
@@ -53,8 +54,8 @@ PR types: **impl** implementation, **docs** documentation or evidence, **sec** s
 | 6A | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | DEV4952 | [#36](https://github.com/gearstack-studio/kitloop/pull/36) impl | yiiipunn | `APPROVED` | CLOSED |
 | 6B | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | yiiipunn | [#37](https://github.com/gearstack-studio/kitloop/pull/37) sec | DEV4952 | `APPROVED` | CLOSED |
 | 7 | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | yiiipunn | [#39](https://github.com/gearstack-studio/kitloop/pull/39) impl, [#44](https://github.com/gearstack-studio/kitloop/pull/44) sec, [#45](https://github.com/gearstack-studio/kitloop/pull/45) sec, [#46](https://github.com/gearstack-studio/kitloop/pull/46) rel, [#47](https://github.com/gearstack-studio/kitloop/pull/47) sync, [#48](https://github.com/gearstack-studio/kitloop/pull/48) sync | DEV4952 | `APPROVED`; #39 changes requested by comment | CLOSED |
-| 8 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | DEV4952 | [#41](https://github.com/gearstack-studio/kitloop/pull/41) docs | yiiipunn | `APPROVED` | OPEN |
-| Final | [#49](https://github.com/gearstack-studio/kitloop/issues/49) | yiiipunn | [#50](https://github.com/gearstack-studio/kitloop/pull/50) test, closed unmerged; docs PR not yet opened | None | No reviews | OPEN |
+| 8 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | DEV4952 | [#41](https://github.com/gearstack-studio/kitloop/pull/41) docs | yiiipunn | `APPROVED` | CLOSED |
+| Final | [#49](https://github.com/gearstack-studio/kitloop/issues/49) | yiiipunn | [#50](https://github.com/gearstack-studio/kitloop/pull/50) test, closed unmerged; [#51](https://github.com/gearstack-studio/kitloop/pull/51) docs | DEV4952 | `APPROVED` (non-specific) | CLOSED |
 
 PRs #44 to #48 also reference Issue #40 in their descriptions. Issue #24 is the only closed Lab 5 Issue with no related PR, because its work was account and billing setup.
 
@@ -489,7 +490,7 @@ C-06, as the handout defines it, is met: a reviewed change (PR #45) went from st
 **Episode:** 8\
 **Developer:** DEV4952\
 **Reviewer:** yiiipunn\
-**Status:** OPEN
+**Status:** CLOSED
 
 #### Scope & Implementation
 
@@ -518,6 +519,7 @@ C-06, as the handout defines it, is met: a reviewed change (PR #45) went from st
 | 2026-11-15 15:35 | GitHub Actions | CI on `4c71c07` | success | [Run 43730756405](https://github.com/gearstack-studio/kitloop/actions/runs/43730756405) |
 | 2026-11-15 15:41 | yiiipunn | Review | `APPROVED` | [Review](https://github.com/gearstack-studio/kitloop/pull/41#pullrequestreview-5911534699) |
 | 2026-11-15 15:45 | yiiipunn | PR merged | MERGED | `959f3fa` |
+| 2026-11-16 04:59 | yiiipunn | Issue closed manually | CLOSED | Issue `closed_by` and timeline event |
 
 #### Reviewer Feedback & Developer Response
 
@@ -549,21 +551,20 @@ All phases record request `899544f9-d5a8-4248-829e-db75a44cbbf1`, database `lab-
 **Issue:** [#49](https://github.com/gearstack-studio/kitloop/issues/49)\
 **Episode:** Step 9, final documentation\
 **Developer:** yiiipunn\
-**Reviewer:** Not yet assigned; independent peer review is an acceptance criterion\
-**Status:** OPEN
+**Reviewer:** DEV4952\
+**Status:** CLOSED
 
 #### Scope & Implementation
 
 - Consolidate the Lab 5 documentation, map requirements to evidence, index the collaboration history and check for credentials.
-- Work is on branch `docs/lab5-final-audit`: the [evidence index](README.md), the [traceability matrix](traceability.md) and this log.
+- Delivered on branch `docs/lab5-final-audit` and merged through PR #51: the [evidence index](README.md), the [traceability matrix](traceability.md) and this log.
 
 #### Related Pull Requests
 
 | PR | Purpose | Author | Base Branch | Merge Status |
 |:--|:--|:--|:--|:--|
 | [#50](https://github.com/gearstack-studio/kitloop/pull/50) | Disposable C-02 merge-gate test (intentional failure) | yiiipunn | `sprint-1-staging` | CLOSED, not merged |
-
-The documentation PR has not been opened yet.
+| [#51](https://github.com/gearstack-studio/kitloop/pull/51) | Final documentation, evidence audit and collaboration log | yiiipunn | `sprint-1-staging` | MERGED `20f99b2` |
 
 #### Review & Approval Timeline
 
@@ -577,27 +578,61 @@ The documentation PR has not been opened yet.
 | 2026-11-16 06:47 | GitHub Actions | CI after ready for review | **failure** (intentional) | [Run 43819010572](https://github.com/gearstack-studio/kitloop/actions/runs/43819010572) |
 | 2026-11-16 06:48 | GitHub | Merge state captured | `BLOCKED` | [c02-pr50-merge-state.json](evidence/merge-gate/c02-pr50-merge-state.json) |
 | 2026-11-16 06:49 | yiiipunn | PR #50 closed without merging; branch deleted | CLOSED | [PR #50](https://github.com/gearstack-studio/kitloop/pull/50) |
+| 2026-11-16 09:05 | yiiipunn | PR #51 opened at head `ce82b66`, labelled `lab5` and `type:docs`, review requested from DEV4952 | Pending | [PR #51](https://github.com/gearstack-studio/kitloop/pull/51) |
+| 2026-11-16 09:05 | GitHub Actions | CI on `ce82b66` | success | [Run 43836706049](https://github.com/gearstack-studio/kitloop/actions/runs/43836706049) |
+| 2026-11-16 09:30 | DEV4952 | Review | `APPROVED` | [Review](https://github.com/gearstack-studio/kitloop/pull/51#pullrequestreview-5917726785) |
+| 2026-11-16 09:31 | DEV4952 | PR merged | MERGED | `20f99b2` |
+| 2026-11-16 14:53 | yiiipunn | Issue closed manually | CLOSED | Issue `closed_by` and timeline event |
+| 2026-11-16 15:12 | yiiipunn | Lab 5 milestone closed, 20 of 20 items closed | Closed | Milestone record |
 
 #### Final Verification
 
-Pending. The issue requires independent peer review before submission.
+PR #51 passed the required check and was approved and merged by DEV4952. The approval body is "Over all look good, good work na kub japan"; it states no specific check, so it is counted under R-09 as a non-specific approval. The issue was closed after the merge. Its checklist items were not ticked (see [Issue checklist change log](#issue-checklist-change-log)).
 
 #### Evidence
 
 - [Missing evidence list](README.md#missing-evidence)
+
+## Project board
+
+The team tracked Lab 5 on the public organisation project [KitLoop Development](https://github.com/orgs/gearstack-studio/projects/1) (project 1, created by yiiipunn on 2 November 2026). The board view [Lab 5 - Cloud Deployment & CI/CD](https://github.com/orgs/gearstack-studio/projects/1/views/2), added on 10 November, filters on `label:lab5`.
+
+| Measure | Value |
+|:--|:--|
+| Status options | Backlog, Todo, In Progress, In Review, Ready for Integration, Testing, Done |
+| Other fields | Assignees, Reviewers, Labels, Linked pull requests, Milestone, Repository, Type, Parent issue, Sub-issues progress. No priority, iteration, size or date field exists. |
+| Items | 22: all 10 Lab 5 issues and 12 PRs. PRs #41, #44, #45, #46, #50 and #51 were never added. |
+| Additions | yiiipunn 13, DEV4952 9 |
+| Status changes | 90: project automation 52, yiiipunn 33, DEV4952 5 (issue timeline `project_v2_item_status_changed` events) |
+| Milestone | Lab 5: Cloud Deployment & CI/CD held 20 items (8 issues, 12 PRs; #27 and #29 were not added) and was closed on 2026-11-16 at 15:12 UTC with 20 of 20 closed |
+
+The public timeline records that a status changed but not the column, so individual moves through In Review or Testing cannot be reconstructed.
+
+### Status drift and correction
+
+Four closed issues returned to In Progress after a PR was linked to them through the Development panel. In each case the automation changed the status two to four seconds after the link. That the automation reacts to the link is an inference from the timing; the workflow settings are not visible to a signed-out viewer.
+
+| Issue | Closed (UTC) | PR linked, then status reset (UTC) | Corrected to Done by yiiipunn (UTC) |
+|:--|:--|:--|:--|
+| [#24](https://github.com/gearstack-studio/kitloop/issues/24) | 2026-11-13 13:59 | 2026-11-15 06:45:33, reset 06:45:36 | 2026-11-16 15:55:36 |
+| [#34](https://github.com/gearstack-studio/kitloop/issues/34) | 2026-11-14 15:42 | 2026-11-15 02:49:04, reset 02:49:08 | 2026-11-16 15:55:37 |
+| [#35](https://github.com/gearstack-studio/kitloop/issues/35) | 2026-11-15 02:46 | 2026-11-15 02:49:22, reset 02:49:25 | 2026-11-16 15:55:40 |
+| [#40](https://github.com/gearstack-studio/kitloop/issues/40) | 2026-11-16 04:59 | 2026-11-16 15:12:34, reset 15:12:36 | 2026-11-16 15:55:42 |
+
+After the correction the board shows Done for all 22 items. The link from #24 to PR #43 joins Episode 1 to the checkout fix, which this log does not relate to Episode 1; it is treated as a linking error. The final report shows the board after the correction (Figure 15, captured 16 Nov 16:10 UTC, and Figure 16, captured 17 Nov 05:33 UTC); the earlier state is recorded from the timeline events above.
 
 ## Collaboration patterns
 
 - **Alternating ownership.** yiiipunn led Episodes 1, 2, 6B and 7, and DEV4952 led Episodes 3, 4, 6A and 8. Episode 5 was split. Each PR was reviewed by the developer who did not write it.
 - **Review cycles that changed the code.** Two reviews changed the implementation before approval. The PR #39 ID-token defect would have failed candidate verification in production. The PR #42 CI failure exposed a real HTTP 500 under concurrent checkout.
 - **Scoped approvals.** Several approvals (#33, #36, #37, #39, #45, #47) state which work stays open or is not authorized, such as live IAM changes, deployment or traffic changes. Production actions required separate approval: the environment gate and the rollback deferral.
-- **Weaker records.** Some approvals are brief ("Approve", "Ok kub", "LGTM", "Overall look good kub"). They are recorded as `APPROVED` because GitHub records them so, but they provide less review evidence than the substantive reviews.
-- **Who closed issues.** yiiipunn closed six issues, including DEV4952's #27 and #29. DEV4952 closed #24 after verifying the evidence, and #31. No issue was closed automatically by a PR merge.
+- **Weaker records.** Five approvals are brief ("Approve", "Ok kub", "LGTM", "Overall look good kub", "Over all look good, good work na kub japan"). They are recorded as `APPROVED` because GitHub records them so, but they provide less review evidence than the substantive reviews.
+- **Who closed issues.** yiiipunn closed eight issues, including DEV4952's #27, #29 and #40. DEV4952 closed #24 after verifying the evidence, and #31. No issue was closed automatically by a PR merge.
 - **Closure before verification.** Issues #31 and #35 were closed before all of their live or enforcement checks were recorded. Their outstanding items are listed above rather than treated as complete.
 
 ## Issue checklist change log
 
-Proposed checklist updates were prepared on 16 November 2026 from the evidence in this log and the [traceability matrix](traceability.md). They have **not yet been applied** to GitHub, because no authenticated GitHub client was available. Apply them after this branch is merged so that the evidence links resolve.
+Proposed checklist updates were prepared on 16 November 2026 from the evidence in this log and the [traceability matrix](traceability.md). They have **not been applied** to GitHub. The issue bodies still show their state at closure: nine issues have no ticked items and #31 has 8 of 51 ticked. Completion is evidenced by the merged PRs, CI runs and comments recorded above, not by checkboxes.
 
 | Issue | Items newly checked | Items left unchecked | Main reasons left unchecked |
 |:--|:--|:--|:--|
@@ -610,4 +645,4 @@ Proposed checklist updates were prepared on 16 November 2026 from the evidence i
 | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | 8 | 4 | Config screenshots, reviewer items; merge blockers not isolated (noted on checked items) |
 | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | 23 | 6 | Live rejection test, reviewer items |
 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | 18 | 3 | #35 prerequisite, UI check after restart, live rollback |
-| [#49](https://github.com/gearstack-studio/kitloop/issues/49) | 0 | All | Audit in progress; peer review pending |
+| [#49](https://github.com/gearstack-studio/kitloop/issues/49) | 0 | All | Not applied; completion is evidenced by PR #51 |

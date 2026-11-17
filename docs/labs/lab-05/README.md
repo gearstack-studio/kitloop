@@ -31,9 +31,9 @@ An issue's closed state records tracking only. It does not prove that the episod
 | 6A. GitHub OIDC and WIF | [#34](https://github.com/gearstack-studio/kitloop/issues/34) | [#36](https://github.com/gearstack-studio/kitloop/pull/36) | `PASS` | Inherited-access analysis is partial |
 | 6B. IAM review and merge gates | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | [#37](https://github.com/gearstack-studio/kitloop/pull/37) | `PARTIAL` | Inherited-access analysis is partial; merge gates now verified |
 | 7. Automated main release | [#38](https://github.com/gearstack-studio/kitloop/issues/38) | [#39](https://github.com/gearstack-studio/kitloop/pull/39), [#43](https://github.com/gearstack-studio/kitloop/pull/43) to [#46](https://github.com/gearstack-studio/kitloop/pull/46) | `PASS` | Step 7 "URL shows the change" not shown; live rollback `DEFERRED` |
-| 8. Persistence and rollback | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | `PASS` | Live rollback `DEFERRED (Reviewer Approved)`; issue still open |
+| 8. Persistence and rollback | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | `PASS` | Live rollback `DEFERRED (Reviewer Approved)`; issue closed 2026-11-16 04:59 UTC |
 
-Step 9 of the handout is the final documentation and PDF submission. It is tracked by Issue #49, not by an episode issue.
+Step 9 of the handout is the final documentation and PDF submission. It is tracked by Issue #49, not by an episode issue, and was merged through [PR #51](https://github.com/gearstack-studio/kitloop/pull/51).
 
 ## Required check status
 
@@ -121,11 +121,12 @@ Both teammates authored issues and PRs, and each Lab 5 PR has an approving revie
 | [#46](https://github.com/gearstack-studio/kitloop/pull/46) | yiiipunn | main | DEV4952 | Reviewed automated release to main |
 | [#47](https://github.com/gearstack-studio/kitloop/pull/47), [#48](https://github.com/gearstack-studio/kitloop/pull/48) | yiiipunn | staging | DEV4952 | Sync main back into staging |
 | [#41](https://github.com/gearstack-studio/kitloop/pull/41) | DEV4952 | staging | yiiipunn | Episode 8 persistence evidence |
+| [#51](https://github.com/gearstack-studio/kitloop/pull/51) | yiiipunn | staging | DEV4952 | Final documentation and evidence audit (Issue #49) |
 
 Handout gaps in this record:
 
-- **R-09, specific reviews:** four approvals state no specific check or finding: [#26](https://github.com/gearstack-studio/kitloop/pull/26#pullrequestreview-5873577028) ("Approve"), the first of two on [#33](https://github.com/gearstack-studio/kitloop/pull/33#pullrequestreview-5896073874) ("Ok kub"), [#43](https://github.com/gearstack-studio/kitloop/pull/43#pullrequestreview-5909496249) ("LGTM") and [#44](https://github.com/gearstack-studio/kitloop/pull/44#pullrequestreview-5910352309) ("Overall look good kub"). The other reviews are specific.
-- **R-10, labels:** all 10 Lab 5 issues and all 17 Lab 5 PRs now carry `lab5`. PRs [#26](https://github.com/gearstack-studio/kitloop/pull/26), [#44](https://github.com/gearstack-studio/kitloop/pull/44), [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46) were labelled retroactively on 2026-11-16 at 08:08 UTC by yiiipunn; their existing labels, content, reviews and states were not changed.
+- **R-09, specific reviews:** five approvals state no specific check or finding: [#26](https://github.com/gearstack-studio/kitloop/pull/26#pullrequestreview-5873577028) ("Approve"), the first of two on [#33](https://github.com/gearstack-studio/kitloop/pull/33#pullrequestreview-5896073874) ("Ok kub"), [#43](https://github.com/gearstack-studio/kitloop/pull/43#pullrequestreview-5909496249) ("LGTM") and [#44](https://github.com/gearstack-studio/kitloop/pull/44#pullrequestreview-5910352309) ("Overall look good kub") and [#51](https://github.com/gearstack-studio/kitloop/pull/51#pullrequestreview-5917726785) ("Over all look good, good work na kub japan"). The other reviews are specific.
+- **R-10, labels:** all 10 Lab 5 issues and all 18 Lab 5 PRs (including #50 and #51) carry `lab5`. PRs [#26](https://github.com/gearstack-studio/kitloop/pull/26), [#44](https://github.com/gearstack-studio/kitloop/pull/44), [#45](https://github.com/gearstack-studio/kitloop/pull/45) and [#46](https://github.com/gearstack-studio/kitloop/pull/46) were labelled retroactively on 2026-11-16 at 08:08 UTC by yiiipunn; their existing labels, content, reviews and states were not changed.
 
 ## Missing evidence
 
