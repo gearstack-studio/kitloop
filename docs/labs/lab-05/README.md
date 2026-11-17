@@ -52,7 +52,7 @@ Notes:
 
 - **C-02:** when the merge state was captured, both the failing required check and the missing approval (`REVIEW_REQUIRED`) were active. GitHub reports `BLOCKED` without separating the causes. The handout's reference setup also requires both a passing check and one approval, but the CI cause alone is not isolated.
 - **C-04:** the baseline screenshot crops out the address bar, and the rejection evidence is JSON. Both behaviors are verified, but the handout asks for screenshots with the URL visible.
-- **C-05:** after-restart and after-redeploy UI screenshots were never taken and cannot be recreated.
+- **C-05:** after-restart and after-redeploy UI screenshots were never taken and cannot be recreated. A dated current observation on the public URL (17 Nov 2026) shows the request still `PENDING`; it is not after-phase evidence.
 - **C-06:** the check does not require a visible change. Execution step 7 does ("the URL shows the change"), and release `be72f87` changed no application code. PRs #45 and #46 carry the `lab5` label that R-10 requires, labelled retroactively on 2026-11-16 at 08:08 UTC.
 
 ## Production release evidence
