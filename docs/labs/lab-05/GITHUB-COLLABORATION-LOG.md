@@ -619,7 +619,7 @@ Four closed issues returned to In Progress after a PR was linked to them through
 | [#35](https://github.com/gearstack-studio/kitloop/issues/35) | 2026-11-15 02:46 | 2026-11-15 02:49:22, reset 02:49:25 | 2026-11-16 15:55:40 |
 | [#40](https://github.com/gearstack-studio/kitloop/issues/40) | 2026-11-16 04:59 | 2026-11-16 15:12:34, reset 15:12:36 | 2026-11-16 15:55:42 |
 
-After the correction the board shows Done for all 22 items. The link from #24 to PR #43 joins Episode 1 to the checkout fix, which this log does not relate to Episode 1; it is treated as a linking error. The final report keeps a capture of the board before the correction (15:13 UTC) and after it (16:10 UTC).
+After the correction the board shows Done for all 22 items. The link from #24 to PR #43 joins Episode 1 to the checkout fix, which this log does not relate to Episode 1; it is treated as a linking error. The final report shows the board after the correction (Figure 15, captured 16 Nov 16:10 UTC, and Figure 16, captured 17 Nov 05:33 UTC); the earlier state is recorded from the timeline events above.
 
 ## Collaboration patterns
 
