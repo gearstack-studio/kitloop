@@ -1,0 +1,64 @@
+Source: GitHub Actions job 132843368366 (Approved Cloud Run release), run 43717180011 attempt 2
+URL: https://github.com/gearstack-studio/kitloop/actions/runs/43717180011/job/132843368366
+Retrieved: 2026-11-16 with 'gh run view --log' (read-only). Excerpt only: ANSI colour codes and per-line timestamps removed; no other text changed.
+Source log lines: 302-316 (build), 345-356 (migration), 380-402 (candidate, traffic, verification), 428-435 (final verification).
+Credential pattern scan of the full log: 0 matches.
+
+Building and pushing commit be72f87e15a6ea0efdac75ac38e51ad2e5a03949 from main with Cloud Build. Cloud Build minutes and image storage may incur charges.
+Creating temporary archive of 113 file(s) totalling 674.8 KiB before compression.
+Uploading tarball of [.] to [gs://lab-5-cloud-deployment-514310-kitloop-build-source/source/1794753230.108398-e55b5f3f6e0645a89ee9961c9ecc48b5.tgz]
+Created [https://cloudbuild.googleapis.com/v1/projects/lab-5-cloud-deployment-514310/locations/asia-southeast1/builds/676619ea-a64f-4e49-89d5-cdb2a884a312].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds;region=asia-southeast1/676619ea-a64f-4e49-89d5-cdb2a884a312?project=610347790049 ].
+
+gcloud builds submit only displays logs from Cloud Storage. To view logs from Cloud Logging, run:
+gcloud beta builds submit
+
+Waiting for build to complete. Polling interval: 1 second(s).
+ID                                    CREATE_TIME                DURATION  SOURCE                                                                                                                 IMAGES                                                                                                   STATUS
+676619ea-a64f-4e49-89d5-cdb2a884a312  2026-11-15T14:33:53+00:00  3M37S     gs://lab-5-cloud-deployment-514310-kitloop-build-source/source/1794753230.108398-e55b5f3f6e0645a89ee9961c9ecc48b5.tgz  asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app:be72f87e15a6 (+1 more)  SUCCESS
+Source SHA: be72f87e15a6ea0efdac75ac38e51ad2e5a03949
+App digest: asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:f149e6dba8e94305b2ee817f4c371cd5764ebdf5b2224cd1f16b42677ebeb46b
+Migration digest: asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-migration@sha256:e35d98349622aba0d38ec04600c84f889eab779fa4b67b025437be6c85233114
+Creating execution...
+Provisioning resources.........................................................................................done
+Starting execution.........................................................done
+Running execution................................................................................................................................done
+Done.
+Execution [kitloop-migrate-4d8sw] has successfully completed.
+
+View details about this execution by running:
+gcloud run jobs executions describe kitloop-migrate-4d8sw
+
+Or visit https://console.cloud.google.com/run/jobs/executions/details/asia-southeast1/kitloop-migrate-4d8sw?project=610347790049
+Verified completed kitloop-migrate execution: kitloop-migrate-4d8sw
+Deploying container to Cloud Run service [kitloop] in project [lab-5-cloud-deployment-514310] region [asia-southeast1]
+Deploying...
+Creating Revision............................................................................................done
+Done.
+Service [kitloop] revision [kitloop-be72f87e15a6-20261115143840] has been deployed and is serving 0 percent of traffic.
+The revision can be reached directly at https://candidate---kitloop-kymj7xpgiq-as.a.run.app
+PASS https://candidate---kitloop-kymj7xpgiq-as.a.run.app/ HTTP 200
+PASS https://candidate---kitloop-kymj7xpgiq-as.a.run.app/api/health HTTP 200
+PASS https://candidate---kitloop-kymj7xpgiq-as.a.run.app/api/ready HTTP 200
+Updating traffic...
+Routing traffic........................done
+Done.
+URL: https://kitloop-kymj7xpgiq-as.a.run.app
+Traffic:
+  100% kitloop-be72f87e15a6-20261115143840
+         candidate: https://candidate---kitloop-kymj7xpgiq-as.a.run.app
+PASS https://kitloop-610347790049.asia-southeast1.run.app/ HTTP 200
+PASS https://kitloop-610347790049.asia-southeast1.run.app/api/health HTTP 200
+PASS https://kitloop-610347790049.asia-southeast1.run.app/api/ready HTTP 200
+Serving revision: kitloop-be72f87e15a6-20261115143840 (100%)
+Previous: kitloop-284f41973f61-20261115090539 100 
+Canonical URL: https://kitloop-610347790049.asia-southeast1.run.app
+App digest: asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:f149e6dba8e94305b2ee817f4c371cd5764ebdf5b2224cd1f16b42677ebeb46b
+Region: asia-southeast1
+Canonical URL: https://kitloop-610347790049.asia-southeast1.run.app
+Serving revision: kitloop-be72f87e15a6-20261115143840 (100%)
+Latest ready revision: kitloop-be72f87e15a6-20261115143840
+PASS https://kitloop-610347790049.asia-southeast1.run.app/ HTTP 200
+PASS https://kitloop-610347790049.asia-southeast1.run.app/api/health HTTP 200
+PASS https://kitloop-610347790049.asia-southeast1.run.app/api/ready HTTP 200
+HTTP checks passed. Browser login, request/checkout, session and cross-revision persistence still require separate verification.

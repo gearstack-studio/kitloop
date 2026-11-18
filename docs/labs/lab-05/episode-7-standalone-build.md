@@ -1,5 +1,7 @@
 # Episode 7: standalone-project build security proposal
 
+> **Status note (16 November 2026):** DEV4952 approved this proposal in [PR #45](https://github.com/gearstack-studio/kitloop/pull/45) (merged as `53d2532`). Its IAM execution result is recorded in [Issue #38](https://github.com/gearstack-studio/kitloop/issues/38#issuecomment-6894424927). The release build later succeeded as `kitloop-build`. The "proposed" status below is historical. Current status: [Lab 5 evidence index](README.md).
+
 Status: **proposed, not approved or applied**. This revises only the Cloud Build prerequisite in [PR #44](https://github.com/gearstack-studio/kitloop/pull/44) for [Issue #38](https://github.com/gearstack-studio/kitloop/issues/38). Its Organization Policy route is not the execution path for this standalone project. PR approval of the earlier proposal does not approve these revised IAM changes or accept their residual risk.
 
 ## Supported path and current evidence

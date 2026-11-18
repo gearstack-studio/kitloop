@@ -10,6 +10,10 @@ Run `npx prisma generate`, `npm run db:deploy`, and `npm run db:seed` from `serv
 
 From `client/`, run `npm ci` and `npm run dev`. The UI targets `http://localhost:3000` by default; set `VITE_API_BASE_URL` if the API uses another origin. The browser uses an HttpOnly session cookie and an `X-CSRF-Token` header supplied by login or `/api/auth/me`. The token stays in memory and is restored after refresh through `/me`. Borrowers can select an available item in the catalog and submit through `/requests`, where their request history is shown. Only one pending request per borrower/asset is allowed; different borrowers may still request the same available item without reserving it. See [FEAT-03](docs/sprints/sprint-1/FEAT-03-borrow-request-workflow.md) for API behavior and the migration duplicate-data preflight.
 
+## Lab 5 cloud deployment
+
+KitLoop runs on Cloud Run with Cloud SQL PostgreSQL, released from protected `main` through GitHub Actions and Workload Identity Federation. The [Lab 5 evidence index](docs/labs/lab-05/README.md) records each episode's status and evidence, and the [traceability matrix](docs/labs/lab-05/traceability.md) maps requirements to evidence. Operating procedures are in [deployment.md](docs/labs/lab-05/deployment.md) and [infra/gcp/README.md](infra/gcp/README.md).
+
 ## Verification
 
 Create a separate PostgreSQL test database with `test` in its name. From `server/`, copy `.env.test.example` to `.env.test` and set its test `DATABASE_URL`, `APP_ORIGIN`, and a distinct test `SESSION_CSRF_SECRET` of at least 32 characters. Apply migrations to that database with `npm run db:deploy` while `DATABASE_URL` points to the test database. `npm test` loads `.env.test` and rejects a database name without `test`; it must never target the development or production database. The integration suite creates and removes its own synthetic fixtures. Run `npm run build` in `server/`, and `npm run build` plus `npm run lint` in `client/`.

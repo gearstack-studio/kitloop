@@ -1,0 +1,34 @@
+{
+  "check": "public-http-readiness",
+  "observedAt": "2026-11-15T08:21:34.229796+00:00",
+  "origin": "https://kitloop-610347790049.asia-southeast1.run.app",
+  "httpResult": "PASS",
+  "observations": [
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "spaRootPresent": true
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "applicationStatus": "ok"
+    },
+    {
+      "path": "/api/ready",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "applicationStatus": "ready"
+    }
+  ],
+  "persistenceResult": "NOT_RUN",
+  "runningRevisionSourceSha": "not-observable-from-these-http-responses",
+  "mainWorkflow": {
+    "url": "https://github.com/gearstack-studio/kitloop/actions/runs/43687921737",
+    "headSha": "284f41973f61a02e82d38bc9f425712ecd4e4afc",
+    "conclusion": "success",
+    "deploymentJobConclusion": "skipped"
+  }
+}

@@ -47,6 +47,9 @@ jobs:
       - name: Test WIF trust policy offline
         run: python3 -B -m unittest discover -s infra/gcp/wif -p 'test_*.py' -v
 
+      - name: Test persistence evidence guards offline
+        run: python3 -B -m unittest discover -s infra/gcp/persistence -p 'test_*.py' -v
+
       - name: Test standalone build permission safeguards offline
         run: python3 -B -m unittest discover -s infra/gcp/deploy -p 'test_*.py' -v
 

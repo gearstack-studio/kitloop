@@ -1,4 +1,6 @@
-# PR A — GitHub OIDC and WIF
+# PR A: GitHub OIDC and WIF
+
+> **Status note (16 November 2026):** PR #36 merged into staging as `c75cdf1`. Hosted WIF authentication passed in [run 43611041165 attempt 3](https://github.com/gearstack-studio/kitloop/actions/runs/43611041165/attempts/3). Current status: [Lab 5 evidence index](README.md).
 
 Title: `[Lab 5] Configure GitHub OIDC and Workload Identity Federation`
 
