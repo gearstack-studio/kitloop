@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../src/App'
 
@@ -9,6 +9,7 @@ let history: object[]
 let mode: 'success' | 'conflict' | 'expired' | 'refresh-error'
 let committed: boolean
 let posts: number
+let borrowerId: string
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'test-csrf' } })
@@ -16,10 +17,10 @@ function json(body: unknown, status = 200) {
 beforeEach(() => {
   window.history.replaceState(null, '', '/requests')
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
-  history = []; mode = 'success'; committed = false; posts = 0
+  history = []; mode = 'success'; committed = false; posts = 0; borrowerId = 'borrower-1'
   vi.stubGlobal('fetch', vi.fn(async (input: string, options?: RequestInit) => {
     const path = new URL(input).pathname
-    if (path === '/api/auth/me') return json({ id: 'borrower-1', role: 'BORROWER' })
+    if (path === '/api/auth/me') return json({ id: borrowerId, role: 'BORROWER' })
     if (path === '/api/assets') return json([asset])
     if (path === '/api/loans/mine') return json([])
     if (path === '/api/requests/mine') {
@@ -51,6 +52,35 @@ async function submitForm() {
 }
 
 describe('Borrower workflow integration in the React app (mocked HTTP)', () => {
+  it('explains why an available asset with the current borrower’s pending request cannot be requested', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    history = [{ ...pending, borrowerId }]
+    render(<App />)
+
+    await screen.findByText('CAM-01 · PENDING')
+    const catalog = within(screen.getByRole('region', { name: 'Equipment catalog' }))
+    expect(catalog.getByText('Available')).toBeTruthy()
+    const button = catalog.getByRole<HTMLButtonElement>('button', { name: /you already have a pending request/i })
+    expect(button.disabled).toBe(true)
+    await userEvent.click(button)
+    expect(window.location.pathname).toBe('/dashboard')
+    expect(posts).toBe(0)
+  })
+
+  it('lets a different borrower select the same available asset when their own history has no pending request', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    borrowerId = 'borrower-2'
+    history = [{ ...pending, status: 'CHECKED_OUT', borrowerId }]
+    render(<App />)
+
+    await screen.findByText('CAM-01 · CHECKED_OUT')
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Request to borrow Camera, CAM-01' })
+    expect(button.disabled).toBe(false)
+    await userEvent.click(button)
+    expect(window.location.pathname).toBe('/requests')
+    expect((screen.getByLabelText('Available equipment') as HTMLSelectElement).value).toBe('CAM-01')
+  })
+
   it('submits from My Requests, refreshes persisted history, and prevents a second selection', async () => {
     render(<App />)
     await submitForm()

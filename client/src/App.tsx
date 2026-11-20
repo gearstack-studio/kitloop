@@ -10,6 +10,7 @@ import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
 import { AuthButton, AuthCard, AuthLink, Field } from './components/Auth'
 import { navigate, usePath } from './navigation'
+import { borrowEligibility } from './borrowEligibility'
 import './App.css'
 import './Login.css'
 
@@ -245,13 +246,16 @@ function App() {
       <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div><span className="identity-tag">Account {identity.id.slice(0, 8)}</span></div>
       {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
       {identity.role === 'BORROWER' && <nav aria-label="Borrower pages"><AmbientLink href={route === '/requests' ? '/dashboard' : '/requests'}>{route === '/requests' ? 'Equipment dashboard' : 'My Requests page'}</AmbientLink></nav>}
-      {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog} canRequest={identity.role === 'BORROWER'} busy={busy} onRequest={assetId => { setSelectedAsset(assetId); navigate('/requests') }} />}
+      {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog}
+        canRequest={identity.role === 'BORROWER'} requests={requests} requestStatus={requestStatus}
+        busy={busy} onRequest={assetId => { setSelectedAsset(assetId); navigate('/requests') }} />}
       {identity.role === 'BORROWER' && route === '/requests' && <>
         {catalogStatus === 'error' && <div role="alert"><p>Available equipment could not be loaded.</p><button onClick={retryCatalog}>Retry equipment</button></div>}
         <BorrowRequestForm assets={assets} requests={requests} selected={selectedAsset} onSelect={setSelectedAsset} busy={busy}
           ready={catalogStatus === 'ready' && requestStatus === 'ready'} onSubmit={event => {
             event.preventDefault()
-            if (busy || requestStatus !== 'ready' || !assets.some(asset => asset.assetId === selectedAsset && asset.available) || requests.some(item => item.assetId === selectedAsset && item.status === 'PENDING')) return
+            if (busy || catalogStatus !== 'ready' || requestStatus !== 'ready' ||
+              !assets.some(asset => asset.assetId === selectedAsset && borrowEligibility(asset, requests) === 'eligible')) return
             void act('/requests', { assetId: selectedAsset }, 'Borrow request submitted with PENDING status.')
           }} />
       </>}
