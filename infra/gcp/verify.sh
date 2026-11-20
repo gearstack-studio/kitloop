@@ -7,7 +7,7 @@ require_command jq
 
 mode="${1:-}"
 [[ "$mode" == private || "$mode" == public || "$mode" == evidence ]] || \
-  die 'Usage: verify.sh {private|public|evidence SHA}'
+  die 'Usage: verify.sh {private [SHA]|public [SHA]|evidence SHA}'
 origin="$(canonical_url)"
 service="$(service_json)" || die 'Cannot describe the Cloud Run service.'
 require_service_url "$service" "$origin"
@@ -37,9 +37,9 @@ fi
 
 if [[ "$mode" == private ]]; then
   token="$(identity_token "$origin")"
-  http_checks "$origin" "$token" || die 'Private HTTP checks failed.'
+  http_checks "$origin" "$token" "${2:-}" || die 'Private HTTP checks failed.'
   unset token
 else
-  http_checks "$origin" || die 'Public HTTP checks failed.'
+  http_checks "$origin" "" "${2:-}" || die 'Public HTTP checks failed.'
 fi
 note 'HTTP checks passed. Browser login, request/checkout, session and cross-revision persistence still require separate verification.'

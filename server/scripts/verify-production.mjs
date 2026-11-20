@@ -23,9 +23,15 @@ async function login(user) {
 }
 
 if (process.argv[2] === 'before-restart') {
-  for (const path of ['/', '/requests', '/loans']) {
+  for (const path of ['/', '/login', '/requests', '/loans']) {
     const response = await fetch(base + path);
     assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-security-policy') ?? '', /frame-ancestors 'none'/);
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('strict-transport-security'), 'max-age=31536000');
+    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(response.headers.get('x-powered-by'), null);
     const html = await response.text();
     assert.ok(html.includes('<div id="root">'));
     const script = html.match(/src="(\/assets\/[^\"]+\.js)"/);
@@ -36,6 +42,12 @@ if (process.argv[2] === 'before-restart') {
   }
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
   assert.equal((await fetch(`${base}/api/ready`)).status, 200);
+  const version = await fetch(`${base}/api/version`);
+  assert.equal(version.status, 200);
+  assert.equal(version.headers.get('cache-control'), 'no-store');
+  const expectedCommit = process.env.EXPECTED_COMMIT_SHA;
+  assert.match(expectedCommit ?? '', /^[a-f0-9]{40}$/);
+  assert.deepEqual(await version.json(), { commit: expectedCommit });
   const headers = await login(borrower);
   assert.equal((await fetch(`${base}/api/not-a-route`, { headers })).status, 404);
   const rejected = await fetch(`${base}/api/requests`, { method: 'POST', headers: { ...headers, Origin: 'https://foreign.invalid' }, body: JSON.stringify({ assetId }) });
@@ -48,7 +60,7 @@ if (process.argv[2] === 'before-restart') {
   const forbidden = await fetch(`${base}/api/requests/${request.id}/checkout`, { method: 'POST', headers, body: JSON.stringify({ assetId, dueAt: new Date(Date.now() + 86400000).toISOString() }) });
   assert.equal(forbidden.status, 403);
   writeFileSync(stateFile, JSON.stringify({ headers, requestId: request.id }), { mode: 0o600 });
-  console.log('PASS production SPA/assets, health, readiness, Secure cookie, CSRF/origin, request write, role guard');
+  console.log('PASS production SPA/assets, security headers, build version, health, readiness, Secure cookie, CSRF/origin, request write, role guard');
 } else if (process.argv[2] === 'after-restart') {
   const { headers, requestId } = JSON.parse(readFileSync(stateFile, 'utf8'));
   assert.equal((await fetch(`${base}/api/auth/me`, { headers })).status, 200, 'Session must survive process restart');

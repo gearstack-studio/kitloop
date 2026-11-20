@@ -60,7 +60,7 @@ case "$action" in
       --gcs-source-staging-dir="gs://$BUILD_SOURCE_BUCKET/source" --ignore-file=.gcloudignore \
       --service-account="projects/$PROJECT/serviceAccounts/$BUILD_SA" \
       --config=infra/gcp/cloudbuild.yaml \
-      --substitutions="_APP_IMAGE=$app_image,_MIGRATION_IMAGE=$migrate_image"
+      --substitutions="_APP_IMAGE=$app_image,_MIGRATION_IMAGE=$migrate_image,_SOURCE_SHA=$sha"
     printf 'Source SHA: %s\nApp digest: %s\nMigration digest: %s\n' \
       "$sha" "$(digest_for "$app_image")" "$(digest_for "$migrate_image")"
     ;;
@@ -109,6 +109,11 @@ case "$action" in
     ;;
   deploy)
     sha="${2:-}"
+    [[ "$sha" =~ ^[0-9a-f]{12,40}$ ]] || die 'Use a 12-40 character lowercase Git commit SHA.'
+    if [[ "${#sha}" -lt 40 ]]; then
+      require_command git
+      sha="$(git rev-parse --verify "$sha^{commit}")" || die 'Cannot resolve the release commit. Fetch the source repository or pass the full SHA.'
+    fi
     app_image="$(digest_for "$(image_for app "$sha")")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     require_successful_job kitloop-migrate "$migrate_image"
@@ -152,7 +157,7 @@ case "$action" in
       [[ "$candidate_url" == https://* ]] || die "Candidate URL for $revision is unavailable; traffic was not changed."
       # Cloud Run tag URLs accept tokens whose audience is the service URL, not the tag URL.
       token="$(identity_token "$origin")"
-      http_checks "$candidate_url" "$token" || die "Candidate $revision failed its checks; traffic was not changed."
+      http_checks "$candidate_url" "$token" "$sha" || die "Candidate $revision failed its checks; traffic was not changed."
       unset token
       gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" \
         --to-revisions="$revision=100"
@@ -161,7 +166,7 @@ case "$action" in
       if service_is_public; then now_public=yes; else now_public=no; fi
       [[ "$now_public" == "$was_public" ]] || die "Invoker access changed during deployment (public: $was_public -> $now_public)."
       if [[ "$was_public" == yes ]]; then
-        http_checks "$origin" || die "Public checks failed after routing; roll back with: release.sh rollback ${previous%% *}"
+        http_checks "$origin" "" "$sha" || die "Public checks failed after routing; roll back with: release.sh rollback ${previous%% *}"
       fi
       printf 'Serving revision: %s (100%%)\nPrevious: %s\nCanonical URL: %s\nApp digest: %s\n' \
         "$revision" "${previous:-none}" "$origin" "$app_image"
