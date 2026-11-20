@@ -1,0 +1,173 @@
+UAT-F03 baseline RED evidence (GitHub issue #57, PR #68)
+Baseline: 05be1c2 (sprint-1-staging before the catalog eligibility fix)
+Working tree: baseline production code with the first two UAT-F03 tests added
+Directory: client
+Command: npm.cmd test -- tests/borrow-workflow.test.tsx -t "available asset"
+Exit code: 1
+Outcome: the pending-request case failed, the second-borrower control passed, and six unrelated tests were skipped.
+
+Captured runner output (ANSI colors and trailing whitespace removed):
+
+> client@0.0.0 test
+> vitest run tests/borrow-workflow.test.tsx -t available asset
+
+
+ RUN  v5.1.0 C:/SE/kitloop-uat-57/client
+
+ ❯ tests/borrow-workflow.test.tsx (8 tests | 1 failed | 6 skipped) 450ms
+   ❯ Borrower workflow integration in the React app (mocked HTTP) (8)
+     × explains why an available asset with the current borrower’s pending request cannot be requested 332ms
+npm.cmd :
+At line:2 char:93
++ ... +$env:Path; npm.cmd test -- tests/borrow-workflow.test.tsx -t 'availa ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > explains why an
+available asset with the current borrower’s pending request cannot be requested
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/you already have a
+pending request/i`
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Equipment catalog":
+  <h2
+    id="catalog-heading"
+  />
+
+  --------------------------------------------------list:
+
+  Name "":
+  <ul
+    class="asset-grid"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  article:
+
+  Name "":
+  <article
+    class="asset-card"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Camera":
+  <h3 />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  <code />
+
+  --------------------------------------------------
+  button:
+
+  Name "Request to borrow Camera, CAM-01":
+  <button
+    aria-label="Request to borrow Camera, CAM-01"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<section
+  aria-busy="false"
+  aria-labelledby="catalog-heading"
+  class="panel catalog"
+>
+  <div
+    class="section-heading"
+  >
+    <h2
+      id="catalog-heading"
+    >
+      Equipment catalog
+    </h2>
+    <span
+      class="catalog-count"
+    >
+      1
+
+      asset
+    </span>
+  </div>
+  <ul
+    class="asset-grid"
+  >
+    <li>
+      <article
+        class="asset-card"
+      >
+        <div
+          class="asset-meta"
+        >
+          <span>
+            Camera
+          </span>
+          <span
+            class="available"
+          >
+            Available
+          </span>
+        </div>
+        <h3>
+          Camera
+        </h3>
+        <p>
+          Synthetic camera
+        </p>
+        <div
+          class="asset-footer"
+        >
+          <code>
+            CAM-01
+          </code>
+          <button
+            aria-label="Request to borrow Camera, CAM-01"
+          >
+            Request to borrow
+          </button>
+        </div>
+      </article>
+    </li>
+  </ul>
+</section>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ tests/borrow-workflow.test.tsx:63:28
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 6 skipped (8)
+   Start at  21:59:24
+   Duration  2.94s (environment 54%, tests 17%, transform 13%, setup 12%, import 4%, worker 1%)
+
+     61|     const catalog = within(screen.getByRole('region', { name: 'Equipme…
+     62|     expect(catalog.getByText('Available')).toBeTruthy()
+     63|     const button = catalog.getByRole<HTMLButtonElement>('button', { na…
+       |                            ^
+     64|     expect(button.disabled).toBe(true)
+     65|     await userEvent.click(button)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

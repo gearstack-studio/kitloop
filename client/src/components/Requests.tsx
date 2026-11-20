@@ -1,5 +1,6 @@
 import type { FormEvent, ReactNode } from 'react'
 import type { Asset } from './Catalog'
+import { borrowEligibility } from '../borrowEligibility'
 
 export type BorrowRequest = {
   id: string; assetId: string; borrowerId?: string; status: 'PENDING' | 'CHECKED_OUT'; submittedAt: string
@@ -12,8 +13,7 @@ export function BorrowRequestForm({ assets, requests, selected, onSelect, onSubm
   assets: Asset[]; requests: BorrowRequest[]; selected: string; onSelect: (id: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void; busy: boolean; ready: boolean
 }) {
-  const eligible = assets.filter(asset => asset.available &&
-    !requests.some(request => request.assetId === asset.assetId && request.status === 'PENDING'))
+  const eligible = assets.filter(asset => borrowEligibility(asset, requests) === 'eligible')
   const valid = eligible.some(asset => asset.assetId === selected)
   return <section className="panel" aria-labelledby="borrow-heading">
     <h2 id="borrow-heading">Request equipment</h2>
