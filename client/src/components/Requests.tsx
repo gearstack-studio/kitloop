@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from 'react'
 import type { Asset } from './Catalog'
 import { borrowEligibility } from '../borrowEligibility'
+import { formatLocalTimestamp } from '../localDateTime'
 
 export type BorrowRequest = {
   id: string; assetId: string; borrowerId?: string; status: 'PENDING' | 'CHECKED_OUT'; submittedAt: string
@@ -45,7 +46,7 @@ export default function Requests({ requests, status, onRetry, custodian = false,
       <div className="record-list">{requests.map(item => <article className="record" key={item.id}>
         <div><strong>{item.asset?.name ?? item.assetId}</strong><small>{item.assetId} · {item.status}</small>
           <small>Request {item.id}</small>
-          <small>Submitted {new Date(item.submittedAt).toLocaleString()}</small>
+          <small>Submitted {formatLocalTimestamp(item.submittedAt)}</small>
           {custodian && <small>Borrower: {item.borrower?.username ?? 'Unknown'} · {item.borrower?.id ?? item.borrowerId}</small>}
         </div>{children?.(item)}
       </article>)}</div>)}
