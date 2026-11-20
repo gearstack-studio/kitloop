@@ -34,7 +34,7 @@ describe('Custodian checkout form', () => {
     }
   })
   it('shows persisted loan identifiers, checkout and due timestamps, and status', () => {
-    render(<Loans custodian loans={[{ id: 'L1', requestId: 'R1', assetId: 'CAM-1', borrowerId: 'B1', checkoutCustodianId: 'C1',
+    render(<Loans custodian status="ready" onRetry={vi.fn()} loans={[{ id: 'L1', requestId: 'R1', assetId: 'CAM-1', borrowerId: 'B1', checkoutCustodianId: 'C1',
       checkedOutAt: '2026-11-03T10:00:00Z', dueAt: '2026-11-04T10:00:00Z', returnedAt: null, status: 'ACTIVE' }]} />)
     for (const text of ['Loan L1', 'Request R1', 'Borrower B1', 'Checked out by C1', 'CAM-1 · ACTIVE']) {
       expect(screen.getByText(text)).toBeTruthy()

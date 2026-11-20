@@ -3,10 +3,17 @@ export type Loan = {
   checkedOutAt: string; dueAt: string; returnedAt: string | null; status: 'ACTIVE' | 'RETURNED'
 }
 
-export default function Loans({ loans, custodian }: { loans: Loan[]; custodian: boolean }) {
-  return <section className="panel" aria-labelledby="loans-heading">
-    <div className="section-heading"><h2 id="loans-heading">{custodian ? 'Active loans' : 'My loans'}</h2><span>{loans.length} records</span></div>
-    {loans.length === 0 ? <p className="empty">No loans to show yet.</p> :
+export type LoanStatus = 'loading' | 'ready' | 'error'
+
+export default function Loans({ loans, status, onRetry, custodian }: {
+  loans: Loan[]; status: LoanStatus; onRetry: () => void; custodian: boolean
+}) {
+  return <section className="panel" aria-labelledby="loans-heading" aria-busy={status === 'loading'}>
+    <div className="section-heading"><h2 id="loans-heading">{custodian ? 'Active loans' : 'My loans'}</h2>
+      {status === 'ready' && <span>{loans.length} records</span>}</div>
+    {status === 'loading' && <p role="status">Loading loans…</p>}
+    {status === 'error' && <div role="alert"><p>Loans could not be loaded.</p><button type="button" onClick={onRetry}>Retry loans</button></div>}
+    {status === 'ready' && (loans.length === 0 ? <p className="empty">No loans to show yet.</p> :
       <div className="record-list">{loans.map(loan => <article className="record" key={loan.id}>
         <div><strong>{loan.assetId} · {loan.status}</strong>
           <small>Loan {loan.id}</small><small>Request {loan.requestId}</small>
@@ -15,6 +22,6 @@ export default function Loans({ loans, custodian }: { loans: Loan[]; custodian: 
           <small>Due {new Date(loan.dueAt).toLocaleString()}</small>
           {loan.returnedAt && <small>Returned {new Date(loan.returnedAt).toLocaleString()}</small>}
         </div>
-      </article>)}</div>}
+      </article>)}</div>)}
   </section>
 }

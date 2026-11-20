@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import Brand from './components/Brand'
 import Landing from './Landing'
 import SignUp from './SignUp'
@@ -6,7 +6,7 @@ import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import Checkout from './components/Checkout'
-import Loans, { type Loan } from './components/Loans'
+import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
 import { AuthButton, AuthCard, AuthLink, Field } from './components/Auth'
 import { navigate, usePath } from './navigation'
@@ -43,6 +43,7 @@ async function api<T>(path: string, options: RequestInit = {}, csrf?: string): P
 
 function App() {
   const sessionEpoch = useRef(0)
+  const loanReadId = useRef(0)
   const path = usePath()
   const [identity, setIdentity] = useState<Identity | null>(null)
   const [csrf, setCsrf] = useState('')
@@ -58,11 +59,27 @@ function App() {
   const [requestStatus, setRequestStatus] = useState<RequestStatus>('loading')
   const [selectedAsset, setSelectedAsset] = useState('')
   const [loans, setLoans] = useState<Loan[]>([])
+  const [loanStatus, setLoanStatus] = useState<LoanStatus>('loading')
 
-  function endSession(message: string) {
+  const endSession = useCallback((message: string) => {
     sessionEpoch.current++
-    setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setNotice(message); setError('')
-  }
+    setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
+  }, [])
+
+  const loadLoans = useCallback((role: Identity['role'], signal?: AbortSignal) => {
+    const epoch = sessionEpoch.current
+    const readId = ++loanReadId.current
+    const isCurrent = () => !signal?.aborted && epoch === sessionEpoch.current && readId === loanReadId.current
+    return api<Loan[]>(role === 'BORROWER' ? '/loans/mine' : '/loans/active', { signal }).then(({ data }) => {
+      if (!isCurrent()) return
+      setLoans(data)
+      setLoanStatus('ready')
+    }, (failure: ApiFailure) => {
+      if (!isCurrent()) return
+      if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
+      else setLoanStatus('error')
+    })
+  }, [endSession])
 
   useEffect(() => {
     let active = true
@@ -92,25 +109,21 @@ function App() {
       if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
       else setRequestStatus('error')
     })
-    api<Loan[]>(identity.role === 'BORROWER' ? '/loans/mine' : '/loans/active').then(({ data }) => {
-      if (active && epoch === sessionEpoch.current) setLoans(data)
-    }).catch((failure: ApiFailure) => {
-      if (!active || epoch !== sessionEpoch.current) return
-      if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
-      else setError(failure.message)
-    })
-    return () => { active = false }
-  }, [identity])
+    const loanController = new AbortController()
+    void loadLoans(identity.role, loanController.signal)
+    return () => { active = false; loanController.abort() }
+  }, [identity, endSession, loadLoans])
 
   async function refreshData(role: Identity['role']) {
     const epoch = sessionEpoch.current
-    const [catalog, requestList, loanList] = await Promise.all([
+    setLoanStatus('loading')
+    const [catalog, requestList] = await Promise.all([
       api<Asset[]>('/assets'),
       api<BorrowRequest[]>(role === 'BORROWER' ? '/requests/mine' : '/requests/pending'),
-      api<Loan[]>(role === 'BORROWER' ? '/loans/mine' : '/loans/active'),
+      loadLoans(role),
     ])
     if (epoch === sessionEpoch.current) {
-      setAssets(catalog.data); setCatalogStatus('ready'); setRequests(requestList.data); setRequestStatus('ready'); setLoans(loanList.data)
+      setAssets(catalog.data); setCatalogStatus('ready'); setRequests(requestList.data); setRequestStatus('ready')
     }
   }
 
@@ -247,7 +260,8 @@ function App() {
           ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
           onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, 'Checkout recorded. Request CHECKED_OUT and active loan created.') }} />}
       </Requests>
-      <Loans loans={loans} custodian={identity.role === 'CUSTODIAN'} />
+      <Loans loans={loans} status={loanStatus} custodian={identity.role === 'CUSTODIAN'}
+        onRetry={() => { setLoanStatus('loading'); void loadLoans(identity.role) }} />
     </main>}
   </div>
 }
