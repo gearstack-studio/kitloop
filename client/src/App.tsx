@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import Brand from './components/Brand'
 import Landing from './Landing'
-import SignUp from './SignUp'
 import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import Checkout from './components/Checkout'
 import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
-import { AuthButton, AuthCard, AuthLink, Field } from './components/Auth'
+import { AuthButton, AuthCard, Field } from './components/Auth'
 import { navigate, usePath } from './navigation'
 import { borrowEligibility } from './borrowEligibility'
 import './App.css'
@@ -222,17 +221,22 @@ function App() {
     } finally { setBusy(false) }
   }
 
-  const route = path === '/login' || path === '/signup' || path === '/dashboard' || path === '/requests' ? path : '/'
+  const route = path === '/' || path === '/login' || path === '/dashboard' || path === '/requests' ? path : null
 
   useEffect(() => {
     if (checking) return
     if ((route === '/dashboard' || route === '/requests') && !identity) navigate('/login', { replace: true })
     else if (route === '/requests' && identity?.role === 'CUSTODIAN') navigate('/dashboard', { replace: true })
-    else if ((route === '/login' || route === '/signup') && identity) navigate('/dashboard', { replace: true })
-    else if (path !== route) navigate('/', { replace: true })
-  }, [checking, identity, route, path])
+    else if (route === '/login' && identity) navigate('/dashboard', { replace: true })
+  }, [checking, identity, route])
 
   if (route === '/') return <Landing authenticated={!checking && !!identity} />
+  if (!route) return <div className="shell shell--login">
+    <header className="topbar"><Brand /></header>
+    <AuthCard title="Page not found" subtitle="The page you requested is unavailable.">
+      <AmbientLink href="/">Back to home</AmbientLink>
+    </AuthCard>
+  </div>
   if (checking) return <main className="centered"><p role="status">Checking your session…</p></main>
 
   return <div className={`shell ${identity ? 'shell--authenticated' : 'shell--login'}`}>
@@ -241,14 +245,14 @@ function App() {
       {!identity && <AmbientLink variant="secondary" href="/">← Back to home</AmbientLink>}
       {identity && <div className="topbar-controls"><span className="identity-tag">Account {identity.id.slice(0, 8)}</span><AmbientButton variant="secondary" onClick={signOut} disabled={busy}>{busy ? 'Please wait…' : 'Sign out'}</AmbientButton></div>}
     </header>
-    {!identity ? (route === '/signup' ? <SignUp /> : <AuthCard title="Welcome back" subtitle="Sign in to your KitLoop account." footer={<>Don't have an account? <AuthLink to="/signup">Sign up</AuthLink></>}>
+    {!identity ? <AuthCard title="Welcome back" subtitle="Sign in to your KitLoop account.">
         <form onSubmit={signIn}>
           <Field id="username" label="Username" value={username} onChange={event => setUsername(event.target.value)} autoComplete="username" required />
           <Field id="password" label="Password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required />
           <AuthButton busy={busy}>{busy ? 'Signing in…' : 'Sign In'}</AuthButton>
         </form>
         {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
-      </AuthCard>)
+      </AuthCard>
     : <main className="dashboard">
       <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div><span className="identity-tag">Account {identity.id.slice(0, 8)}</span></div>
       {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
