@@ -1,3 +1,5 @@
+import { formatLocalTimestamp } from '../localDateTime'
+
 export type Loan = {
   id: string; assetId: string; borrowerId: string; requestId: string; checkoutCustodianId: string
   checkedOutAt: string; dueAt: string; returnedAt: string | null; status: 'ACTIVE' | 'RETURNED'
@@ -18,9 +20,9 @@ export default function Loans({ loans, status, onRetry, custodian }: {
         <div><strong>{loan.assetId} · {loan.status}</strong>
           <small>Loan {loan.id}</small><small>Request {loan.requestId}</small>
           <small>Borrower {loan.borrowerId}</small><small>Checked out by {loan.checkoutCustodianId}</small>
-          <small>Checked out {new Date(loan.checkedOutAt).toLocaleString()}</small>
-          <small>Due {new Date(loan.dueAt).toLocaleString()}</small>
-          {loan.returnedAt && <small>Returned {new Date(loan.returnedAt).toLocaleString()}</small>}
+          <small>Checked out {formatLocalTimestamp(loan.checkedOutAt)}</small>
+          <small>Due {formatLocalTimestamp(loan.dueAt)}</small>
+          {loan.returnedAt && <small>Returned {formatLocalTimestamp(loan.returnedAt)}</small>}
         </div>
       </article>)}</div>)}
   </section>
