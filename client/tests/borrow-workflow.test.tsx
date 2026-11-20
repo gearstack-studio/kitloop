@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../src/App'
 
@@ -79,6 +79,35 @@ describe('Borrower workflow integration in the React app (mocked HTTP)', () => {
     await userEvent.click(button)
     expect(window.location.pathname).toBe('/requests')
     expect((screen.getByLabelText('Available equipment') as HTMLSelectElement).value).toBe('CAM-01')
+  })
+
+  it('keeps the newest request history when overlapping retries resolve out of order', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    const originalFetch = globalThis.fetch
+    const older = Promise.withResolvers<Response>()
+    const newer = Promise.withResolvers<Response>()
+    const readHistory = vi.fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(json({ error: { message: 'Read failed' } }, 500))
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise)
+    vi.stubGlobal('fetch', vi.fn((input: string, options?: RequestInit) => {
+      if (new URL(input).pathname === '/api/requests/mine') return readHistory()
+      return originalFetch(input, options)
+    }))
+    render(<App />)
+
+    const retry = await screen.findByRole('button', { name: 'Retry requests' })
+    act(() => {
+      fireEvent.click(retry)
+      fireEvent.click(retry)
+    })
+    expect(readHistory).toHaveBeenCalledTimes(3)
+    await act(async () => { newer.resolve(json([pending])) })
+    await screen.findByText('CAM-01 · PENDING')
+
+    await act(async () => { older.resolve(json([])) })
+    expect(screen.getByText('CAM-01 · PENDING')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: /you already have a pending request/i }).disabled).toBe(true)
   })
 
   it('submits from My Requests, refreshes persisted history, and prevents a second selection', async () => {

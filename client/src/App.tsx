@@ -44,6 +44,7 @@ async function api<T>(path: string, options: RequestInit = {}, csrf?: string): P
 
 function App() {
   const sessionEpoch = useRef(0)
+  const requestReadId = useRef(0)
   const loanReadId = useRef(0)
   const path = usePath()
   const [identity, setIdentity] = useState<Identity | null>(null)
@@ -66,6 +67,26 @@ function App() {
     sessionEpoch.current++
     setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
   }, [])
+
+  const loadRequests = useCallback((role: Identity['role'], options: {
+    signal?: AbortSignal; reportRefreshFailure?: boolean
+  } = {}) => {
+    const epoch = sessionEpoch.current
+    const readId = ++requestReadId.current
+    const isCurrent = () => !options.signal?.aborted && epoch === sessionEpoch.current && readId === requestReadId.current
+    return api<BorrowRequest[]>(role === 'BORROWER' ? '/requests/mine' : '/requests/pending', { signal: options.signal }).then(({ data }) => {
+      if (!isCurrent()) return
+      setRequests(data)
+      setRequestStatus('ready')
+    }, (failure: ApiFailure) => {
+      if (!isCurrent()) return
+      if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
+      else {
+        setRequestStatus('error')
+        if (options.reportRefreshFailure) throw failure
+      }
+    })
+  }, [endSession])
 
   const loadLoans = useCallback((role: Identity['role'], signal?: AbortSignal) => {
     const epoch = sessionEpoch.current
@@ -103,43 +124,29 @@ function App() {
       if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
       else setCatalogStatus('error')
     })
-    api<BorrowRequest[]>(identity.role === 'BORROWER' ? '/requests/mine' : '/requests/pending').then(({ data }) => {
-      if (active && epoch === sessionEpoch.current) { setRequests(data); setRequestStatus('ready') }
-    }).catch((failure: ApiFailure) => {
-      if (!active || epoch !== sessionEpoch.current) return
-      if (failure.status === 401) endSession('Your session has ended. Please sign in again.')
-      else setRequestStatus('error')
-    })
-    const loanController = new AbortController()
-    void loadLoans(identity.role, loanController.signal)
-    return () => { active = false; loanController.abort() }
-  }, [identity, endSession, loadLoans])
+    const controller = new AbortController()
+    void loadRequests(identity.role, { signal: controller.signal })
+    void loadLoans(identity.role, controller.signal)
+    return () => { active = false; controller.abort() }
+  }, [identity, endSession, loadLoans, loadRequests])
 
   async function refreshData(role: Identity['role']) {
     const epoch = sessionEpoch.current
     setLoanStatus('loading')
-    const [catalog, requestList] = await Promise.all([
+    const [catalog] = await Promise.all([
       api<Asset[]>('/assets'),
-      api<BorrowRequest[]>(role === 'BORROWER' ? '/requests/mine' : '/requests/pending'),
+      loadRequests(role, { reportRefreshFailure: true }),
       loadLoans(role),
     ])
     if (epoch === sessionEpoch.current) {
-      setAssets(catalog.data); setCatalogStatus('ready'); setRequests(requestList.data); setRequestStatus('ready')
+      setAssets(catalog.data); setCatalogStatus('ready')
     }
   }
 
-  async function retryRequests() {
+  function retryRequests() {
     if (!identity) return
-    const epoch = sessionEpoch.current
     setRequestStatus('loading')
-    try {
-      const result = await api<BorrowRequest[]>(identity.role === 'BORROWER' ? '/requests/mine' : '/requests/pending')
-      if (epoch === sessionEpoch.current) { setRequests(result.data); setRequestStatus('ready') }
-    } catch (failure) {
-      if (epoch !== sessionEpoch.current) return
-      if ((failure as ApiFailure).status === 401) endSession('Your session has ended. Please sign in again.')
-      else setRequestStatus('error')
-    }
+    void loadRequests(identity.role)
   }
 
   async function retryCatalog() {
@@ -195,7 +202,7 @@ function App() {
       try { await refreshData(identity.role) } catch (failure) {
         if (epoch !== sessionEpoch.current) return
         if ((failure as ApiFailure).status === 401) endSession('Your session has ended. Please sign in again.')
-        else { setRequestStatus('error'); setCatalogStatus('error'); setError('The action succeeded, but updated records could not be loaded. Retry loading before submitting again.') }
+        else { setCatalogStatus('error'); setError('The action succeeded, but updated records could not be loaded. Retry loading before submitting again.') }
       }
     } catch (failure) {
       if (epoch !== sessionEpoch.current) return
@@ -207,7 +214,7 @@ function App() {
           try { await refreshData(identity.role) } catch (refreshFailure) {
             if (epoch !== sessionEpoch.current) return
             if ((refreshFailure as ApiFailure).status === 401) { endSession('Your session has ended. Please sign in again.'); return }
-            setRequestStatus('error'); setCatalogStatus('error')
+            setCatalogStatus('error')
           }
         }
         setError(issue.status === 403 ? 'You do not have permission for this action.' : issue.message)
