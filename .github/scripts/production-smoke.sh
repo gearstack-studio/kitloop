@@ -3,6 +3,8 @@ set -euo pipefail
 
 runtime_env="${1:?Pass the generated production-test configuration path}"
 runtime_project="${COMPOSE_PROJECT_NAME:?Set a unique test Compose project name}-production"
+BUILD_COMMIT_SHA="$(git rev-parse HEAD)"
+export BUILD_COMMIT_SHA
 compose() {
   docker compose -f docker-compose.production-test.yml --env-file "$runtime_env" -p "$runtime_project" "$@"
 }

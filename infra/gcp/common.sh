@@ -183,7 +183,7 @@ identity_token() {
 }
 # Usage: http_checks BASE_URL [IDENTITY_TOKEN]. The token is passed on stdin, never as an argument.
 http_checks() {
-  local base="$1" token="${2:-}" path status
+  local base="$1" token="${2:-}" expected_commit="${3:-}" path status version
   for path in / /api/health /api/ready; do
     if [[ -n "$token" ]]; then
       status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 20 \
@@ -198,4 +198,13 @@ http_checks() {
     fi
     printf 'PASS %s%s HTTP %s\n' "$base" "$path" "$status"
   done
+  if [[ -n "$expected_commit" ]]; then
+    if ! version="$(curl --fail --silent --show-error --max-time 20 --header @- \
+      "$base/api/version" <<<"${token:+Authorization: Bearer $token}")" ||
+      ! jq -e --arg commit "$expected_commit" '.commit == $commit' <<<"$version" >/dev/null; then
+      note "FAIL $base/api/version did not report expected commit $expected_commit"
+      return 1
+    fi
+    printf 'PASS %s/api/version commit %s\n' "$base" "$expected_commit"
+  fi
 }

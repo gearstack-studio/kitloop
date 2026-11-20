@@ -57,7 +57,8 @@ COPY --from=production-deps --chown=node:node /app/server/node_modules ./node_mo
 COPY --from=server-test --chown=node:node /app/server/dist ./dist
 COPY --from=client-test --chown=node:node /app/client/dist ./public
 COPY --chown=node:node server/package.json ./package.json
-ENV NODE_ENV=production PORT=8080
+ARG BUILD_COMMIT_SHA
+ENV NODE_ENV=production PORT=8080 BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA}
 USER node
 EXPOSE 8080
 CMD ["node", "dist/index.js"]

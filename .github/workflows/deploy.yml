@@ -94,9 +94,9 @@ jobs:
         run: |
           if gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json |
             jq -e 'any(.bindings[]?; .role == "roles/run.invoker" and any(.members[]?; . == "allUsers"))' >/dev/null; then
-            bash infra/gcp/verify.sh public
+            bash infra/gcp/verify.sh public "$GITHUB_SHA"
           else
-            bash infra/gcp/verify.sh private
+            bash infra/gcp/verify.sh private "$GITHUB_SHA"
           fi
 
       - name: Roll back traffic after a failed release or verification

@@ -16,7 +16,9 @@ unset KITLOOP_AUTOMATED_RELEASE DEPLOY_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDEN
 PROJECT=lab-5-cloud-deployment-514310
 ORIGIN=https://kitloop-123456789012.asia-southeast1.run.app
 DEPLOY_SA="kitloop-wif-deploy@$PROJECT.iam.gserviceaccount.com"
-SHA1=0123456789ab SHA2=111111111111 SHA3=222222222222 SHA4=333333333333 SHA5=444444444444 SHA6=555555555555
+export FAKE_SHA_SUFFIX=0000000000000000000000000000
+SHA1="0123456789ab$FAKE_SHA_SUFFIX" SHA2="111111111111$FAKE_SHA_SUFFIX" SHA3="222222222222$FAKE_SHA_SUFFIX"
+SHA4="333333333333$FAKE_SHA_SUFFIX" SHA5="444444444444$FAKE_SHA_SUFFIX" SHA6="555555555555$FAKE_SHA_SUFFIX"
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
 mkdir -p "$work/bin"
@@ -232,7 +234,21 @@ else
     status=401
   fi
 fi
-printf '%s' "$status"
+if [[ "$url" == */api/version ]]; then
+  [[ "$status" == 200 ]] || http_error "$status"
+  if [[ -f "$FAKE_STATE/version-override" ]]; then
+    commit="$(cat "$FAKE_STATE/version-override")"
+  else
+    revision="$(jq -r --arg base "${url%/api/version}" '
+      .status.traffic[] | select(.url == $base or (.percent > 0 and .url == null)) | .revisionName
+    ' "$FAKE_STATE/service.json" | tail -n1)"
+    prefix="${revision#kitloop-}"
+    commit="${prefix:0:12}$FAKE_SHA_SUFFIX"
+  fi
+  jq -cn --arg commit "$commit" '{commit: $commit}'
+else
+  printf '%s' "$status"
+fi
 FAKE
 chmod +x "$work/bin/gcloud" "$work/bin/curl" "$work/bin/fake-jwt" "$work/bin/fake-jwt-claims"
 
@@ -271,7 +287,7 @@ out_has() { [[ "$OUT" == *"$1"* ]] || fail_test "$2"; }
 log_has() { grep -qF -- "$1" "$FAKE_LOG" || fail_test "$2"; }
 log_lacks() { ! grep -qF -- "$1" "$FAKE_LOG" || fail_test "$2"; }
 serving() { jq -r '[.status.traffic[] | select(.percent > 0) | "\(.revisionName)=\(.percent)"] | join(",")' "$FAKE_STATE/service.json"; }
-revision_for() { jq -r --arg sha "$1" '.status.traffic[] | select(.revisionName | startswith("kitloop-" + $sha)) | .revisionName' \
+revision_for() { local sha="$1"; jq -r --arg prefix "${sha:0:12}" '.status.traffic[] | select(.revisionName | startswith("kitloop-" + $prefix + "-")) | .revisionName' \
   "$FAKE_STATE/service.json" | head -n1; }
 
 # --- Mutation guards ---------------------------------------------------------------------------------
@@ -378,6 +394,16 @@ log_lacks 'update-traffic' 'failed candidate received traffic'
 [[ "$(serving)" == "$second=100" && -f "$FAKE_STATE/public" ]] || fail_test 'failed candidate changed traffic or access'
 rm -f "$FAKE_STATE/curl-fail"
 pass 'failed candidate never receives traffic; previous revision keeps serving'
+
+rm -f "$FAKE_STATE/revisions/kitloop-${SHA3:0:12}-"*.json
+echo "$SHA2" >"$FAKE_STATE/version-override"
+release deploy "$SHA3"
+refused 'candidate reporting a different commit'
+out_has "did not report expected commit $SHA3" 'candidate SHA mismatch was not reported'
+log_lacks 'update-traffic' 'candidate with the wrong SHA received traffic'
+[[ "$(serving)" == "$second=100" ]] || fail_test 'candidate SHA mismatch changed traffic'
+rm -f "$FAKE_STATE/version-override"
+pass 'candidate SHA mismatch leaves the previous revision serving'
 
 # --- Migration gates -------------------------------------------------------------------------------
 echo failed >"$FAKE_STATE/jobs/kitloop-migrate.outcome"
@@ -502,7 +528,7 @@ auto_refused() {
   log_lacks 'curl auth=yes https://candidate---' "$name: candidate was called without a valid token"
   [[ "$(serving)" == "$before" ]] || fail_test "$name: traffic changed to $(serving)"
   no_secrets "$name"
-  rm -f "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json   # a retry within the same second reuses the suffix
+  rm -f "$FAKE_STATE/revisions/kitloop-${SHA6:0:12}-"*.json   # a retry within the same second reuses the suffix
   pass "automated candidate refused, previous revision kept: $name"
 }
 auto_refused 'deployment account variable mismatch' 'Unexpected deployment service account' \
@@ -541,7 +567,7 @@ refused 'automated candidate failing readiness'; out_has 'traffic was not change
 log_lacks 'update-traffic' 'failed automated candidate received traffic'
 [[ "$(serving)" == "$before" ]] || fail_test 'failed automated candidate changed traffic'
 no_secrets 'automated candidate failing readiness'
-rm -f "$FAKE_STATE/curl-fail" "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json
+rm -f "$FAKE_STATE/curl-fail" "$FAKE_STATE/revisions/kitloop-${SHA6:0:12}-"*.json
 pass 'automated candidate with a valid token but failing readiness never receives traffic'
 
 # Private verification and rollback in the deploy job use the same flow against the canonical URL.

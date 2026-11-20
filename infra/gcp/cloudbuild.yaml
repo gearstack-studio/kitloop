@@ -1,6 +1,6 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '--pull', '--target', 'production', '--build-arg', 'VITE_API_BASE_URL=', '-t', '${_APP_IMAGE}', '.']
+    args: ['build', '--pull', '--target', 'production', '--build-arg', 'VITE_API_BASE_URL=', '--build-arg', 'BUILD_COMMIT_SHA=${_SOURCE_SHA}', '-t', '${_APP_IMAGE}', '.']
   - name: gcr.io/cloud-builders/docker
     args: ['build', '--pull', '--target', 'migration', '-t', '${_MIGRATION_IMAGE}', '.']
 images:
