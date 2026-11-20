@@ -57,6 +57,18 @@ afterAll(async () => {
 });
 
 describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
+  it("returns 413 for a checkout body over 16 KB without changing the request or creating a loan", async () => {
+    const { requestId, assetId } = await fixture();
+    const response = await checkout(custodian, requestId, assetId, { pad: "x".repeat(17_000) });
+
+    await assertUntouched(requestId, assetId);
+    expect(response.status).toBe(413);
+    expect(response.headers["content-type"]).toMatch(/application\/json/);
+    expect(response.body).toEqual({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
+  });
+
   it("shows only scoped pending requests with borrower and equipment details", async () => {
     const { requestId, assetId } = await fixture();
     const response = await request(app).get("/api/requests/pending").set("Cookie", custodian.cookie);
