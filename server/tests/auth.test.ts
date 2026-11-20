@@ -204,6 +204,20 @@ describe("FEAT-01 authentication API", () => {
     expect(malformed.body).toEqual({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } });
   });
 
+  it("returns 413 for a login body over 16 KB without creating a session", async () => {
+    const sessionCount = await prisma.session.count();
+    const response = await request(app).post("/api/auth/login").set("Origin", origin)
+      .send({ username: "a".repeat(20_000), password });
+
+    expect(await prisma.session.count()).toBe(sessionCount);
+    expect(response.headers["set-cookie"]).toBeUndefined();
+    expect(response.status).toBe(413);
+    expect(response.headers["content-type"]).toMatch(/application\/json/);
+    expect(response.body).toEqual({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
+  });
+
   it("returns a generic response for an unexpected authentication failure", async () => {
     const spy = vi.spyOn(prisma.user, "findUnique").mockRejectedValueOnce(new Error("sensitive database detail"));
     try {

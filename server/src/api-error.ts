@@ -30,6 +30,17 @@ export const apiErrorHandler: ErrorRequestHandler = (error: unknown, _request, r
     return;
   }
 
+  if (
+    error instanceof Error &&
+    "status" in error && error.status === 413 &&
+    "type" in error && error.type === "entity.too.large"
+  ) {
+    response.status(413).json({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
+    return;
+  }
+
   response.status(500).json({
     error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" },
   });
