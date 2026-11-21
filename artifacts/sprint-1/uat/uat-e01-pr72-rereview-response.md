@@ -20,7 +20,7 @@ Thanks. You're right: the `bbf8a36` guard checked the serving revision's flag, n
 
 **Also changed:**
 - The confirmation bypass is **removed**. A typed confirmation authorises the action but never replaces the check.
-- `release.sh deploy` now also refuses commits known to predate the lifecycle migration, so pre-lifecycle code can't reach traffic through a redeploy that skips the check.
+- `release.sh deploy` now also refuses commits known to predate the lifecycle migration, so pre-lifecycle code can't reach traffic through a redeploy that skips the check. *(Superseded after the re-review of `402eafd`: this guard was skipped for commits absent from the checkout. See `uat-e01-pr72-402eafd-response.md`.)*
 
 ### Regression coverage
 

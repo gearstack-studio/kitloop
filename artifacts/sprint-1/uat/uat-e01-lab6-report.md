@@ -513,7 +513,7 @@ Full regression on the final code:
 - **Not executed in GCP.** The `kitloop-rollback-check` job, its IAM (runtime service account, database secret) and the real Cloud Run execution JSON shape were verified only against the offline fake. The first real pre-lifecycle rollback attempt is also the first real run of the gate. A failure there blocks the rollback (fails closed); it can't let an unsafe one through.
 - **Window between the final re-check and `update-traffic`.** It's a few seconds. A concurrent manual `release.sh deploy` with `enabled`, or a new reconciliation job created in that window, isn't excluded by a lock. `deploy.yml` serialises automated releases, but manual operators must not run releases concurrently.
 - **Changes outside `release.sh`.** Cloud Console traffic changes, or `gcloud run services update-traffic` run by hand, bypass every guard. The runbook's emergency step is to route to a lifecycle-aware revision.
-- **Deploying an unknown commit.** `release.sh deploy` refuses known pre-lifecycle commits only when the commit is present in the checkout. Release clones are full (`deploy.yml` uses `fetch-depth: 0`); a shallow manual clone wouldn't detect it.
+- ~~**Deploying an unknown commit.** `release.sh deploy` refuses known pre-lifecycle commits only when the commit is present in the checkout. Release clones are full (`deploy.yml` uses `fetch-depth: 0`); a shallow manual clone wouldn't detect it.~~ *This was a P1 in the re-review of `402eafd` and is now fixed (§14): an unknown commit is refused.*
 - **No path back after rows exist.** Once phase 2 has written any lifecycle row, no pre-lifecycle revision can become serving again through `release.sh`. That's intended, but recovery from a phase 1 defect then means fixing forward or using another lifecycle-aware revision.
 
 ## 13. Final pre-merge audit (2026-11-21)
@@ -562,3 +562,63 @@ Evidence: `uat-e01-final-audit-evidence.txt`.
 - The §12.6 risks are unchanged: the gate hasn't been run in GCP; there's an unlocked seconds-long window before `update-traffic`; console or raw-gcloud changes bypass the gate; deploying an unknown commit is only refused when the commit is in the checkout.
 - **Classification:** a revision counts as pre-lifecycle only if it lacks `REQUEST_LIFECYCLE_WRITES`. That holds for every revision `release.sh` can produce from known commits, but a hand-deployed revision could be mislabelled.
 - **Reconciliation reason label:** it records `ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER` even if the active loan belongs to the same borrower through an older request. The status outcome is still correct.
+
+## 14. PR #72 re-review of `402eafd`: deploy source verification failed open (P1)
+
+### 14.1 Root cause
+
+The `deploy` guard was a single combined condition: *if the commit resolves locally **and** lacks the lifecycle migration, refuse*. For a full 40-character SHA that is absent from the checkout, the first clause is false, so the whole guard was skipped. `deploy` then continued with the registry image for that SHA. That image could be an old Prisma client, and `deploy` would label it `REQUEST_LIFECYCLE_WRITES=…`, which later made the rollback gate treat it as lifecycle-aware.
+
+Two related gaps:
+- Abbreviated SHAs were resolved in the current directory rather than the checkout containing `release.sh`.
+- `migrate` and `bootstrap` did no source verification at all.
+
+### 14.2 Fix
+
+`release.sh` now has `verified_release_commit`, the first statement of `deploy`, `migrate` and `bootstrap`. It runs separate fail-closed steps, each with its own refusal ending *"Nothing was changed."*:
+1. lowercase hex, 12–40 characters
+2. Git available, and `release.sh` inside a Git checkout
+3. `rev-parse --verify "$input^{object}"` succeeds in that checkout, which rejects unknown SHAs and ambiguous abbreviations
+4. the resolved ID is 40 hex characters and starts with the input, which rejects a ref name that only looks like a SHA
+5. `cat-file -t` is `commit`, which rejects blobs, trees and annotated tag objects
+6. `$LIFECYCLE_MIGRATION` is a blob in that commit
+
+The canonical full SHA then drives the image tags and the candidate's `/api/version` check. Rollback guards are unchanged.
+
+### 14.3 Regression (`infra/gcp/guards.test.sh`)
+
+The harness now runs a copy of `infra/gcp` inside a disposable Git repository of **real** commits. `SHA1..SHA6` are lifecycle-aware commits, and there are real pre-lifecycle, migration-removed, blob, tree and annotated-tag objects. Before, the SHAs were made-up strings that existed nowhere. The fake Cloud Run reports the commit each image was built from.
+
+| Scenario | Result |
+|---|---|
+| Unknown full SHA whose registry images and completed migration job exist (reviewer's path) | REFUSED |
+| Unknown abbreviated SHA | REFUSED |
+| Known pre-lifecycle SHA, full and abbreviated | REFUSED |
+| Commit with the lifecycle migration removed | REFUSED |
+| Blob, tree, annotated tag object (full and abbreviated) | REFUSED |
+| Tag name, `HEAD`, SHA-like branch name, uppercase, 11 or 41 characters, leading `-` | REFUSED |
+| `migrate` / `bootstrap` of an unknown or pre-lifecycle SHA | REFUSED |
+| Lifecycle-aware commit (abbreviated input, canonicalised) | ALLOWED |
+
+Every refused case asserts:
+- a nonzero exit and a specific message;
+- **no** `gcloud artifacts docker`, `run jobs`, `run deploy`, `run services`, `run revisions`, `update-traffic`, `sql instances` or `builds` call;
+- unchanged traffic.
+
+**RED** (the new tests against the `402eafd` scripts): `FAIL: deploy of an unknown full SHA with registry images and a migration execution (unexpected success)`. The image was deployed and given 100% of traffic.
+
+**GREEN:**
+- `guards.test.sh` passes, and the 16 deployment guard cases pass
+- `bash -n` and `shellcheck -S warning infra/gcp/*.sh infra/gcp/deploy/*.sh` are clean
+- server 14 files 110/110
+- client 7 files 42/42
+- server typecheck and build, client lint and build, E2E typecheck: exit 0
+- browser E2E 31/31 with `NODE_OPTIONS=--dns-result-order=ipv4first`
+
+Evidence: `uat-e01-402eafd-red.txt`, `uat-e01-402eafd-green.txt`.
+
+### 14.4 Remaining limitations
+
+- **Image provenance.** Source verification proves the *commit*. The image is still found by the mutable tag `<sha[0:12]>` and bound to the commit only by its self-reported `BUILD_COMMIT_SHA`, checked before traffic. There's no signature or attestation, so anyone with Artifact Registry write access could defeat it. `prepare.sh` grants repository write only to the Cloud Build service account; project owners and editors also have it. The first deployment of a new service skips the candidate check.
+- **Revision classification.** A rollback treats a revision as pre-lifecycle when it lacks `REQUEST_LIFECYCLE_WRITES`. No production revision was deployed by the PR's tooling, because it isn't merged, so no mislabelled revision can exist from the fail-open path.
+- The §12.6 / §13.4 risks are unchanged: not run in GCP; a seconds-long window before `update-traffic`; changes outside `release.sh` bypass the gate.

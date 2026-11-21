@@ -36,7 +36,14 @@ Once phase 2 has written any lifecycle row, **no pre-lifecycle revision is a saf
 
 - `deploy` always sets `REQUEST_LIFECYCLE_WRITES` from `KITLOOP_REQUEST_LIFECYCLE_WRITES` (default `disabled`) and refuses any other value.
 - `deploy` with `enabled` is refused while any serving revision is pre-lifecycle, so the automatic rollback target in `deploy.yml` can always read lifecycle rows.
-- `deploy` of a commit known to predate the lifecycle (no `20261121090000_request_lifecycle` migration) is refused. Pre-lifecycle code reaches traffic only through the checked `rollback`.
+- **Release source verification.** `deploy`, `migrate` and `bootstrap` require a **resolvable local Git commit that contains the lifecycle migration**. Before any registry lookup or Cloud Run call, `release.sh` checks the supplied SHA:
+  1. It must be 12–40 lowercase hex characters. Git must be available, and `release.sh` must run inside a clone of the repository.
+  2. It must resolve, in that clone, to a single object whose ID starts with the input. An unknown SHA, an ambiguous abbreviation, or a ref name that only looks like a SHA is refused.
+  3. That object must be a **commit**. A blob, tree or annotated tag object is refused.
+  4. The commit must contain `server/prisma/migrations/20261121090000_request_lifecycle/migration.sql` as a file.
+
+  The canonical 40-character SHA is then used for the image tags and the candidate's `/api/version` check. A registry image or an operator confirmation never substitutes for these checks. To release a commit that isn't in the clone, fetch it first (`git fetch origin`). Pre-lifecycle code reaches traffic only through the checked `rollback`.
+- **Image provenance (limitation).** The image is selected by the tag `kitloop-app:<first 12 characters of the SHA>`, resolved to a digest. Before the new revision gets traffic, its self-reported `BUILD_COMMIT_SHA` (`/api/version`) must equal the verified full SHA. That isn't a signature: anyone who can push to Artifact Registry could publish a different image under a release tag with any `BUILD_COMMIT_SHA`. `prepare.sh` grants repository write access only to the Cloud Build service account, but project owners and editors can write too. The first deployment of a new service routes immediately and skips the candidate check.
 - `rollback` to a pre-lifecycle revision runs this gate before any traffic change, whatever phase is serving:
   1. **Refuses** if any serving revision has `REQUEST_LIFECYCLE_WRITES=enabled`, because rows could be written after the check. Roll back to phase 1 first. It also **refuses** if a revision with writes enabled holds a tag at 0% traffic (normally `candidate` on the old phase-2 revision). Remove the tag first with `gcloud run services update-traffic kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --remove-tags=candidate`. Removing a tag doesn't move traffic, and the next `deploy` adds it back on its new revision.
   2. **Refuses** if Cloud Run jobs can't be listed, or if the reconciliation job `kitloop-reconcile` exists (it writes lifecycle rows). Delete it after reconciliation.

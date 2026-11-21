@@ -16,14 +16,40 @@ unset KITLOOP_AUTOMATED_RELEASE DEPLOY_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDEN
 PROJECT=lab-5-cloud-deployment-514310
 ORIGIN=https://kitloop-123456789012.asia-southeast1.run.app
 DEPLOY_SA="kitloop-wif-deploy@$PROJECT.iam.gserviceaccount.com"
-export FAKE_SHA_SUFFIX=0000000000000000000000000000
-SHA1="0123456789ab$FAKE_SHA_SUFFIX" SHA2="111111111111$FAKE_SHA_SUFFIX" SHA3="222222222222$FAKE_SHA_SUFFIX"
-SHA4="333333333333$FAKE_SHA_SUFFIX" SHA5="444444444444$FAKE_SHA_SUFFIX" SHA6="555555555555$FAKE_SHA_SUFFIX"
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
 mkdir -p "$work/bin"
 export FAKE_STATE="$work/state" FAKE_LOG="$work/calls.log" FAKE_ORIGIN="$ORIGIN" FAKE_DEPLOY_SA="$DEPLOY_SA"
 export PATH="$work/bin:$PATH" SHELL=/bin/bash
+
+# Isolated source repository (PR #72 deploy source verification). release.sh resolves every release commit in the Git
+# checkout that contains it, so the suite runs a copy of infra/gcp inside a disposable repository of real commits:
+#   PRE_SHA     predates the request lifecycle (no lifecycle migration)
+#   SHA1..SHA6  contain the lifecycle migration (lifecycle-aware releases)
+#   NOMIG_SHA   a later commit from which the lifecycle migration was removed
+# The fake registry and Cloud Run report, for an image tag, the commit it was built from: a commit of this repository,
+# or one listed in $FAKE_BUILT (built elsewhere and absent from this checkout).
+lifecycle_migration=server/prisma/migrations/20261121090000_request_lifecycle/migration.sql
+src="$work/src"
+mkdir -p "$src/infra"
+cp -R "$script_dir" "$src/infra/gcp"
+gitc() { git -C "$src" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
+git init -q -b main "$src"
+gitc add -A && gitc commit -q -m 'pre-lifecycle release'
+PRE_SHA="$(git -C "$src" rev-parse HEAD)"
+mkdir -p "$src/$(dirname "$lifecycle_migration")"
+cp "$script_dir/../../$lifecycle_migration" "$src/$lifecycle_migration"
+gitc add -A && gitc commit -q -m 'request lifecycle migration'
+for n in 1 2 3 4 5 6; do
+  gitc commit -q --allow-empty -m "lifecycle release $n"
+  printf -v "SHA$n" '%s' "$(git -C "$src" rev-parse HEAD)"
+done
+gitc rm -q "$lifecycle_migration" && gitc commit -q -m 'lifecycle migration removed'
+NOMIG_SHA="$(git -C "$src" rev-parse HEAD)"
+gitc reset -q --hard "$SHA6"
+script_dir="$src/infra/gcp"
+export FAKE_SRC="$src" FAKE_BUILT="$work/built-commits"
+: >"$FAKE_BUILT"
 
 # fake-jwt AUDIENCE EMAIL [EXP_OFFSET_SECONDS]: unsigned Google-shaped ID token. The signature segment is a
 # sentinel so the suite can prove tokens never reach output or command-line arguments.
@@ -260,7 +286,8 @@ if [[ "$url" == */api/version ]]; then
       .status.traffic[] | select(.url == $base or (.percent > 0 and .url == null)) | .revisionName
     ' "$FAKE_STATE/service.json" | tail -n1)"
     prefix="${revision#kitloop-}"
-    commit="${prefix:0:12}$FAKE_SHA_SUFFIX"
+    commit="$(grep -m1 "^${prefix:0:12}" "$FAKE_BUILT" ||
+      git -C "$FAKE_SRC" rev-parse --verify --quiet "${prefix:0:12}^{commit}" || true)"
   fi
   jq -cn --arg commit "$commit" '{commit: $commit}'
 else
@@ -788,13 +815,82 @@ rm -f "$FAKE_STATE/rollback-check-unavailable"
 unset KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK
 pass 'BLOCKED: an operator confirmation never substitutes for a verified zero-row check'
 
-if git -C "$script_dir" cat-file -e '8b6e5a95f34ecb71df2bb0ccc4a836fa156264cf^{commit}' 2>/dev/null; then
-  release deploy 8b6e5a95f34ecb71df2bb0ccc4a836fa156264cf
-  refused 'deploy of pre-lifecycle code'; out_has 'predates the request lifecycle' 'pre-lifecycle deploy was not explained'
-  log_lacks 'gcloud run deploy' 'pre-lifecycle code reached Cloud Run through deploy'; log_lacks 'update-traffic' 'pre-lifecycle deploy changed traffic'
-  pass 'BLOCKED: deploying pre-lifecycle code (8b6e5a9); it may only return through the checked rollback'
-else
-  printf 'SKIP: commit 8b6e5a9 is not in this checkout (shallow clone); pre-lifecycle deploy case not run\n'
-fi
+# --- Release source verification (PR #72 re-review of 402eafd, P1) -------------------------------------------------
+# deploy, migrate and bootstrap must resolve the supplied SHA to a commit of this checkout that contains the lifecycle
+# migration BEFORE any registry lookup or Cloud Run call. A registry image or an operator confirmation is never
+# evidence. Every refusal below must leave the fake cloud untouched.
+seed_migrated() {  # seed_migrated SHA: kitloop-migrate last completed with SHA's migration image (an earlier release.sh)
+  local image
+  image="$(bash -c 'source "$1"; digest_for "$(image_for migration "$2")"' _ "$script_dir/common.sh" "$1")"
+  gcloud run jobs deploy kitloop-migrate --project="$PROJECT" --region=asia-southeast1 --image="$image" >/dev/null
+  gcloud run jobs execute kitloop-migrate --project="$PROJECT" --region=asia-southeast1 --wait >/dev/null
+}
+source_refused() {  # source_refused LABEL EXPECTED_MESSAGE
+  refused "$1"; out_has "$2" "$1: refusal message missing"
+  out_has 'Nothing was changed' "$1: refusal did not say nothing was changed"
+  local call
+  for call in 'artifacts docker' 'run jobs' 'run deploy' 'run services' 'run revisions' 'update-traffic' 'sql instances' 'builds'; do
+    log_lacks "gcloud $call" "$1: reached 'gcloud $call' before source verification"
+  done
+  [[ "$(serving)" == "$source_serving" ]] || fail_test "$1: traffic changed to $(serving)"
+}
+source_serving="$(serving)"
+unknown="$(printf 'release commit built outside this checkout\n' | git hash-object --stdin)"   # not written: absent
+git -C "$src" cat-file -e "$unknown" 2>/dev/null && fail_test 'precondition: the unknown commit must be absent'
+echo "$unknown" >>"$FAKE_BUILT"   # its images exist in the registry and report that commit
+seed_migrated "$unknown"
+
+# The reviewer's path first: a full SHA absent from the checkout whose registry images and migration job both exist.
+release deploy "$unknown"
+source_refused 'deploy of an unknown full SHA with registry images and a migration execution' 'is not in this checkout'
+pass 'BLOCKED: deploy of a full SHA absent from the checkout, before any registry or Cloud Run call (re-review regression)'
+
+release deploy "${unknown:0:12}"
+source_refused 'deploy of an unknown abbreviated SHA' 'is not in this checkout'
+release deploy "$PRE_SHA"
+source_refused 'deploy of a known pre-lifecycle full SHA' 'predates the request lifecycle'
+release deploy "${PRE_SHA:0:12}"
+source_refused 'deploy of a known pre-lifecycle abbreviated SHA' 'predates the request lifecycle'
+release deploy "$NOMIG_SHA"
+source_refused 'deploy of a commit without the lifecycle migration' "does not contain $lifecycle_migration"
+pass 'BLOCKED: deploy of an unknown abbreviated SHA, a pre-lifecycle commit (full and abbreviated) and a commit missing the migration'
+
+blob="$(printf 'not a commit\n' | git -C "$src" hash-object -w --stdin)"
+tree="$(git -C "$src" rev-parse "$SHA6^{tree}")"
+gitc tag -a release-tag -m 'annotated tag' "$SHA6"
+tag_object="$(git -C "$src" rev-parse release-tag)"
+for object in "$blob" "$tree" "$tag_object" "${tag_object:0:12}"; do
+  release deploy "$object"
+  source_refused "deploy of non-commit object $object" ', not a commit'
+done
+for malformed in release-tag HEAD "${SHA6^^}" "${SHA6:0:11}" "${SHA6}0" "-$SHA6"; do
+  release deploy "$malformed"
+  source_refused "deploy of malformed input $malformed" 'Use a 12-40 character lowercase Git commit SHA'
+done
+hexref=abcabcabcabc   # a branch whose name looks like an abbreviated SHA
+git -C "$src" rev-parse --verify --quiet "$hexref^{object}" >/dev/null && fail_test 'precondition: hex ref name must be unused'
+gitc branch "$hexref" "$SHA6"
+release deploy "$hexref"
+source_refused 'deploy of a SHA-like branch name' 'does not name a Git object by its ID'
+gitc branch -q -D "$hexref"
+pass 'BLOCKED: deploy of a blob, tree or annotated tag object, a tag name, a SHA-like branch name and malformed SHAs'
+
+for action in migrate bootstrap; do
+  release "$action" "$unknown"
+  source_refused "$action of an unknown full SHA" 'is not in this checkout'
+  release "$action" "$PRE_SHA"
+  source_refused "$action of a pre-lifecycle commit" 'predates the request lifecycle'
+done
+pass 'BLOCKED: migrate and bootstrap use the same source verification before any Cloud Run job mutation'
+
+release migrate "$SHA6"
+ok 'migrate of a verified lifecycle-aware commit'
+log_has "kitloop-migration:${SHA6:0:12}" 'verified migrate did not look up the migration image of the resolved commit'
+release deploy "${SHA6:0:12}"
+ok 'deploy of a verified lifecycle-aware abbreviated SHA'
+log_has "--revision-suffix=${SHA6:0:12}-" 'verified deploy did not use the resolved commit'
+out_has "$SHA6" 'deploy did not report the canonical 40-character commit'
+[[ "$(serving)" == "$(revision_for "$SHA6")=100" ]] || fail_test "verified deploy traffic $(serving)"
+pass 'ALLOWED: a lifecycle-aware commit passes source verification (abbreviated input is canonicalised to the full SHA)'
 
 printf 'PASS: all GCP release guard tests\n'

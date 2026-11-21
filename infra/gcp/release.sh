@@ -103,6 +103,35 @@ zero-row check. Traffic was not changed."
   note "Verified database check $latest: zero lifecycle-only request rows in database $DB_NAME."
 }
 
+# --- Release source verification (PR #72 re-review of 402eafd, P1) ---------------------------------------------------
+# Usage: sha="$(verified_release_commit INPUT)" -> canonical 40-character SHA, or exits nonzero.
+# deploy, migrate and bootstrap select registry images by commit, and a pre-lifecycle image deployed by this script
+# would be labelled REQUEST_LIFECYCLE_WRITES and then treated as lifecycle-aware. So the commit itself must be proven,
+# fail-closed and before any registry or Cloud Run call: it must be a commit object of the checkout that contains this
+# script, and that commit must contain the lifecycle migration. A registry image or an operator confirmation is never
+# evidence. Each step stops on its own; none is folded into a condition that could skip the check.
+verified_release_commit() {
+  local input="$1" object type
+  [[ "$input" =~ ^[0-9a-f]{12,40}$ ]] || die 'Use a 12-40 character lowercase Git commit SHA. Nothing was changed.'
+  require_command git
+  git -C "$script_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "release.sh is not inside a Git checkout, \
+so release commit $input cannot be verified. Run it from a clone of the KitLoop repository. Nothing was changed."
+  object="$(git -C "$script_dir" rev-parse --verify --quiet "$input^{object}" 2>/dev/null)" || die "Commit $input is \
+not in this checkout (unknown, or an ambiguous abbreviation). Fetch it (git fetch origin) or pass the full SHA of a \
+fetched commit; release.sh releases only commits it can verify locally. Nothing was changed."
+  # A ref whose name looks like a SHA could resolve to a different object; only an object ID prefix is accepted.
+  [[ "$object" =~ ^[0-9a-f]{40}$ && "$object" == "$input"* ]] || die "$input does not name a Git object by its ID. \
+Pass the release commit SHA. Nothing was changed."
+  type="$(git -C "$script_dir" cat-file -t "$object")" || die "Cannot read Git object $object. Nothing was changed."
+  [[ "$type" == commit ]] || die "$input is a Git $type, not a commit. Pass the release commit SHA itself. \
+Nothing was changed."
+  [[ "$(git -C "$script_dir" cat-file -t "$object:$LIFECYCLE_MIGRATION" 2>/dev/null)" == blob ]] || die "Commit \
+$object does not contain $LIFECYCLE_MIGRATION, so it predates the request lifecycle (or removed it). Pre-lifecycle code \
+may only receive traffic through 'release.sh rollback REVISION', which first verifies the database. Nothing was changed."
+  note "Verified release commit $object: present in this checkout and contains the request lifecycle migration."
+  printf '%s' "$object"
+}
+
 # The verified bootstrap is recorded on the Cloud SQL instance it provisioned. Later releases rely on
 # that record instead of the one-time job, its revoked manifest access, or the Cloud Run service.
 recorded_bootstrap() {
@@ -140,7 +169,7 @@ case "$action" in
       "$sha" "$(digest_for "$app_image")" "$(digest_for "$migrate_image")"
     ;;
   migrate)
-    sha="${2:-}"
+    sha="$(verified_release_commit "${2:-}")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     gcloud sql instances describe "$SQL_INSTANCE" --project="$PROJECT" --format='value(state)' | grep -qx RUNNABLE || \
       die 'Cloud SQL is not RUNNABLE.'
@@ -157,7 +186,7 @@ case "$action" in
     require_successful_job kitloop-migrate "$migrate_image"
     ;;
   bootstrap)
-    sha="${2:-}"
+    sha="$(verified_release_commit "${2:-}")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     app_image="$(digest_for "$(image_for app "$sha")")"
     grep -q '"db:bootstrap"' server/package.json || \
@@ -183,20 +212,9 @@ case "$action" in
     printf 'Bootstrap execution: %s (recorded on %s)\n' "$execution" "$SQL_INSTANCE"
     ;;
   deploy)
-    sha="${2:-}"
-    [[ "$sha" =~ ^[0-9a-f]{12,40}$ ]] || die 'Use a 12-40 character lowercase Git commit SHA.'
-    if [[ "${#sha}" -lt 40 ]]; then
-      require_command git
-      sha="$(git rev-parse --verify "$sha^{commit}")" || die 'Cannot resolve the release commit. Fetch the source repository or pass the full SHA.'
-    fi
-    # PR #72 re-review P1: pre-lifecycle code must not reach traffic by redeploying an old commit, which would skip the
-    # database check (and would wrongly be labelled REQUEST_LIFECYCLE_WRITES). Known commits without the lifecycle
-    # migration are refused; use 'release.sh rollback REVISION', which verifies the database first.
-    if git -C "$script_dir" cat-file -e "$sha^{commit}" 2>/dev/null && \
-       ! git -C "$script_dir" cat-file -e "$sha:$LIFECYCLE_MIGRATION" 2>/dev/null; then
-      die "Commit $sha predates the request lifecycle. Pre-lifecycle code may only receive traffic through \
-'release.sh rollback REVISION', which first verifies the database. Traffic was not changed."
-    fi
+    # Fail-closed source verification first (see verified_release_commit): an unknown, non-commit or pre-lifecycle SHA
+    # never reaches the registry lookup, the migration/bootstrap checks or Cloud Run.
+    sha="$(verified_release_commit "${2:-}")"
     app_image="$(digest_for "$(image_for app "$sha")")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     require_successful_job kitloop-migrate "$migrate_image"
