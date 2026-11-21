@@ -1,0 +1,102 @@
+UAT-E04 (#64) GREEN: persistent two-link borrower navigation with aria-current="page"
+Branch fix/64-uat-borrower-navigation on base b9883f1. Isolated databases (kitloop_auth_test, kitloop_e2e_pw), synthetic data.
+
+  focused client borrower-navigation 10/10; focused Playwright 07-borrower-navigation 10/10
+  full client 10 files 77/77; full server 16 files 129/129
+  client lint, client build, server typecheck+build, e2e typecheck: exit 0
+  full browser E2E 53/53, including UAT-E01 lifecycle, UAT-E02 loan duration and UAT-E03 readable-names specs
+
+===== focused client =====
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+===== full client =====
+ Test Files  10 passed (10)
+      Tests  77 passed (77)
+
+===== full server =====
+ Test Files  16 passed (16)
+      Tests  129 passed (129)
+
+===== client lint / build, server build, e2e typecheck =====
+eslint: 0 lines of output (no findings)
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-FAClVcRO.css          32.14 kB │ gzip:  7.15 kB
+dist/assets/index-CdqIhkMr.js          248.17 kB │ gzip: 76.96 kB
+
+✓ built in 535ms
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+e2e tsc --noEmit: 0 bytes of output (no errors)
+
+===== focused Playwright =====
+  ok  1 [chromium] › tests\07-borrower-navigation.spec.ts:39:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked (2.6s)
+  ok  2 [chromium] › tests\07-borrower-navigation.spec.ts:53:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page (2.7s)
+  ok  3 [chromium] › tests\07-borrower-navigation.spec.ts:61:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates (2.3s)
+  ok  4 [chromium] › tests\07-borrower-navigation.spec.ts:80:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker (2.3s)
+  ok  5 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll (2.0s)
+  ok  6 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll (2.1s)
+  ok  7 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll (2.0s)
+  ok  8 [chromium] › tests\07-borrower-navigation.spec.ts:117:7 › UAT-E04 (#64) persistent borrower navigation › custodians do not get the borrower navigation (1.0s)
+  ok  9 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /dashboard still redirects to sign in, with no borrower navigation (747ms)
+  ok 10 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /requests still redirects to sign in, with no borrower navigation (713ms)
+  10 passed (26.6s)
+
+===== full Playwright =====
+  ok  1 [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message (1.8s)
+  ok  2 [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog (1.5s)
+  ok  3 [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login (2.2s)
+  ok  4 [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset (2.2s)
+  ok  5 [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001 (2.5s)
+  ok  6 [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload (1.7s)
+  ok  7 [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests (1.2s)
+  ok  8 [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears (1.6s)
+  ok  9 [chromium] › tests\02-request-checkout-journey.spec.ts:107:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered (1.4s)
+  ok 10 [chromium] › tests\02-request-checkout-journey.spec.ts:117:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload (1.6s)
+  ok 11 [chromium] › tests\02-request-checkout-journey.spec.ts:132:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason (1.3s)
+  ok 12 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login (661ms)
+  ok 13 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login (790ms)
+  ok 14 [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls (1.4s)
+  ok 15 [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls (1.3s)
+  ok 16 [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session (63ms)
+  ok 17 [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A) (1.3s)
+  ok 18 [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING (1.1s)
+  ok 19 [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403) (1.3s)
+  ok 20 [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created (1.2s)
+  ok 21 [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING (1.5s)
+  ok 22 [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list (1.1s)
+  ok 23 [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan (1.1s)
+  ok 24 [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING (2.6s)
+  ok 25 [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue (2.1s)
+  ok 26 [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason (1.4s)
+  ok 27 [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action (1.7s)
+  ok 28 [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed (3.5s)
+  ok 29 [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first (3.8s)
+  ok 30 [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions) (5.1s)
+  ok 31 [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first (3.2s)
+  ok 32 [chromium] › tests\05-loan-duration.spec.ts:51:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date (2.5s)
+  ok 33 [chromium] › tests\05-loan-duration.spec.ts:73:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent (1.4s)
+  ok 34 [chromium] › tests\05-loan-duration.spec.ts:85:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING (1.7s)
+  ok 35 [chromium] › tests\05-loan-duration.spec.ts:99:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created (1.5s)
+  ok 36 [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum) (2.6s)
+  ok 37 [chromium] › tests\06-readable-names.spec.ts:59:7 › UAT-E03 (#63) readable user and equipment names in the browser › setup: Borrower A's request is checked out by Custodian A; Borrower B's request is pending (3.6s)
+  ok 38 [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID (1.5s)
+  ok 39 [chromium] › tests\06-readable-names.spec.ts:80:7 › UAT-E03 (#63) readable user and equipment names in the browser › 2. Borrower My requests shows equipment names; request IDs are secondary (1.5s)
+  ok 40 [chromium] › tests\06-readable-names.spec.ts:90:7 › UAT-E03 (#63) readable user and equipment names in the browser › 3. Borrower My loans shows the equipment by name and no custodian identity (1.5s)
+  ok 41 [chromium] › tests\06-readable-names.spec.ts:105:7 › UAT-E03 (#63) readable user and equipment names in the browser › 4. Custodian Pending requests shows borrower and equipment names; actions remain (1.5s)
+  ok 42 [chromium] › tests\06-readable-names.spec.ts:117:7 › UAT-E03 (#63) readable user and equipment names in the browser › 5. Custodian Active loans shows equipment, borrower and checkout custodian names (1.6s)
+  ok 43 [chromium] › tests\06-readable-names.spec.ts:130:7 › UAT-E03 (#63) readable user and equipment names in the browser › 6. Mobile layout keeps names readable without horizontal scrolling (2.6s)
+  ok 44 [chromium] › tests\07-borrower-navigation.spec.ts:39:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked (2.2s)
+  ok 45 [chromium] › tests\07-borrower-navigation.spec.ts:53:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page (1.7s)
+  ok 46 [chromium] › tests\07-borrower-navigation.spec.ts:61:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates (1.9s)
+  ok 47 [chromium] › tests\07-borrower-navigation.spec.ts:80:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker (1.5s)
+  ok 48 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll (1.7s)
+  ok 49 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll (1.6s)
+  ok 50 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll (1.9s)
+  ok 51 [chromium] › tests\07-borrower-navigation.spec.ts:117:7 › UAT-E04 (#64) persistent borrower navigation › custodians do not get the borrower navigation (1.3s)
+  ok 52 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /dashboard still redirects to sign in, with no borrower navigation (659ms)
+  ok 53 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /requests still redirects to sign in, with no borrower navigation (786ms)
+  53 passed (1.7m)

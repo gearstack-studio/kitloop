@@ -123,7 +123,7 @@ test.describe("UAT-E01 (#61) request lifecycle in the browser", () => {
 
   test("4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action", async ({ page }, testInfo) => {
     await login(page, "borrowerB");
-    await page.getByRole("link", { name: "My Requests page" }).click();
+    await page.getByRole("link", { name: "My requests" }).click();
     await page.reload();
     const declined = request(page, ASSETS.contest.assetId);
     await expect(declined).toContainText(`${ASSETS.contest.assetId} · DECLINED`);
