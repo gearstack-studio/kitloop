@@ -6,7 +6,10 @@ const invalidDueDate = 'Choose a valid due date later than the checkout time.'
 const beyondMaximum = (days: number) => `Choose a due date within ${days} days of checkout.`
 
 // UAT-E02 (#62): maxLoanDays is the server's LOAN_MAX_DAYS setting (null = no maximum configured; SRS OQ-01 open).
-// The picker bounds are a convenience; the server re-checks both bounds against the actual checkout time.
+// The picker's min/max attributes are guidance only. The form is noValidate (PR #73 review P2): native constraint
+// validation would run against whatever min/max the DOM last rendered, so a form left open while time passes could
+// refuse a date that has since become valid before this handler ever runs. All required checks are made here, against
+// one instant captured per attempt; the server re-checks both bounds against the actual checkout time.
 export default function Checkout({ request, available, ready, busy, maxLoanDays = null, onCheckout }: {
   request: BorrowRequest; available: boolean; ready: boolean; busy: boolean; maxLoanDays?: number | null
   onCheckout: (request: BorrowRequest, dueAt: string) => void
@@ -22,14 +25,14 @@ export default function Checkout({ request, available, ready, busy, maxLoanDays 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy || !ready || !available || request.status !== 'PENDING') return
-    const dueAt = new Date(dueDate)
-    if (!Number.isFinite(dueAt.getTime()) || dueAt <= new Date()) {
-      refreshBounds()
+    const now = Date.now()   // one instant for every comparison in this attempt
+    refreshBounds()          // the attempt also brings the displayed picker bounds up to date
+    const dueAt = dueDate ? new Date(dueDate) : new Date(NaN)
+    if (!Number.isFinite(dueAt.getTime()) || dueAt.getTime() <= now) {
       setError(invalidDueDate)
       return
     }
-    if (maxLoanDays !== null && dueAt.getTime() > latestDueInstant(maxLoanDays)) {
-      refreshBounds()
+    if (maxLoanDays !== null && dueAt.getTime() > latestDueInstant(maxLoanDays, now)) {
       setError(beyondMaximum(maxLoanDays))
       return
     }
@@ -38,16 +41,13 @@ export default function Checkout({ request, available, ready, busy, maxLoanDays 
   }
   const dueId = `checkout-due-${request.id}`
   const max = maxLoanDays === null ? undefined : latestLocalMinute(maxLoanDays)
-  return <form className="checkout-form" onSubmit={submit} aria-label={`Checkout request ${request.id}`}>
+  return <form className="checkout-form" onSubmit={submit} noValidate aria-label={`Checkout request ${request.id}`}>
     <label htmlFor={dueId}>Due date for {request.assetId}</label>
-    <input id={dueId} type="datetime-local" value={dueDate} min={minimumDueDate} max={max} required disabled={busy || !ready || !available}
+    <input id={dueId} type="datetime-local" value={dueDate} min={minimumDueDate} max={max} required aria-required="true"
+      disabled={busy || !ready || !available}
       aria-invalid={!!error} aria-describedby={error ? `${dueId}-help ${dueId}-error` : `${dueId}-help`}
       onFocus={refreshBounds}
-      onChange={event => { setDueDate(event.target.value); refreshBounds(); setError('') }}
-      onInvalid={event => {
-        if (event.currentTarget.validity.rangeUnderflow) setError(invalidDueDate)
-        else if (event.currentTarget.validity.rangeOverflow && maxLoanDays !== null) setError(beyondMaximum(maxLoanDays))
-      }} />
+      onChange={event => { setDueDate(event.target.value); refreshBounds(); setError('') }} />
     <p id={`${dueId}-help`} className="checkout-help">
       Confirm the physical handoff before recording checkout. The due date uses your browser timezone ({browserTimeZone()}).
       {maxLoanDays !== null && <> Maximum loan period: {maxLoanDays} days from checkout.</>}

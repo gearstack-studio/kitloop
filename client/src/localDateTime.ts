@@ -21,9 +21,9 @@ export function nextLocalMinute() {
   return localWallMinute((Math.floor(Date.now() / MINUTE) + 1) * MINUTE)
 }
 
-/** Latest due instant allowed if checkout happened now: now + days x 24 hours (UAT-E02 #62). */
-export function latestDueInstant(days: number) {
-  return Date.now() + days * DAY
+/** Latest due instant allowed for a checkout at `now`: now + days x 24 hours (UAT-E02 #62). */
+export function latestDueInstant(days: number, now = Date.now()) {
+  return now + days * DAY
 }
 
 /** The latest whole browser-local minute not after latestDueInstant(days), for the picker's max attribute. */

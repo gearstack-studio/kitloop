@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../src/App'
 import Checkout from '../src/components/Checkout'
@@ -59,12 +59,15 @@ describe('UAT-E02 checkout due-date maximum (component)', () => {
     expect(submit).not.toHaveBeenCalled()
   })
 
-  it('reports native range overflow with the same message', () => {
-    render(<Checkout request={pending} available ready busy={false} maxLoanDays={TEST_MAX_DAYS} onCheckout={vi.fn()} />)
+  it('shows the maximum message when Check out is clicked with an over-maximum date (validation is not left to the browser)', () => {
+    const submit = vi.fn()
+    render(<Checkout request={pending} available ready busy={false} maxLoanDays={TEST_MAX_DAYS} onCheckout={submit} />)
     fireEvent.change(dueInput(), { target: { value: '9999-12-31T23:59' } })
-    expect(dueInput().validity.rangeOverflow).toBe(true)
-    fireEvent.invalid(dueInput())
+    expect(dueInput().validity.rangeOverflow).toBe(true)   // the picker attribute still guides the browser
+    fireEvent.click(screen.getByRole('button', { name: 'Check out' }))
     expect(screen.getByRole('alert').textContent).toBe(`Choose a due date within ${TEST_MAX_DAYS} days of checkout.`)
+    expect(dueInput().getAttribute('aria-invalid')).toBe('true')
+    expect(submit).not.toHaveBeenCalled()
   })
 
   it('applies no maximum when none is configured (OQ-01 unresolved)', async () => {
@@ -113,5 +116,109 @@ describe('UAT-E02 checkout due-date maximum (app, mocked HTTP)', () => {
     expect(await screen.findByText(`Choose a due date within ${TEST_MAX_DAYS} days of checkout`)).toBeTruthy()
     expect(posts).toBe(1)
     expect(screen.queryByText(/Checkout recorded/)).toBeNull()
+  })
+})
+
+// PR #73 review P2: the picker's max attribute is only guidance. If the form stays open while time passes, a date that
+// was over the maximum can become valid; clicking Check out must reach the current-time validation instead of being
+// blocked by native constraint validation against the stale DOM max. These tests click the real submit button (form
+// submission algorithm, including constraint validation) and never focus the date input after the clock moves.
+describe('UAT-E02 checkout with a stale picker maximum (PR #73 P2)', () => {
+  const T0 = new Date(2026, 10, 20, 15, 24, 30)
+  const at = (ms: number) => local(new Date(T0.getTime() + ms))
+  const H = 3_600_000, D = 86_400_000
+  afterEach(() => vi.useRealTimers())
+  const click = () => fireEvent.click(screen.getByRole('button', { name: 'Check out' }))
+  function setup(maxLoanDays: number | null = TEST_MAX_DAYS) {
+    vi.setSystemTime(T0)
+    const onCheckout = vi.fn()
+    const view = render(<Checkout request={pending} available ready busy={false} maxLoanDays={maxLoanDays} onCheckout={onCheckout} />)
+    return { onCheckout, view }
+  }
+
+  it('submits a date that became valid while the form stayed open, exactly once, as UTC ISO', () => {
+    const { onCheckout } = setup()
+    const value = at(TEST_MAX_DAYS * D + 30 * 60_000)        // 30 minutes beyond the initial maximum
+    fireEvent.change(dueInput(), { target: { value } })
+    expect(dueInput().validity.rangeOverflow).toBe(true)
+    vi.setSystemTime(new Date(T0.getTime() + H))              // an hour passes; no focus, no re-render
+    expect(dueInput().validity.rangeOverflow).toBe(true)      // the DOM max is now stale
+    click()
+    expect(onCheckout).toHaveBeenCalledExactlyOnceWith(pending, new Date(value).toISOString())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('still rejects a date beyond the current maximum after time passes', () => {
+    const { onCheckout } = setup()
+    fireEvent.change(dueInput(), { target: { value: at(TEST_MAX_DAYS * D + 2 * H) } })
+    vi.setSystemTime(new Date(T0.getTime() + H))
+    click()
+    expect(onCheckout).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe(`Choose a due date within ${TEST_MAX_DAYS} days of checkout.`)
+    expect(dueInput().getAttribute('aria-invalid')).toBe('true')
+    expect(dueInput().getAttribute('aria-describedby')).toBe('checkout-due-R1-help checkout-due-R1-error')
+    expect(dueInput().max).toBe(at(TEST_MAX_DAYS * D + H))   // the attempt refreshed the picker bounds to the new time
+  })
+
+  it('accepts a valid date and the exact (minute) maximum by click', () => {
+    const { onCheckout } = setup()
+    fireEvent.change(dueInput(), { target: { value: dueInput().max } })
+    click()
+    expect(onCheckout).toHaveBeenCalledOnce()
+    fireEvent.change(dueInput(), { target: { value: at(2 * D) } })
+    click()
+    expect(onCheckout).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects past dates by click with the inline message and recovers when corrected', () => {
+    const { onCheckout } = setup()
+    fireEvent.change(dueInput(), { target: { value: at(-D) } })
+    click()
+    expect(onCheckout).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('Choose a valid due date later than the checkout time.')
+    fireEvent.change(dueInput(), { target: { value: at(D) } })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(dueInput().getAttribute('aria-invalid')).toBe('false')
+    click()
+    expect(onCheckout).toHaveBeenCalledOnce()
+  })
+
+  it('rejects an empty or unparseable date even if the form is submitted programmatically', () => {
+    const { onCheckout } = setup()
+    expect((screen.getByRole('button', { name: 'Check out' }) as HTMLButtonElement).disabled).toBe(true)
+    act(() => form().requestSubmit())
+    expect(onCheckout).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('Choose a valid due date later than the checkout time.')
+  })
+
+  it('follows a configured maximum that changes while the form stays mounted, including back to no maximum', () => {
+    const { onCheckout, view } = setup()
+    fireEvent.change(dueInput(), { target: { value: at(10 * D) } })
+    view.rerender(<Checkout request={pending} available ready busy={false} maxLoanDays={7} onCheckout={onCheckout} />)
+    click()
+    expect(onCheckout).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('Choose a due date within 7 days of checkout.')
+    view.rerender(<Checkout request={pending} available ready busy={false} maxLoanDays={null} onCheckout={onCheckout} />)
+    expect(dueInput().max).toBe('')
+    click()
+    expect(onCheckout).toHaveBeenCalledOnce()
+  })
+
+  it('applies no upper limit when no maximum is configured', () => {
+    const { onCheckout } = setup(null)
+    fireEvent.change(dueInput(), { target: { value: '9999-12-31T23:59' } })
+    click()
+    expect(onCheckout).toHaveBeenCalledOnce()
+  })
+
+  it('does not submit again while the checkout is busy', () => {
+    const { onCheckout, view } = setup()
+    fireEvent.change(dueInput(), { target: { value: at(D) } })
+    click()
+    view.rerender(<Checkout request={pending} available ready busy maxLoanDays={TEST_MAX_DAYS} onCheckout={onCheckout} />)
+    expect((screen.getByRole('button', { name: 'Processing…' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Processing…' }))
+    act(() => form().requestSubmit())
+    expect(onCheckout).toHaveBeenCalledOnce()
   })
 })
