@@ -15,7 +15,7 @@ Thanks for the careful review of `5738ee1`. Both findings are confirmed and addr
 - **Phase 2 (enabled).** The lifecycle behaviour as reviewed.
 - **`release.sh` now carries the flag on every deploy** (`KITLOOP_REQUEST_LIFECYCLE_WRITES`, passed from a GitHub environment variable in `deploy.yml`).
   - It **refuses to enable phase 2 while a pre-lifecycle revision is serving**, so the automatic rollback target can always read lifecycle rows.
-  - It **refuses to roll back to a pre-lifecycle revision while phase 2 is serving**, unless the operator confirms `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows` after the read-only `lifecycle-cli rollback-check` reports `lifecycleOnlyRows: 0`.
+  - ~~It refuses to roll back to a pre-lifecycle revision while phase 2 is serving, unless the operator confirms `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows`.~~ *Superseded after the re-review of `bbf8a36`; see `uat-e01-pr72-rereview-response.md`. Every pre-lifecycle rollback now requires a verified zero-row database check, and the bypass is removed.*
 - Nothing rewrites terminal statuses to `PENDING`, drops enum values, or deletes closure data.
 
 Real-server rollback matrix (isolated database):

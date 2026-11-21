@@ -12,6 +12,28 @@ export type LifecycleRollbackReport = {
   preLifecycleRevisionsSafe: boolean;
 };
 
+export class RollbackCheckRefusal extends Error {}
+
+/**
+ * The authoritative pre-lifecycle rollback check (PR #72 re-review P1). Runs in a READ ONLY transaction, so PostgreSQL
+ * itself rejects any write, and first establishes which database it is reading: it refuses (throws) unless
+ * current_database() equals expectDatabase. release.sh runs this as a Cloud Run job and treats only a successful
+ * execution (exit 0, lifecycleOnlyRows === 0) as permission to route traffic to a pre-lifecycle revision.
+ */
+export async function verifiedRollbackCheck(
+  db: PrismaClient, options: { expectDatabase: string; assetIds?: string[] },
+): Promise<LifecycleRollbackReport & { database: string }> {
+  if (!options.expectDatabase) throw new RollbackCheckRefusal("--expect-database=NAME is required");
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+    const [{ database }] = await tx.$queryRaw<Array<{ database: string }>>`SELECT current_database() AS database`;
+    if (database !== options.expectDatabase) {
+      throw new RollbackCheckRefusal(`Connected to database "${database}", expected "${options.expectDatabase}"; nothing was checked`);
+    }
+    return { database, ...await lifecycleRollbackReport(tx as unknown as PrismaClient, { assetIds: options.assetIds }) };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}
+
 export async function lifecycleRollbackReport(
   db: PrismaClient, options: { assetIds?: string[] } = {},
 ): Promise<LifecycleRollbackReport> {

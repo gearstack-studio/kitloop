@@ -289,7 +289,10 @@ Request expiry policy, free-text decline notes, borrower notifications.
 - [x] Expiry deferral documented for Team 7 and #61 (§11.4, `uat-e01-team7-retest.md`)
 - [x] Review RED/GREEN, rollback compatibility, reconciliation and full regression evidence captured (§11.5)
 - [ ] Commit and push of the review fixes (waiting for authorisation)
-- [ ] Post the review response on PR #72 and the retest/expiry note on #61 (waiting for authorisation)
+- [x] Review fixes committed as `bbf8a36`; response posted; #61 records the expiry deferral
+- [x] Re-review P1 (unsafe second rollback) reproduced, fixed and verified (§12)
+- [ ] Commit and push of the re-review fix (waiting for authorisation)
+- [ ] Post the re-review response on PR #72 (waiting for authorisation)
 - [ ] Reviewer approval and merge
 - [ ] After merge: phase 1 deploy, phase 2 enable, reconciliation dry run and apply, then Team 7 retest (§11.3)
 
@@ -314,7 +317,7 @@ The reviewer's comment on `5738ee1` raised two findings and an expiry note. All 
 
 - An invalid flag value fails at startup (`ConfigurationError`).
 - **`release.sh deploy`** always sets the flag from `KITLOOP_REQUEST_LIFECYCLE_WRITES`; `deploy.yml` passes the GitHub environment variable, defaulting to `disabled`. It **refuses `enabled` while a pre-lifecycle revision is serving**, so automatic and manual rollback targets can always read lifecycle rows.
-- **`release.sh rollback`** **refuses a pre-lifecycle target while phase 2 is serving** unless the operator sets `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows`. They do that after `lifecycle-cli rollback-check` reports `lifecycleOnlyRows: 0`.
+- ~~**`release.sh rollback`** refuses a pre-lifecycle target while phase 2 is serving unless the operator sets `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows`.~~ **Superseded in §12.** The re-review showed this guard allowed phase 2 → phase 1 → pre-lifecycle. Every pre-lifecycle rollback now requires a fresh, verified zero-row database check, and the confirmation bypass is removed.
 - No status is rewritten, no enum value is dropped, and no closure data is removed.
 
 **Safe rollback targets.**
@@ -411,10 +414,151 @@ Evidence: [`uat-e01-review-red.txt`](uat-e01-review-red.txt), [`uat-e01-review-g
 
 ### 11.6 Remaining risks
 
-- **Phase discipline is partly procedural.** `release.sh` blocks the dangerous paths it can see, but it can't see the database. A sequence of phase 2 → phase 1 → pre-lifecycle rollback isn't blocked by the script. The runbook requires `rollback-check` before any pre-lifecycle rollback.
+- ~~**Phase discipline is partly procedural.** `release.sh` can't see the database, so phase 2 → phase 1 → pre-lifecycle isn't blocked.~~ **Resolved in §12:** `release.sh` now runs a read-only database check before every pre-lifecycle rollback.
 - **GitHub environment variable.** If `KITLOOP_REQUEST_LIFECYCLE_WRITES` isn't set to `enabled` in `lab5-production`, the next automated `main` deploy returns the service to phase 1. That's safe, but cancel and decline disappear.
 - **Phase 1 still has the UAT-E01 behaviour.** Competing requests stay `PENDING` until phase 2 and the reconciliation run. Team 7 must retest only after step 3 of §11.3.
 - **The reconciliation Cloud Run job is a template that hasn't been executed in GCP.** Review its IAM (runtime service account, database secret) before first use.
 - **PostgreSQL versions.** The migration and reconciliation SQL were executed only on PostgreSQL 18.4 (Cloud SQL runs 17). Docker wasn't running, so 12–17 weren't tested.
 - **Phase 1 in the browser.** The browser E2E covers phase 2 only. Phase 1 behaviour is covered by server tests, client tests and the real-server harness.
 - **Reconciliation closure time.** Reconciled declines use the reconciliation time as `closedAt`, not the original checkout time. That's truthful about when the closure happened, but it's later than a borrower might expect.
+
+## 12. PR #72 re-review: unsafe second rollback (P1)
+
+The reviewer re-reviewed `bbf8a36` and held approval on one P1. All work below is local and uncommitted. Only isolated local databases and offline fake-gcloud infrastructure were used.
+
+### 12.1 Root cause
+
+The `bbf8a36` rollback guard asked the wrong question: *is the **serving revision** writing lifecycle rows?* The question that matters is *does the **database** contain lifecycle rows?* After phase 2 writes `DECLINED`/`CANCELLED` and the service rolls back to phase 1 (`REQUEST_LIFECYCLE_WRITES=disabled`), those rows remain. A further rollback to `8b6e5a9` then passed the guard without any check, and the old Prisma client returns 500 on borrower history.
+
+`KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows` made it worse: it was an operator assertion, not a verified result. RED proves both: with the new tests, the `bbf8a36` scripts let *phase 2 → phase 1 → pre-lifecycle with lifecycle rows* move traffic.
+
+### 12.2 Corrected safety invariant
+
+> Pre-lifecycle code (`8b6e5a9` and earlier) may receive traffic only after a fresh, read-only check of the production database, run by `release.sh` in the same invocation and verified from its Cloud Run execution, reports **zero** lifecycle-only request rows. Nothing that can write such rows may be running: no serving revision with `REQUEST_LIFECYCLE_WRITES=enabled`, and no `kitloop-reconcile` job. If any part can't be established, the rollback is refused and traffic isn't changed.
+
+### 12.3 Implementation
+
+**Database check** (`server/src/lifecycle-rollout.ts`, `server/src/lifecycle-cli.ts`). `rollback-check --require-zero --expect-database=NAME`:
+- runs in a `READ ONLY` transaction
+- refuses (exit 2) unless `current_database()` is `NAME`
+- exits **0 only for zero lifecycle-only rows**, 4 when rows exist, 1 when the database is unreachable or another error occurs
+- prints JSON counts and a `SAFE`/`UNSAFE` line, never the connection string
+
+**Rollback gate** (`infra/gcp/release.sh`, `infra/gcp/common.sh`). For every rollback whose target lacks `REQUEST_LIFECYCLE_WRITES`, regardless of the serving phase, the gate runs these steps:
+1. Refuse if a serving revision has writes enabled, if the job list can't be read, or if `kitloop-reconcile` exists.
+2. Select the check image from a serving lifecycle-aware revision. `KITLOOP_ROLLBACK_CHECK_REVISION` can name one, but only to select the image.
+3. Typed confirmation.
+4. Deploy and execute `kitloop-rollback-check`: app image, runtime service account, the service's `kitloop-database-url:1` secret and Cloud SQL connection, `--max-retries=0`, 120 s task timeout, 900 s client timeout.
+5. Accept only a **new** execution that succeeded with exactly that image, command and arguments.
+6. Re-read the serving set and repeat step 1.
+7. `update-traffic`.
+
+A rollback to the revision already serving 100% changes nothing and skips the check.
+
+**Other changes**
+- **Bypass removed:** `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK` is gone.
+- **Deploy hole closed:** `release.sh deploy` refuses commits known to lack the lifecycle migration. Otherwise an old SHA could be redeployed without the check, and would also be mislabelled `REQUEST_LIFECYCLE_WRITES=disabled`.
+
+**Race handling.**
+- The service can't add lifecycle rows during the check, because phase 2 must not be serving.
+- Reconciliation is the only other writer, and its job must not exist.
+- The serving set and writer checks are repeated after the check and immediately before `update-traffic`.
+- The remaining window between that re-check and `update-traffic` is closed only procedurally (§12.6).
+
+### 12.4 Rollback sequences (offline fake-gcloud suite, `infra/gcp/guards.test.sh`)
+
+| Scenario | Result | Traffic |
+|---|---|---|
+| Phase 2 → phase 1 → pre-lifecycle with lifecycle rows (**reviewer's sequence**) | **BLOCKED** (check fails) | unchanged |
+| Phase 2 → pre-lifecycle with lifecycle rows | **BLOCKED** (writes enabled; no check run) | unchanged |
+| Phase 2 → pre-lifecycle with zero rows | **BLOCKED** (rows could be written after the check) | unchanged |
+| Phase 1 → pre-lifecycle with lifecycle rows | **BLOCKED** (check fails) | unchanged |
+| Phase 1 → pre-lifecycle with verified zero rows | **ALLOWED**; check executed before `update-traffic`, with the runtime identity and service secret | moved |
+| Check unavailable (database unreachable) | **BLOCKED** | unchanged |
+| Check execution malformed | **BLOCKED** | unchanged |
+| Check reports positive rows | **BLOCKED** | unchanged |
+| Operator confirmation (`no-lifecycle-rows`, `yes`) with rows, or with the check unavailable | **BLOCKED** | unchanged |
+| Reconciliation job exists, or jobs can't be listed | **BLOCKED** (no check run) | unchanged |
+| Pre-lifecycle → pre-lifecycle with no lifecycle-aware image | **BLOCKED**; ALLOWED with `KITLOOP_ROLLBACK_CHECK_REVISION` after a passing check | unchanged / moved |
+| Phase 2 → phase 1 | **ALLOWED**, no check needed | moved |
+| Rollback to the revision already serving 100% | **ALLOWED**, no change | unchanged |
+| `deploy` of pre-lifecycle commit `8b6e5a9` | **BLOCKED** | unchanged |
+| Enable phase 2 while a pre-lifecycle revision serves | **BLOCKED** | unchanged |
+
+Every blocked case asserts that `update-traffic` wasn't called, the serving revision didn't change, and the output says *"Traffic was not changed."*
+
+### 12.5 RED / GREEN
+
+| Test | RED (`bbf8a36` code + new tests) | GREEN |
+|---|---|---|
+| `infra/gcp/guards.test.sh`, normal run (stops at first failure) | **FAIL: phase 2 → phase 1 → pre-lifecycle with lifecycle rows (unexpected success)** | all pass, plus 16 deployment guard cases |
+| Same suite, evidence-only run that continues after failures | every new BLOCKED case moved traffic; the check job never ran | n/a |
+| `server/tests/lifecycle-rollout.test.ts`, 4 new gate tests (real CLI process, isolated test database) | 4 failed (`--require-zero` unknown) / 9 passed | 13/13 |
+
+Full regression on the final code:
+
+| Check | Result |
+|---|---|
+| Server tests | **14 files, 110/110** |
+| Client tests | **7 files, 42/42** |
+| Server typecheck + build | exit 0 |
+| Client lint, client build, E2E typecheck | exit 0 |
+| Browser E2E | **31/31**, with `NODE_OPTIONS=--dns-result-order=ipv4first` (see below) |
+| Compiled `dist/lifecycle-cli.js` gate | wrong database → exit 2; missing `--expect-database` → exit 2; clean database → exit 0 `SAFE`; no connection string in output |
+
+**E2E environment note.** Without the IPv4-first option, the E2E suite currently aborts in global setup with `read ECONNRESET` before any test runs. Something on this machine resets IPv6 `localhost` (`::1`) connections to the API port. The reviewed commit `bbf8a36` fails identically, and this round changed no code the app loads (only the CLI and tests). Evidence: [`uat-e01-rereview-red.txt`](uat-e01-rereview-red.txt), [`uat-e01-rereview-green.txt`](uat-e01-rereview-green.txt).
+
+### 12.6 Remaining operational risks
+
+- **Not executed in GCP.** The `kitloop-rollback-check` job, its IAM (runtime service account, database secret) and the real Cloud Run execution JSON shape were verified only against the offline fake. The first real pre-lifecycle rollback attempt is also the first real run of the gate. A failure there blocks the rollback (fails closed); it can't let an unsafe one through.
+- **Window between the final re-check and `update-traffic`.** It's a few seconds. A concurrent manual `release.sh deploy` with `enabled`, or a new reconciliation job created in that window, isn't excluded by a lock. `deploy.yml` serialises automated releases, but manual operators must not run releases concurrently.
+- **Changes outside `release.sh`.** Cloud Console traffic changes, or `gcloud run services update-traffic` run by hand, bypass every guard. The runbook's emergency step is to route to a lifecycle-aware revision.
+- **Deploying an unknown commit.** `release.sh deploy` refuses known pre-lifecycle commits only when the commit is present in the checkout. Release clones are full (`deploy.yml` uses `fetch-depth: 0`); a shallow manual clone wouldn't detect it.
+- **No path back after rows exist.** Once phase 2 has written any lifecycle row, no pre-lifecycle revision can become serving again through `release.sh`. That's intended, but recovery from a phase 1 defect then means fixing forward or using another lifecycle-aware revision.
+
+## 13. Final pre-merge audit (2026-11-21)
+
+An independent re-audit of the §12 implementation. Everything below was re-run against the latest local code, which is still `bbf8a36` plus uncommitted changes.
+
+### 13.1 Defect found: a tagged phase-2 revision is still a lifecycle writer
+
+The §12 preflight considered only revisions with a traffic share above 0%. But `release.sh deploy` gives each new revision the `candidate` tag. Cloud Run keeps tags across `update-traffic`, and a tag URL is invokable under the service's own invoker policy, which is public after `publish`.
+
+After phase 2 → phase 1, the phase-2 revision therefore still answers at `https://candidate---…run.app` with writes enabled. Consider this sequence:
+
+1. Phase 2 is deployed.
+2. The service rolls back to phase 1.
+3. A pre-lifecycle rollback is attempted while zero lifecycle rows exist.
+
+§12 allowed that rollback. Afterwards, any signed-in borrower who sends a crafted request to the tag URL could cancel a request, which writes a `CANCELLED` row and returns the 500 hazard. A browser at the tag URL is stopped by the origin check, but a scripted client that sets `Origin` is not. The existing suite even asserted that this rollback was ALLOWED.
+
+### 13.2 Fix
+
+- `common.sh`: added `reachable_revisions`, which covers both traffic shares and tag URLs, and `traffic_snapshot`, which records revisions, percentages and tags.
+- `release.sh` preflight now refuses when any reachable revision has writes enabled. For a tag, it names the tag and the `--remove-tags` command. Removing a tag doesn't move traffic.
+- The re-check before `update-traffic` now compares the full traffic snapshot, including tags, not just the serving set.
+- Runbook "Safe rollback targets" and the phase 1 rollback procedure updated to match.
+
+### 13.3 RED / GREEN
+
+- **RED** (working tree before the fix, new regression only): `FAIL: phase 2 -> phase 1 -> pre-lifecycle with zero rows while phase 2 keeps a tag URL (unexpected success)`. The precondition, that the phase-2 revision still holds `candidate` at 0%, held.
+- **GREEN:** the guard suite passes. The new case is BLOCKED with both 1 row and 0 rows, and no check job runs. After the operator removes the tag:
+  - the reviewer's sequence with rows is still BLOCKED by the database check;
+  - the zero-row rollback is ALLOWED.
+
+  The 16 deployment guard cases pass, and `bash -n` and `shellcheck -S warning` report nothing for `release.sh` and `common.sh`.
+- **Regression:**
+  - server 14 files 110/110
+  - client 7 files 42/42
+  - server typecheck and build, client lint and build, E2E typecheck: exit 0
+  - `prisma validate` exit 0, and `migrate status` reports the isolated test database up to date
+  - no existing migration modified
+  - browser E2E 31/31 with `NODE_OPTIONS=--dns-result-order=ipv4first`
+
+Evidence: `uat-e01-final-audit-evidence.txt`.
+
+### 13.4 Still open after the audit
+
+- The §12.6 risks are unchanged: the gate hasn't been run in GCP; there's an unlocked seconds-long window before `update-traffic`; console or raw-gcloud changes bypass the gate; deploying an unknown commit is only refused when the commit is in the checkout.
+- **Classification:** a revision counts as pre-lifecycle only if it lacks `REQUEST_LIFECYCLE_WRITES`. That holds for every revision `release.sh` can produce from known commits, but a hand-deployed revision could be mislabelled.
+- **Reconciliation reason label:** it records `ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER` even if the active loan belongs to the same borrower through an older request. The status outcome is still correct.

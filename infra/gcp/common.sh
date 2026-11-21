@@ -23,6 +23,12 @@ CONNECTION="${PROJECT}:${REGION}:${SQL_INSTANCE}"
 BOOTSTRAP_LABEL=kitloop_bootstrap
 # Traffic tag used to health-check a new revision before it receives traffic.
 CANDIDATE_TAG=candidate
+# Request lifecycle rollout (PR #72). Application database created by prepare.sh, the migration that introduces the
+# lifecycle statuses, the read-only job that gates pre-lifecycle rollbacks, and the reconciliation job (a lifecycle writer).
+DB_NAME=kitloop
+LIFECYCLE_MIGRATION=server/prisma/migrations/20261121090000_request_lifecycle/migration.sql
+ROLLBACK_CHECK_JOB=kitloop-rollback-check
+RECONCILE_JOB=kitloop-reconcile
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 note() { printf '%s\n' "$*" >&2; }
@@ -90,6 +96,15 @@ require_service_url() {
 serving_revisions() {
   jq -r '.status.traffic[]? | select((.percent // 0) > 0) | "\(.revisionName) \(.percent)"' <<<"$1"
 }
+# Usage: reachable_revisions SERVICE_JSON -> "REVISION TAG" per traffic entry that can receive requests: a traffic share
+# (TAG "-") or a tag URL. A tag URL reaches its revision at 0% traffic, with the service's invoker policy.
+reachable_revisions() {
+  jq -r '.status.traffic[]? | select((.percent // 0) > 0 or ((.tag // "") != "")) | "\(.revisionName) \(.tag // "-")"' <<<"$1"
+}
+# Usage: traffic_snapshot SERVICE_JSON -> canonical JSON of every traffic entry (revision, percent, tag)
+traffic_snapshot() {
+  jq -c '[.status.traffic[]? | {revisionName, percent: (.percent // 0), tag: (.tag // null)}] | sort_by(.revisionName, .tag)' <<<"$1"
+}
 # Usage: require_serving SERVICE_JSON REVISION
 require_serving() {
   jq -e --arg revision "$2" '
@@ -127,6 +142,15 @@ revision_lifecycle() {
   json="$(gcloud run revisions describe "$1" --project="$PROJECT" --region="$REGION" --format=json)" || \
     die "Cannot describe revision $1."
   jq -r '[.spec.containers[0].env[]? | select(.name == "REQUEST_LIFECYCLE_WRITES") | .value][0] // "absent"' <<<"$json"
+}
+# Usage: revision_image REVISION -> the revision's Artifact Registry app image digest
+revision_image() {
+  local json image
+  json="$(gcloud run revisions describe "$1" --project="$PROJECT" --region="$REGION" --format=json)" || \
+    die "Cannot describe revision $1."
+  image="$(jq -r '.spec.containers[0].image // ""' <<<"$json")"
+  [[ "$image" == "$REGISTRY/kitloop-app@sha256:"* ]] || die "Revision $1 does not run a registry app image digest."
+  printf '%s' "$image"
 }
 service_is_public() {
   local policy

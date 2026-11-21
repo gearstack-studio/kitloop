@@ -1,0 +1,282 @@
+UAT-E01 / PR #72 final pre-merge audit evidence (2026-11-21)
+Base: bbf8a36 + uncommitted changes on fix/61-uat-request-lifecycle. Offline fake gcloud (WSL Ubuntu, LF clone with the
+working-tree infra files) and isolated local databases only (kitloop_auth_test, kitloop_e2e_pw). No GCP, no production.
+
+Defect: a 0%-traffic revision that keeps the 'candidate' tag with REQUEST_LIFECYCLE_WRITES=enabled was not treated as a
+lifecycle writer, so phase 2 -> phase 1 -> pre-lifecycle with zero rows was allowed while phase 2 stayed reachable.
+
+===== RED: guards.test.sh with the new regression, before the release.sh/common.sh fix =====
+M infra/gcp/README.md
+ M infra/gcp/REQUEST-LIFECYCLE-ROLLOUT.md
+ M infra/gcp/common.sh
+ M infra/gcp/guards.test.sh
+ M infra/gcp/release.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with zero rows while phase 2 keeps a tag URL (unexpected success)
+
+--- output ---
+lab-5-cloud-deployment-514310/rollback
+Currently serving: kitloop-333333333333-20261121133945 100
+kitloop-prelifecycle-1 predates the request lifecycle. Traffic moves only after a fresh read-only check of database
+kitloop finds zero DECLINED/CANCELLED/EXPIRED request rows.
+Routes 100% of traffic to kitloop-prelifecycle-1. This does not reverse a database migration. A later release.sh
+deploy moves traffic to its new revision after checks.
+This will change GCP resources in lab-5-cloud-deployment-514310 (asia-southeast1).
+Type lab-5-cloud-deployment-514310/rollback to continue: Verified database check kitloop-rollback-check-x2: zero
+lifecycle-only request rows in database kitloop.
+Project: lab-5-cloud-deployment-514310
+Region: asia-southeast1
+Canonical URL: https://kitloop-123456789012.asia-southeast1.run.app
+Serving revision: kitloop-prelifecycle-1 (100%)
+Latest ready revision: kitloop-555555555555-20261121133951
+PASS https://kitloop-123456789012.asia-southeast1.run.app/ HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/health HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/ready HTTP 200
+HTTP checks passed. Browser login, request/checkout, session and cross-revision persistence still require separate
+verification.
+--- calls ---
+gcloud config get-value project
+gcloud auth list --filter=status:ACTIVE --format=value(account) --project=lab-5-cloud-deployment-514310
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud run revisions describe kitloop-333333333333-20261121133945 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-333333333333-20261121133945 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run jobs list --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=value(metadata.name)
+gcloud run jobs deploy kitloop-rollback-check --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --image=
+asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:383010c4a79c3bdc6487124560e6537
+fb40ac854eacdaf46f1155ec7c42bfdd3 --service-account=kitloop-run@lab-5-cloud-deployment-514310.iam.gserviceaccount.com
+--network=kitloop-vpc --subnet=kitloop-run --vpc-egress=private-ranges-only
+--set-cloudsql-instances=lab-5-cloud-deployment-514310:asia-southeast1:kitloop-pg
+--set-secrets=DATABASE_URL=kitloop-database-url:1 --set-env-vars=NODE_ENV=production --command=node
+--args=dist/lifecycle-cli.js,rollback-check,--require-zero,--expect-database=kitloop --tasks=1 --max-retries=0
+--task-timeout=120s
+gcloud run jobs describe kitloop-rollback-check --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=value(status.latestCreatedExecution.name)
+gcloud run jobs execute kitloop-rollback-check --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --wait
+gcloud run jobs describe kitloop-rollback-check --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=value(status.latestCreatedExecution.name)
+gcloud run jobs executions describe kitloop-rollback-check-x2 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-333333333333-20261121133945 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-333333333333-20261121133945 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run jobs list --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=value(metadata.name)
+gcloud run services update-traffic kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--to-revisions=kitloop-prelifecycle-1=100
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud config get-value project
+gcloud auth list --filter=status:ACTIVE --format=value(account) --project=lab-5-cloud-deployment-514310
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/health
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/ready
+
+===== GREEN: guards.test.sh and deploy/guard.test.sh after the fix =====
+M infra/gcp/README.md
+ M infra/gcp/REQUEST-LIFECYCLE-ROLLOUT.md
+ M infra/gcp/common.sh
+ M infra/gcp/guards.test.sh
+ M infra/gcp/release.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+PASS: BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+PASS: ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)
+PASS: ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check
+PASS: pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image
+PASS: BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+PASS: BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows
+PASS: BLOCKED: the database check cannot run (database unreachable)
+PASS: BLOCKED: the check execution cannot be verified (malformed output)
+PASS: BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed
+PASS: BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)
+PASS: BLOCKED: an operator confirmation never substitutes for a verified zero-row check
+PASS: BLOCKED: deploying pre-lifecycle code (8b6e5a9); it may only return through the checked rollback
+PASS: all GCP release guard tests
+PASS: 16 offline deployment guard cases
+
+===== full server suite =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  14 passed (14)
+      Tests  110 passed (110)
+   Start at  20:43:34
+   Duration  16.94s (tests 87%, import 12%, transform 1%)
+
+    Isolate  14 workers spawned · ~136ms startup each (spawn + environment, per file)
+             at least ~1.77s faster with isolate: false — reuses workers across files instead of one per file
+
+===== server typecheck + build =====
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+===== full client suite =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  7 passed (7)
+      Tests  42 passed (42)
+   Start at  20:43:56
+   Duration  7.43s (environment 60%, tests 19%, setup 14%, import 5%, transform 2%, worker 1%)
+
+===== client lint =====
+> client@0.0.0 lint
+> eslint .
+
+===== client build =====
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 37 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-BNkzRQp1.css          31.40 kB │ gzip:  6.95 kB
+dist/assets/index-D5Dy1FJy.js          246.64 kB │ gzip: 76.50 kB
+
+✓ built in 503ms
+
+===== prisma validate =====
+node.exe : Environment variables loaded from .env
+
+Prisma schema loaded from prisma\schema.prisma
+The schema at prisma\schema.prisma is valid 🚀
+
+===== e2e typecheck =====
+> kitloop-e2e@0.0.0 typecheck
+> tsc --noEmit
+
+===== browser E2E with NODE_OPTIONS=--dns-result-order=ipv4first =====
+Running 31 tests using 1 worker
+
+
+
+[1/31] [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message
+[2/31] [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog
+[3/31] [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login
+[4/31] [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset
+[5/31] [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001
+[6/31] [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload
+[7/31] [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests
+[8/31] [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears
+[9/31] [chromium] › tests\02-request-checkout-journey.spec.ts:105:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered
+[10/31] [chromium] › tests\02-request-checkout-journey.spec.ts:115:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload
+[11/31] [chromium] › tests\02-request-checkout-journey.spec.ts:129:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason
+[12/31] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login
+[13/31] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login
+[14/31] [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls
+[15/31] [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls
+[16/31] [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session
+[17/31] [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A)
+[18/31] [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING
+[19/31] [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403)
+[20/31] [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created
+[21/31] [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING
+[22/31] [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list
+[23/31] [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan
+[24/31] [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING
+[25/31] [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue
+[26/31] [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason
+[27/31] [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action
+[28/31] [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed
+[29/31] [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first
+[30/31] [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions)
+[31/31] [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first
+  31 passed (1.0m)
+

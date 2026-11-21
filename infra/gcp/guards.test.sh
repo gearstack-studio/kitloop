@@ -99,19 +99,33 @@ case "$1 $2" in
   'run jobs')
     job="${4:-}"
     case "$3" in
-      deploy) arg image >"$S/jobs/$job.image" ;;
+      deploy)
+        arg image >"$S/jobs/$job.image"
+        { arg command || true; } >"$S/jobs/$job.command"; { arg args || true; } >"$S/jobs/$job.args" ;;
       delete) rm -f "$S/jobs/$job."* ;;
+      list)
+        [[ ! -f "$S/jobs-list-fail" ]] || fail 'Jobs could not be listed.'
+        for f in "$S"/jobs/*.image; do [[ -e "$f" ]] && basename "$f" .image; done; true ;;
       describe) [[ -f "$S/jobs/$job.image" ]] || fail "Cannot find job [$job]."; cat "$S/jobs/$job.latest" 2>/dev/null || true ;;
       execute)
         [[ -f "$S/jobs/$job.image" ]] || fail "Cannot find job [$job]."
         n=$(( $(cat "$S/jobs/$job.count" 2>/dev/null || echo 0) + 1 )); echo "$n" >"$S/jobs/$job.count"
         name="$job-x$n"; echo "$name" >"$S/jobs/$job.latest"
         outcome="$(cat "$S/jobs/$job.outcome" 2>/dev/null || echo success)"
-        jq -n --arg name "$name" --arg job "$job" --arg image "$(cat "$S/jobs/$job.image")" --arg t "$(stamp)" --arg outcome "$outcome" '
+        if [[ "$job" == kitloop-rollback-check ]]; then
+          # Models lifecycle-cli rollback-check --require-zero against the fake database: exit 0 only for zero rows.
+          [[ ! -f "$S/rollback-check-unavailable" ]] || fail "Execution [$name] could not start: Cloud SQL connection failed."
+          [[ "$(cat "$S/db-lifecycle-rows" 2>/dev/null || echo 0)" == 0 ]] || outcome=failed
+          if [[ -f "$S/rollback-check-malformed" ]]; then printf '{"status": {"succeededCount": 1' >"$S/executions/$name.json"; exit 0; fi
+        fi
+        jq -n --arg name "$name" --arg job "$job" --arg image "$(cat "$S/jobs/$job.image")" --arg t "$(stamp)" --arg outcome "$outcome" \
+          --arg command "$(cat "$S/jobs/$job.command" 2>/dev/null)" --arg args "$(cat "$S/jobs/$job.args" 2>/dev/null)" '
           {apiVersion:"run.googleapis.com/v1", kind:"Execution",
            metadata:{name:$name, namespace:"123456789012", labels:{"run.googleapis.com/job":$job}},
            spec:{parallelism:1, taskCount:1,
-                 template:{spec:{containers:[{image:$image}], maxRetries:0, timeoutSeconds:"600"}}},
+                 template:{spec:{containers:[{image:$image} +
+                   (if $command == "" then {} else {command:($command | split(","))} end) +
+                   (if $args == "" then {} else {args:($args | split(","))} end)], maxRetries:0, timeoutSeconds:"600"}}},
            status:({observedGeneration:1, startTime:$t, completionTime:$t} +
              (if $outcome == "success"
               then {succeededCount:1, conditions:[{type:"Completed", status:"True"}]}
@@ -167,6 +181,9 @@ case "$1 $2" in
       add-iam-policy-binding) [[ "$(arg member)" == allUsers ]] && touch "$S/public" ;;
       remove-iam-policy-binding) rm -f "$S/public" ;;
       update-traffic)
+        if remove="$(arg remove-tags)"; then   # removes a tag URL; percentages are unchanged
+          svc --arg tag "$remove" '.status.traffic |= map(select(.tag != $tag))'; exit 0
+        fi
         target="$(arg to-revisions)"; target="${target%=100}"
         [[ -f "$S/revisions/$target.json" ]] || fail "Revision $target not found."
         svc --arg r "$target" '.status.traffic = ([{revisionName:$r, percent:100}] +
@@ -617,25 +634,27 @@ log_lacks 'gcloud run deploy' 'invalid lifecycle setting reached Cloud Run'
 unset KITLOOP_REQUEST_LIFECYCLE_WRITES
 pass 'an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment'
 
-pre=kitloop-prelifecycle-1
-jq --arg name "$pre" '.metadata.name = $name | .spec.containers[0].env |= map(select(.name != "REQUEST_LIFECYCLE_WRITES"))' \
-  "$FAKE_STATE/revisions/$fourth.json" >"$FAKE_STATE/revisions/$pre.json"
-release rollback "$pre"
-ok 'rollback to a pre-lifecycle revision while phase 1 serves'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
-out_has 'predates the request lifecycle' 'pre-lifecycle rollback target was not called out'
-out_has 'rollback-check' 'pre-lifecycle rollback did not point to the rollback check'
-pass 'phase 1 may still roll back to a pre-lifecycle revision, with the rollback-check reminder'
+# Pre-lifecycle rollback gate (PR #72 re-review P1). The fake database holds $FAKE_STATE/db-lifecycle-rows lifecycle-only
+# request rows; the fake kitloop-rollback-check job succeeds only when that count is 0, like
+# 'lifecycle-cli rollback-check --require-zero'. Every blocked case must leave traffic untouched.
+pre=kitloop-prelifecycle-1 pre2=kitloop-prelifecycle-2
+for name in "$pre" "$pre2"; do
+  jq --arg name "$name" '.metadata.name = $name | .spec.containers[0].env |= map(select(.name != "REQUEST_LIFECYCLE_WRITES"))' \
+    "$FAKE_STATE/revisions/$fourth.json" >"$FAKE_STATE/revisions/$name.json"
+done
+rows() { echo "$1" >"$FAKE_STATE/db-lifecycle-rows"; }
+blocked() {  # blocked LABEL EXPECTED_MESSAGE SERVING_BEFORE
+  refused "$1"; out_has "$2" "$1: refusal message missing"
+  log_lacks 'update-traffic' "$1: traffic was changed"
+  [[ "$(serving)" == "$3" ]] || fail_test "$1: traffic changed to $(serving)"
+  out_has 'Traffic was not changed' "$1: refusal did not say traffic was unchanged"
+}
+check_args="--args=dist/lifecycle-cli.js,rollback-check,--require-zero,--expect-database=kitloop"
+fourth_image="$(jq -r '.spec.containers[0].image' "$FAKE_STATE/revisions/$fourth.json")"
 
-export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
-release deploy "$SHA6"
-refused 'phase 2 over a pre-lifecycle revision'; out_has 'Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first' \
-  'phase 2 over a pre-lifecycle revision was not explained'
-log_lacks 'gcloud run deploy' 'phase 2 over a pre-lifecycle revision reached Cloud Run'
-[[ "$(serving)" == "$pre=100" ]] || fail_test 'refused phase 2 changed traffic'
-pass 'lifecycle writes cannot be enabled while a pre-lifecycle revision serves'
-
-unset KITLOOP_REQUEST_LIFECYCLE_WRITES
-release rollback "$fourth"; ok 'back to the phase-1 revision'
+# The reviewer's sequence first, from a clean state: phase 2 writes lifecycle rows, the service rolls back to phase 1
+# (writes off, rows stay), then a rollback to the pre-lifecycle revision is attempted.
+rows 0
 export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
 release deploy "$SHA6"
 ok 'phase 2 over a phase-1 revision'
@@ -644,21 +663,138 @@ sixth="$(revision_for "$SHA6")"
 jq -e '.spec.containers[0].env | any(.name == "REQUEST_LIFECYCLE_WRITES" and .value == "enabled")' \
   "$FAKE_STATE/revisions/$sixth.json" >/dev/null || fail_test 'phase 2 revision does not declare REQUEST_LIFECYCLE_WRITES=enabled'
 unset KITLOOP_REQUEST_LIFECYCLE_WRITES
-pass 'phase 2 deploys only over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled'
-
-release rollback "$pre"
-refused 'rollback from phase 2 to a pre-lifecycle revision'; out_has 'Roll back to a phase-1 revision' 'refusal did not name the safe target'
-log_lacks 'update-traffic' 'refused pre-lifecycle rollback changed traffic'
-[[ "$(serving)" == "$sixth=100" ]] || fail_test 'refused pre-lifecycle rollback changed traffic'
+pass 'phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled'
+rows 1   # phase 2 wrote a DECLINED request
 release rollback "$fourth"
-ok 'rollback from phase 2 to phase 1'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
-pass 'from phase 2, rollback goes to the phase-1 revision; a pre-lifecycle target is refused'
+ok 'phase 2 -> phase 1'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
+log_lacks 'kitloop-rollback-check' 'phase 2 -> phase 1 ran the pre-lifecycle check'
+pass 'ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)'
 
-release rollback "$sixth"; ok 'back to phase 2'
-export KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows
+# Final audit regression: after phase 2 -> phase 1 the phase-2 revision still holds the candidate tag at 0% traffic.
+# Cloud Run keeps tags across update-traffic, and a tag URL is invokable like the service, so that revision can still
+# write lifecycle rows after a zero-row check and after the switch. It must count as a lifecycle writer.
+jq -e --arg r "$sixth" 'any(.status.traffic[]; .revisionName == $r and .tag == "candidate" and .percent == 0)' \
+  "$FAKE_STATE/service.json" >/dev/null || fail_test 'precondition: phase-2 revision should still hold the candidate tag'
+for n in 1 0; do
+  rows "$n"
+  release rollback "$pre"
+  blocked "phase 2 -> phase 1 -> pre-lifecycle ($n rows) while phase 2 keeps a tag URL" \
+    "reachable through tag 'candidate'" "$fourth=100"
+  log_lacks 'run jobs execute' 'a check ran while a tagged phase-2 revision could still write lifecycle rows'
+done
+pass 'BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)'
+"$work/bin/gcloud" run services update-traffic kitloop --project="$PROJECT" --region=asia-southeast1 --remove-tags=candidate
+jq -e '[.status.traffic[] | select(.tag == "candidate")] | length == 0' "$FAKE_STATE/service.json" >/dev/null || \
+  fail_test 'operator tag removal did not take effect in the fake'
+
+rows 1   # the rows written by phase 2 remain
 release rollback "$pre"
-ok 'confirmed pre-lifecycle rollback'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
+blocked 'phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows' 'database compatibility check did not pass' "$fourth=100"
+log_has 'run jobs execute kitloop-rollback-check' 'the check did not run'
+pass 'BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)'
+
+rows 0
+release rollback "$pre"
+ok 'phase 1 -> pre-lifecycle with verified zero rows'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
+log_has "run jobs deploy kitloop-rollback-check" 'the database check job was not deployed'
+log_has "$check_args" 'the check did not run rollback-check --require-zero against the kitloop database'
+log_has "--image=$fourth_image" 'the check did not use the serving lifecycle-aware image'
+log_has "--service-account=kitloop-run@$PROJECT.iam.gserviceaccount.com" 'the check did not use the runtime identity'
+log_has '--set-secrets=DATABASE_URL=kitloop-database-url:1' 'the check did not use the service database secret'
+check_line="$(grep -n 'run jobs execute kitloop-rollback-check' "$FAKE_LOG" | head -n1 | cut -d: -f1 || true)"
+route_line="$(grep -n 'update-traffic' "$FAKE_LOG" | head -n1 | cut -d: -f1 || true)"
+[[ -n "$check_line" && -n "$route_line" && "$check_line" -lt "$route_line" ]] || fail_test 'traffic moved before the database check'
+pass 'ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)'
+
+release rollback "$pre"
+ok 'no-op rollback'; log_lacks 'update-traffic' 'no-op rollback changed traffic'; log_lacks 'kitloop-rollback-check' 'no-op ran a check'
+pass 'ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check'
+
+release rollback "$pre2"
+blocked 'pre-lifecycle -> pre-lifecycle without a lifecycle-aware image' 'No lifecycle-aware revision is serving' "$pre=100"
+log_lacks 'run jobs execute' 'a check ran without a lifecycle-aware image'
+export KITLOOP_ROLLBACK_CHECK_REVISION="$fourth"
+release rollback "$pre2"
+ok 'pre-lifecycle -> pre-lifecycle with an explicit check image'; [[ "$(serving)" == "$pre2=100" ]] || fail_test "traffic $(serving)"
+log_has "--image=$fourth_image" 'KITLOOP_ROLLBACK_CHECK_REVISION image was not used for the check'
+unset KITLOOP_ROLLBACK_CHECK_REVISION
+pass 'pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image'
+
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
+release deploy "$SHA6"
+refused 'phase 2 over a pre-lifecycle revision'; out_has 'Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first' \
+  'phase 2 over a pre-lifecycle revision was not explained'
+log_lacks 'gcloud run deploy' 'phase 2 over a pre-lifecycle revision reached Cloud Run'
+[[ "$(serving)" == "$pre2=100" ]] || fail_test 'refused phase 2 changed traffic'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves'
+
+release rollback "$fourth"
+ok 'pre-lifecycle -> phase 1'; log_lacks 'kitloop-rollback-check' 'a lifecycle-aware target ran the pre-lifecycle check'
+
+rows 2
+release rollback "$pre"
+blocked 'phase 1 -> pre-lifecycle with lifecycle rows' 'database compatibility check did not pass' "$fourth=100"
+log_has 'run jobs execute kitloop-rollback-check' 'the check did not run'
+pass 'BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows'
+
+rows 0; touch "$FAKE_STATE/rollback-check-unavailable"
+release rollback "$pre"
+blocked 'check unavailable' 'database compatibility check did not pass' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-unavailable"
+pass 'BLOCKED: the database check cannot run (database unreachable)'
+
+touch "$FAKE_STATE/rollback-check-malformed"
+release rollback "$pre"
+blocked 'malformed check execution' 'could not be verified as a successful zero-row check' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-malformed"
+pass 'BLOCKED: the check execution cannot be verified (malformed output)'
+
+touch "$FAKE_STATE/jobs-list-fail"
+release rollback "$pre"
+blocked 'jobs cannot be listed' 'Cannot list Cloud Run jobs' "$fourth=100"
+rm -f "$FAKE_STATE/jobs-list-fail"
+echo "$fourth_image" >"$FAKE_STATE/jobs/kitloop-reconcile.image"
+release rollback "$pre"
+blocked 'reconciliation job present' 'reconciliation job kitloop-reconcile exists' "$fourth=100"
+log_lacks 'run jobs execute' 'a check ran while a lifecycle writer existed'
+rm -f "$FAKE_STATE/jobs/kitloop-reconcile."*
+pass 'BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed'
+
+release rollback "$sixth"
+ok 'phase 1 -> phase 2 revision'; [[ "$(serving)" == "$sixth=100" ]] || fail_test "traffic $(serving)"
+rows 1   # phase 2 wrote a DECLINED request
+release rollback "$pre"
+blocked 'phase 2 -> pre-lifecycle with lifecycle rows' 'has lifecycle writes enabled' "$sixth=100"
+log_lacks 'run jobs execute' 'phase 2 -> pre-lifecycle ran a check that writes could invalidate'
+rows 0
+release rollback "$pre"
+blocked 'phase 2 -> pre-lifecycle even with zero rows' 'has lifecycle writes enabled' "$sixth=100"
+pass 'BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)'
+
+rows 1
+release rollback "$fourth"
+ok 'phase 2 -> phase 1 again'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
+
+for confirmation in no-lifecycle-rows yes; do
+  export KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK="$confirmation"
+  release rollback "$pre"
+  blocked "operator confirmation $confirmation with lifecycle rows" 'database compatibility check did not pass' "$fourth=100"
+done
+touch "$FAKE_STATE/rollback-check-unavailable"
+release rollback "$pre"
+blocked 'operator confirmation without a database check' 'database compatibility check did not pass' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-unavailable"
 unset KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK
-pass 'a pre-lifecycle rollback from phase 2 needs the explicit no-lifecycle-rows confirmation'
+pass 'BLOCKED: an operator confirmation never substitutes for a verified zero-row check'
+
+if git -C "$script_dir" cat-file -e '8b6e5a95f34ecb71df2bb0ccc4a836fa156264cf^{commit}' 2>/dev/null; then
+  release deploy 8b6e5a95f34ecb71df2bb0ccc4a836fa156264cf
+  refused 'deploy of pre-lifecycle code'; out_has 'predates the request lifecycle' 'pre-lifecycle deploy was not explained'
+  log_lacks 'gcloud run deploy' 'pre-lifecycle code reached Cloud Run through deploy'; log_lacks 'update-traffic' 'pre-lifecycle deploy changed traffic'
+  pass 'BLOCKED: deploying pre-lifecycle code (8b6e5a9); it may only return through the checked rollback'
+else
+  printf 'SKIP: commit 8b6e5a9 is not in this checkout (shallow clone); pre-lifecycle deploy case not run\n'
+fi
 
 printf 'PASS: all GCP release guard tests\n'

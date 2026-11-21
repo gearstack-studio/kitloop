@@ -1,6 +1,9 @@
 import request from "supertest";
 import { Role } from "@prisma/client";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import app from "../src/app.js";
 import { ConfigurationError, requestLifecycleWrites, runtimeConfig } from "../src/config.js";
@@ -153,6 +156,70 @@ describe("Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled)",
     await checkout(a, assetId);
     await expect(legacy.borrowRequest.findMany({ where: { assetId } })).rejects.toThrow(/Value 'DECLINED' not found in enum 'RequestStatus'/);
   });
+});
+
+describe("Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1)", () => {
+  // The exact command release.sh runs as a Cloud Run job before routing traffic to a pre-lifecycle revision.
+  // Scoped with --asset here because the shared test database holds other tests' rows; release.sh never scopes it.
+  const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  let database: string;
+  beforeAll(async () => {
+    [{ database }] = await prisma.$queryRaw<Array<{ database: string }>>`SELECT current_database() AS database`;
+  });
+  const gate = (...args: string[]) => {
+    const result = spawnSync(process.execPath, [path.join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
+      "src/lifecycle-cli.ts", "rollback-check", ...args], { cwd: serverDir, encoding: "utf8", timeout: 60_000,
+      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL } });
+    const output = `${result.stdout}\n${result.stderr}`;
+    // Never print the connection string or its password.
+    expect(output).not.toContain(process.env.DATABASE_URL!);
+    expect(output).not.toContain(new URL(process.env.DATABASE_URL!).password || "\u0000");
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  };
+
+  it("exits 0 and reports SAFE only when the expected database has zero lifecycle-only rows", async () => {
+    const assetId = await asset();
+    await submit(borrowerA, assetId);
+    const result = gate("--require-zero", `--expect-database=${database}`, `--asset=${assetId}`);
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout.slice(0, result.stdout.lastIndexOf("}") + 1))).toMatchObject({
+      requireZero: true, database, lifecycleOnlyRows: 0, preLifecycleRevisionsSafe: true });
+    expect(result.stdout).toContain("SAFE:");
+  }, 60_000);
+
+  it("exits 4 (UNSAFE) when lifecycle-only rows exist, e.g. after phase 2 and a rollback to phase 1", async () => {
+    const assetId = await asset();
+    const a = await submit(borrowerA, assetId);
+    await submit(borrowerB, assetId);
+    process.env.REQUEST_LIFECYCLE_WRITES = "enabled"; // phase 2 writes DECLINED
+    await checkout(a, assetId);
+    process.env.REQUEST_LIFECYCLE_WRITES = "disabled"; // back on phase 1: writes off, but the row stays
+    const result = gate("--require-zero", `--expect-database=${database}`, `--asset=${assetId}`);
+    expect(result.status).toBe(4);
+    expect(result.stderr).toContain("UNSAFE: 1 request row(s)");
+    process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+  }, 60_000);
+
+  it("refuses (exit 2) without checking when connected to a different database or without --expect-database", () => {
+    const wrong = gate("--require-zero", "--expect-database=kitloop", "--asset=none");
+    expect(wrong.status).toBe(2);
+    expect(wrong.stderr).toContain(`Connected to database "${database}", expected "kitloop"; nothing was checked`);
+    expect(wrong.stdout).not.toContain("SAFE");
+    const missing = gate("--require-zero");
+    expect(missing.status).toBe(2);
+    expect(missing.stderr).toContain("--require-zero needs --expect-database=NAME");
+  }, 60_000);
+
+  it("exits 1 (not 0) when the database cannot be reached", () => {
+    const url = new URL(process.env.DATABASE_URL!);
+    url.port = "1"; // nothing listens there
+    const result = spawnSync(process.execPath, [path.join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
+      "src/lifecycle-cli.ts", "rollback-check", "--require-zero", "--expect-database=kitloop"],
+    { cwd: serverDir, encoding: "utf8", timeout: 60_000, env: { ...process.env, DATABASE_URL: url.toString() } });
+    expect(result.status).toBe(1);
+    expect(`${result.stdout}${result.stderr}`).not.toContain(url.password || "\u0000");
+    expect(result.stdout).not.toContain("SAFE");
+  }, 60_000);
 });
 
 describe("Rollback safety check", () => {

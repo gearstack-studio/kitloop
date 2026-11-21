@@ -18,20 +18,48 @@ Phase 1 and phase 2 are the **same image**. Only the env var differs, so moving 
 
 ## Safe rollback targets
 
-| Currently serving | Lifecycle rows in the database? | Safe targets | Unsafe targets |
-|---|---|---|---|
-| Phase 1 | None (`rollback-check` → `lifecycleOnlyRows: 0`) | Any earlier ready revision, including `8b6e5a9` | n/a |
-| Phase 1 | Some (phase 2 ran earlier) | Phase 1 or phase 2 revisions only | Pre-lifecycle (`8b6e5a9` and earlier) |
-| Phase 2 | Any | **A phase 1 revision (recommended)**, or another phase 2 revision | Pre-lifecycle, unless `rollback-check` reports `lifecycleOnlyRows: 0` |
+**Invariant.** A pre-lifecycle revision may receive traffic only after both of these hold:
+1. A fresh, read-only check of the production database, run by `release.sh` in the same invocation, found **zero** request rows with `DECLINED`, `CANCELLED` or `EXPIRED`.
+2. Nothing that could write such a row is running: no revision that can receive requests has lifecycle writes enabled, and no reconciliation job exists. A revision can receive requests through a traffic share **or a tag URL**. Cloud Run keeps tags across `update-traffic`, so after phase 2 → phase 1 the phase-2 revision normally still holds the `candidate` tag at 0% traffic. It still answers at `https://candidate---…run.app`, under the service's invoker policy.
 
-`release.sh` enforces the common cases:
+The serving revision's `REQUEST_LIFECYCLE_WRITES` value is **not** evidence. Phase 1 writes nothing new, but rows written earlier by phase 2 remain. An operator's confirmation authorises a rollback; it never replaces the check.
 
-- `deploy` always sets `REQUEST_LIFECYCLE_WRITES` from `KITLOOP_REQUEST_LIFECYCLE_WRITES` (default `disabled`). It refuses any other value.
-- `deploy` with `KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled` is refused while any serving revision is pre-lifecycle. This guarantees the automatic rollback target in `deploy.yml` can read lifecycle rows.
-- `rollback` to a pre-lifecycle revision is refused while a phase 2 revision is serving. It succeeds only with `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows`, set after `rollback-check` reports `lifecycleOnlyRows: 0`.
-- **Not enforced:** if phase 2 ran and the service was later moved back to phase 1, `release.sh` can't see that lifecycle rows exist. Before any rollback to a pre-lifecycle revision, always run `rollback-check`; the database is the ground truth.
+| Target | Allowed when | Database check |
+|---|---|---|
+| Phase 1 or phase 2 revision (lifecycle-aware) | It's a ready KitLoop revision | Not needed: it reads every status |
+| Pre-lifecycle revision (`8b6e5a9` and earlier) | No serving or tagged revision has writes enabled, **and** no `kitloop-reconcile` job exists, **and** the fresh check reports `lifecycleOnlyRows: 0` | **Required, every time** |
+| The revision already serving 100% | Always (traffic doesn't change) | Not needed |
 
-Lifecycle data is never rewritten to make a rollback work. Terminal statuses aren't changed back to `PENDING`, enum values aren't dropped, and closure history isn't deleted. If lifecycle rows exist, the only safe rollback is to a lifecycle-aware revision.
+Once phase 2 has written any lifecycle row, **no pre-lifecycle revision is a safe target again**. Nothing deletes or rewrites those rows: terminal statuses aren't changed back to `PENDING`, enum values aren't dropped, and closure history isn't deleted. Roll back to a phase 1 revision instead.
+
+### What `release.sh` enforces
+
+- `deploy` always sets `REQUEST_LIFECYCLE_WRITES` from `KITLOOP_REQUEST_LIFECYCLE_WRITES` (default `disabled`) and refuses any other value.
+- `deploy` with `enabled` is refused while any serving revision is pre-lifecycle, so the automatic rollback target in `deploy.yml` can always read lifecycle rows.
+- `deploy` of a commit known to predate the lifecycle (no `20261121090000_request_lifecycle` migration) is refused. Pre-lifecycle code reaches traffic only through the checked `rollback`.
+- `rollback` to a pre-lifecycle revision runs this gate before any traffic change, whatever phase is serving:
+  1. **Refuses** if any serving revision has `REQUEST_LIFECYCLE_WRITES=enabled`, because rows could be written after the check. Roll back to phase 1 first. It also **refuses** if a revision with writes enabled holds a tag at 0% traffic (normally `candidate` on the old phase-2 revision). Remove the tag first with `gcloud run services update-traffic kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --remove-tags=candidate`. Removing a tag doesn't move traffic, and the next `deploy` adds it back on its new revision.
+  2. **Refuses** if Cloud Run jobs can't be listed, or if the reconciliation job `kitloop-reconcile` exists (it writes lifecycle rows). Delete it after reconciliation.
+  3. Picks the check image: the image of a serving lifecycle-aware revision. If only pre-lifecycle revisions are serving, it uses `KITLOOP_ROLLBACK_CHECK_REVISION=<ready phase 1/2 revision>`, which **only selects the image**. Otherwise it refuses.
+  4. Asks for the typed `rollback` confirmation.
+  5. Deploys and executes the job `kitloop-rollback-check`: `node dist/lifecycle-cli.js rollback-check --require-zero --expect-database=kitloop`. It uses the runtime service account, the service's own `kitloop-database-url:1` secret and Cloud SQL connection, `--max-retries=0`, a 120-second task timeout and a 900-second client timeout.
+  6. Accepts only a **new** execution that succeeded (`succeededCount 1`, `failedCount 0`, completed) with exactly that image, command `node` and those arguments. Anything else refuses: a failed, timed-out, unparseable or reused execution.
+  7. Re-reads the whole traffic block (revisions, percentages **and tags**) and repeats steps 1–2. If anything changed during the check, it refuses.
+  8. Only then calls `update-traffic`.
+
+  Every refusal ends with *"Traffic was not changed."* The old `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK` bypass has been removed and no longer has any effect.
+
+### The check itself
+
+`rollback-check --require-zero --expect-database=NAME` runs in a PostgreSQL `READ ONLY` transaction, so the database rejects any write.
+- It first compares `current_database()` with `NAME` and refuses (exit `2`, "nothing was checked") on a mismatch.
+- It exits `0` only when `lifecycleOnlyRows` is `0`; exit `4` means lifecycle rows exist.
+- It exits `1` when the database can't be reached or another error occurs.
+- Its output is JSON counts per status plus a `SAFE`/`UNSAFE` line, never the connection string.
+
+`release.sh` reads only the job execution's status, image, command and arguments, not log text.
+
+**IAM.** The job runs as the runtime service account (`kitloop-run`), which already has Cloud SQL Client and access to `kitloop-database-url`. The operator, or the WIF deploy identity in `deploy.yml`, needs the job permissions it already uses for `kitloop-migrate`, plus `iam.serviceAccountUser` on `kitloop-run`, which deploys already require. Nothing new is granted.
 
 ## Procedure
 
@@ -63,6 +91,7 @@ Each asset is processed in its own Serializable transaction. The `Asset` row is 
 | Command (production image: `node dist/lifecycle-cli.js …`; local: `npm run lifecycle:dev -- …`) | Effect |
 |---|---|
 | `rollback-check` | Read-only. Counts per status, and whether pre-lifecycle revisions are still safe targets |
+| `rollback-check --require-zero --expect-database=NAME` | The gate `release.sh` runs (above). `READ ONLY` transaction; exit `0` only for zero lifecycle rows in `NAME` |
 | `reconcile` | **Dry run** (the default) in a `READ ONLY` transaction: Before counts, stale and kept requests |
 | `reconcile --apply --confirm-database=NAME` | Closes stale requests. Requires `REQUEST_LIFECYCLE_WRITES=enabled` and `NAME` = `current_database()` |
 | `--asset=ID` (repeatable) | Restricts either command to the named assets, e.g. to retest one UAT example |
@@ -72,23 +101,26 @@ Exit codes: `0` success; `2` refused or invalid arguments (nothing written); `3`
 Run it as a one-off Cloud Run job using the release's **app image**, the runtime identity and the database secret. The template below follows the `kitloop-bootstrap` job in `release.sh`. **It has not been executed in GCP; review the IAM and arguments before using it.**
 
 ```bash
-gcloud run jobs deploy kitloop-lifecycle --project="$PROJECT" --region="$REGION" \
+gcloud run jobs deploy kitloop-reconcile --project="$PROJECT" --region="$REGION" \
   --image="$APP_IMAGE_DIGEST" --service-account="$RUN_SA" \
   --network="$NETWORK" --subnet="$SUBNET" --vpc-egress=private-ranges-only \
   --set-cloudsql-instances="$CONNECTION" --set-secrets=DATABASE_URL=kitloop-database-url:1 \
   --set-env-vars=NODE_ENV=production,REQUEST_LIFECYCLE_WRITES=enabled \
   --command=node --args=dist/lifecycle-cli.js,reconcile --tasks=1 --max-retries=0 --task-timeout=10m
-gcloud run jobs execute kitloop-lifecycle --project="$PROJECT" --region="$REGION" --wait   # dry run; read the JSON in the job logs
-# After review, re-deploy the job with --args=dist/lifecycle-cli.js,reconcile,--apply,--confirm-database=<db name> and execute it.
+gcloud run jobs execute kitloop-reconcile --project="$PROJECT" --region="$REGION" --wait   # dry run; read the JSON in the job logs
+# After review, re-deploy the job with --args=dist/lifecycle-cli.js,reconcile,--apply,--confirm-database=kitloop and execute it.
+gcloud run jobs delete kitloop-reconcile --project="$PROJECT" --region="$REGION"          # required: release.sh refuses pre-lifecycle rollbacks while it exists
 ```
 
-Keep the dry-run and apply JSON (Before/After counts and request IDs) as release evidence. Rerun the dry run afterwards and expect `staleOnActiveLoan: 0`. The output contains request, asset and borrower UUIDs but no credentials.
+Keep the dry-run and apply JSON (Before/After counts and request IDs) as release evidence. Rerun the dry run afterwards and expect `staleOnActiveLoan: 0`, then **delete the job**. The output contains request, asset and borrower UUIDs but no credentials. Run reconciliation only while phase 2 is serving.
 
 ## Rollback procedures
 
 - **Phase 2 has a problem.** Run `bash infra/gcp/release.sh rollback <phase-1 revision>`. Lifecycle rows stay readable; the UI stops offering cancel and decline; checkout stops auto-declining. Alternatively, redeploy the same SHA with `KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled`.
-- **Phase 1 has a problem, and phase 2 has never run** (`rollback-check` → `lifecycleOnlyRows: 0`). Rolling back to the previous pre-lifecycle revision is safe. The migration's extra enum values, nullable columns and constraint don't affect `8b6e5a9`; the harness confirmed this with no 5xx.
-- **A pre-lifecycle revision is serving while lifecycle rows exist** (for example after a manual console change). Borrowers with closed requests get HTTP 500. Immediately route traffic to a phase 1 or phase 2 revision. Don't edit request statuses.
+- **Phase 1 has a problem, and phase 2 has never written a lifecycle row.** Run `bash infra/gcp/release.sh rollback <pre-lifecycle revision>`. `release.sh` runs the database check and moves traffic only if it reports zero lifecycle rows. If a phase-2 revision was ever deployed, first remove its `candidate` tag (see step 1 above); `release.sh` refuses while a writes-enabled revision is still reachable through a tag. The migration's extra enum values, nullable columns and constraint don't affect `8b6e5a9`; the real-server harness confirmed this with no 5xx.
+- **Phase 1 has a problem, and phase 2 wrote lifecycle rows earlier.** A pre-lifecycle rollback is **not supported**: the check fails and `release.sh` refuses. Fix forward, or roll back to another phase 1 or phase 2 revision.
+- **The check fails for a reason other than rows** (database unreachable, wrong database, timeout). The rollback is refused. Inspect the `kitloop-rollback-check` execution logs, fix the cause, and rerun. Don't bypass `release.sh`.
+- **A pre-lifecycle revision is serving while lifecycle rows exist** (only possible through a manual Cloud Console traffic change that bypasses `release.sh`). Borrowers with closed requests get HTTP 500. Immediately route traffic to a phase 1 or phase 2 revision; that target needs no check. Don't edit request statuses.
 - **The database migration itself** isn't reversed by any rollback. Its objects are additive and harmless to every revision listed above.
 
 ## Expiry is deferred
