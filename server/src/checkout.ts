@@ -1,15 +1,27 @@
 import { Prisma, RequestCloseReason, RequestStatus, type Loan } from "@prisma/client";
 import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
-import { requestLifecycleWrites } from "./config.js";
+import { loanMaxDays, requestLifecycleWrites } from "./config.js";
 import { prisma } from "./db.js";
 
+const DAY_MS = 86_400_000;
 const invalidDueDate = () => new ApiError(400, "VALIDATION_ERROR", "Provide a due date later than checkout time", {
   dueAt: "A valid future timestamp with timezone is required",
 });
 
-export function validateDueDate(dueAt: Date, checkedOutAt: Date) {
+/**
+ * BR-11: the due date must be later than the actual checkout instant. UAT-E02 (#62): when a maximum loan duration is
+ * configured (LOAN_MAX_DAYS, see config.ts; SRS OQ-01), it must also be no later than checkout + maxDays x 24 hours
+ * (inclusive). The bound is measured from checkedOutAt, the instant taken inside the checkout transaction, never from
+ * when the form was opened or from the client's clock.
+ */
+export function validateDueDate(dueAt: Date, checkedOutAt: Date, maxDays: number | null = null) {
   if (!Number.isFinite(dueAt.getTime()) || dueAt <= checkedOutAt) throw invalidDueDate();
+  if (maxDays !== null && dueAt.getTime() > checkedOutAt.getTime() + maxDays * DAY_MS) {
+    throw new ApiError(400, "VALIDATION_ERROR", `Choose a due date within ${maxDays} days of checkout`, {
+      dueAt: `The due date must be no later than ${maxDays} days (${maxDays * 24} hours) after checkout`,
+    });
+  }
 }
 
 export function checkoutInput(body: unknown): { assetId: string; dueAt: Date } {
@@ -69,7 +81,7 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
         throw new ApiError(409, "ASSET_UNAVAILABLE", "Equipment is unavailable. Refresh the pending requests.");
       }
       const checkedOutAt = now();
-      validateDueDate(input.dueAt, checkedOutAt);
+      validateDueDate(input.dueAt, checkedOutAt, loanMaxDays(process.env));
       const updated = await tx.borrowRequest.updateMany({
         where: { id: requestId, status: RequestStatus.PENDING }, data: { status: RequestStatus.CHECKED_OUT },
       });

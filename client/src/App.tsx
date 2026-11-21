@@ -16,8 +16,11 @@ import './Login.css'
 
 type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN' }
 // PR #72 P1: phase 1 of the lifecycle rollout reads every request status but offers no lifecycle actions.
-type Features = { requestLifecycleActions?: boolean }
+type Features = { requestLifecycleActions?: boolean; loanMaxDays?: number | null }
 const lifecycleActionsOn = (features?: Features) => features?.requestLifecycleActions === true
+// UAT-E02 (#62): the server's maximum loan duration in days (null = none configured). Anything unexpected is treated as
+// no client-side maximum; the server still enforces its own setting.
+const loanMaxDaysOf = (features?: Features) => Number.isInteger(features?.loanMaxDays) && (features?.loanMaxDays ?? 0) > 0 ? features!.loanMaxDays! : null
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 class ApiFailure extends Error {
@@ -52,6 +55,7 @@ function App() {
   const path = usePath()
   const [identity, setIdentity] = useState<Identity | null>(null)
   const [lifecycleActions, setLifecycleActions] = useState(false)
+  const [loanMaxDays, setLoanMaxDays] = useState<number | null>(null)
   const [csrf, setCsrf] = useState('')
   const [checking, setChecking] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -69,7 +73,7 @@ function App() {
 
   const endSession = useCallback((message: string) => {
     sessionEpoch.current++
-    setIdentity(null); setLifecycleActions(false); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
+    setIdentity(null); setLifecycleActions(false); setLoanMaxDays(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
   }, [])
 
   const loadRequests = useCallback((role: Identity['role'], options: {
@@ -110,7 +114,7 @@ function App() {
   useEffect(() => {
     let active = true
     api<Identity & { features?: Features }>('/auth/me').then(({ data, token }) => {
-      if (active) { setIdentity({ id: data.id, role: data.role }); setLifecycleActions(lifecycleActionsOn(data.features)); setCsrf(token ?? '') }
+      if (active) { setIdentity({ id: data.id, role: data.role }); setLifecycleActions(lifecycleActionsOn(data.features)); setLoanMaxDays(loanMaxDaysOf(data.features)); setCsrf(token ?? '') }
     }).catch((failure: ApiFailure) => {
       if (active && failure.status !== 401) setError(failure.message)
     }).finally(() => { if (active) setChecking(false) })
@@ -175,7 +179,7 @@ function App() {
         method: 'POST', body: JSON.stringify({ username: username.trim(), password }),
       })
       sessionEpoch.current++
-      setCsrf(result.token ?? ''); setIdentity(result.data.user); setLifecycleActions(lifecycleActionsOn(result.data.features)); setUsername('')
+      setCsrf(result.token ?? ''); setIdentity(result.data.user); setLifecycleActions(lifecycleActionsOn(result.data.features)); setLoanMaxDays(loanMaxDaysOf(result.data.features)); setUsername('')
     } catch (failure) {
       const issue = failure as ApiFailure
       setError(issue.status === 401 ? 'Invalid username or password.' : issue.message)
@@ -277,7 +281,7 @@ function App() {
       </>}
       <Requests requests={requests} status={requestStatus} onRetry={retryRequests} custodian={identity.role === 'CUSTODIAN'}>
         {item => identity.role === 'CUSTODIAN' ? <div className="request-actions">
-          <Checkout request={item} busy={busy}
+          <Checkout request={item} busy={busy} maxLoanDays={loanMaxDays}
             ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
             onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, lifecycleActions
               ? 'Checkout recorded. Request CHECKED_OUT and active loan created. Any other pending requests for this equipment were declined.'

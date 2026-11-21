@@ -2,14 +2,19 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import { Router, type RequestHandler } from "express";
 import { Role } from "@prisma/client";
 import { ApiError } from "./api-error.js";
-import { requestLifecycleWrites } from "./config.js";
+import { loanMaxDays, requestLifecycleWrites } from "./config.js";
 import { prisma } from "./db.js";
 import { verifyPassword } from "./password.js";
 
 export const COOKIE_NAME = "kitloop_session";
 
-/** Deployment features the client needs to decide which controls to offer (PR #72 P1 phase 1 vs phase 2). */
-const clientFeatures = () => ({ requestLifecycleActions: requestLifecycleWrites(process.env) });
+/**
+ * Deployment features the client needs to decide which controls to offer (PR #72 P1 phase 1 vs phase 2) and the
+ * configured maximum loan duration (UAT-E02 #62; null = none configured). The server still enforces the maximum itself.
+ */
+const clientFeatures = () => ({
+  requestLifecycleActions: requestLifecycleWrites(process.env), loanMaxDays: loanMaxDays(process.env),
+});
 const SESSION_HOURS = Number(process.env.SESSION_TTL_HOURS ?? 12);
 const ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:5173";
 

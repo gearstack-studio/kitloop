@@ -146,7 +146,7 @@ describe("Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled)",
 
   it("login and /auth/me tell the client that lifecycle actions are on", async () => {
     const me = await request(app).get("/api/auth/me").set("Cookie", borrowerA.cookie);
-    expect(me.body.features).toEqual({ requestLifecycleActions: true });
+    expect(me.body.features).toEqual({ requestLifecycleActions: true, loanMaxDays: null });
   });
 
   it("characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes)", async () => {

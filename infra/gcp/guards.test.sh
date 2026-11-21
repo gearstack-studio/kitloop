@@ -661,6 +661,19 @@ log_lacks 'gcloud run deploy' 'invalid lifecycle setting reached Cloud Run'
 unset KITLOOP_REQUEST_LIFECYCLE_WRITES
 pass 'an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment'
 
+# UAT-E02 (#62): maximum loan duration. Unset/empty declares nothing (no maximum; SRS OQ-01 undecided). An invalid value
+# is refused before any Cloud Run deployment, so a typo never silently ships without the limit.
+jq -e '.spec.containers[0].env | all(.name != "LOAN_MAX_DAYS")' "$FAKE_STATE/revisions/$fourth.json" >/dev/null || \
+  fail_test 'deploy declared LOAN_MAX_DAYS although KITLOOP_LOAN_MAX_DAYS was unset'
+for KITLOOP_LOAN_MAX_DAYS in 0 -1 1.5 14d 014 3651 abc; do
+  export KITLOOP_LOAN_MAX_DAYS
+  release deploy "$SHA6"
+  refused "invalid loan maximum $KITLOOP_LOAN_MAX_DAYS"; out_has 'KITLOOP_LOAN_MAX_DAYS must be empty' 'invalid loan maximum was not reported'
+  log_lacks 'gcloud run deploy' "invalid loan maximum $KITLOOP_LOAN_MAX_DAYS reached Cloud Run"
+done
+unset KITLOOP_LOAN_MAX_DAYS
+pass 'LOAN_MAX_DAYS is omitted unless KITLOOP_LOAN_MAX_DAYS is set, and invalid values are refused before deployment'
+
 # Pre-lifecycle rollback gate (PR #72 re-review P1). The fake database holds $FAKE_STATE/db-lifecycle-rows lifecycle-only
 # request rows; the fake kitloop-rollback-check job succeeds only when that count is 0, like
 # 'lifecycle-cli rollback-check --require-zero'. Every blocked case must leave traffic untouched.
@@ -886,8 +899,12 @@ pass 'BLOCKED: migrate and bootstrap use the same source verification before any
 release migrate "$SHA6"
 ok 'migrate of a verified lifecycle-aware commit'
 log_has "kitloop-migration:${SHA6:0:12}" 'verified migrate did not look up the migration image of the resolved commit'
+export KITLOOP_LOAN_MAX_DAYS=21   # UAT-E02: a configured maximum reaches the revision (test value, not a policy)
 release deploy "${SHA6:0:12}"
+unset KITLOOP_LOAN_MAX_DAYS
 ok 'deploy of a verified lifecycle-aware abbreviated SHA'
+jq -e '.spec.containers[0].env | any(.name == "LOAN_MAX_DAYS" and .value == "21")' \
+  "$FAKE_STATE/revisions/$(serving | cut -d= -f1).json" >/dev/null || fail_test 'KITLOOP_LOAN_MAX_DAYS=21 did not reach the revision'
 log_has "--revision-suffix=${SHA6:0:12}-" 'verified deploy did not use the resolved commit'
 out_has "$SHA6" 'deploy did not report the canonical 40-character commit'
 [[ "$(serving)" == "$(revision_for "$SHA6")=100" ]] || fail_test "verified deploy traffic $(serving)"
