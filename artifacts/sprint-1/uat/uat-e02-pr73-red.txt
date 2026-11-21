@@ -1,0 +1,188 @@
+UAT-E02 (#62) / PR #73 review P2: a stale picker maximum blocked a checkout that had become valid
+Reviewed commit 13d748c. Isolated databases only; LOAN_MAX_DAYS=21 is a TEST CONFIGURATION ONLY (SRS OQ-01 open).
+
+RED against the reviewed 13d748c Checkout.tsx/localDateTime.ts with the final new tests:
+  Playwright (real Chromium constraint validation), 05-loan-duration.spec.ts test 5: FAILED. The date became valid after
+    the browser clock advanced, but the click was blocked by the stale DOM max; page snapshot: textbox [invalid],
+    alert "Choose a due date within 21 days of checkout.", no POST .../checkout. Screenshot:
+    uat-e02-pr73-red-stale-maximum-blocked.png. Tests 1-4: passed.
+  Component (jsdom, real submit-button click): 2 failed | 13 passed
+    x submits a date that became valid while the form stayed open (onCheckout never called)
+    x rejects an empty date when submitted programmatically (native 'required' blocked silently; no inline message)
+
+===== Playwright 05-loan-duration.spec.ts against 13d748c (RED) =====
+Running 5 tests using 1 worker
+
+
+
+[1/5] [chromium] › tests\05-loan-duration.spec.ts:51:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date
+[2/5] [chromium] › tests\05-loan-duration.spec.ts:73:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent
+[3/5] [chromium] › tests\05-loan-duration.spec.ts:85:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING
+[4/5] [chromium] › tests\05-loan-duration.spec.ts:99:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created
+[5/5] [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum)
+  1) [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum)
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Checkout recorded\. Request CHECKED_OUT and active loan created\./)
+    Expected: visible
+    Timeout: 8000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Checkout recorded\. Request CHECKED_OUT and active loan created\./) with timeout 8000ms
+      - waiting for getByText(/Checkout recorded\. Request CHECKED_OUT and active loan created\./)
+
+
+      138 |     await form.getByRole("button", { name: "Check out" }).click();
+      139 |
+    > 140 |     await expect(page.getByText(/Checkout recorded\. Request CHECKED_OUT and active loan created\./)).toBeVisible();
+          |                                                                                                       ^
+      141 |     expect(posts).toHaveLength(1);
+      142 |     const loan = ((await api(page, "GET", "/loans/active")).body as Array<{ assetId: string; dueAt: string }>)
+      143 |       .find((item) => item.assetId === STALE.assetId);
+        at D:\SWE_Project\kitloop\e2e\tests\05-loan-duration.spec.ts:140:103
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\05-loan-duration-UAT-E02-6-82d5d-s-out-stale-picker-maximum--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\artifacts\05-loan-duration-UAT-E02-6-82d5d-s-out-stale-picker-maximum--chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\artifacts\05-loan-duration-UAT-E02-6-82d5d-s-out-stale-picker-maximum--chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\05-loan-duration-UAT-E02-6-82d5d-s-out-stale-picker-maximum--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\05-loan-duration-UAT-E02-6-82d5d-s-out-stale-picker-maximum--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum)
+  4 passed (24.5s)
+
+===== client tests/loan-duration.test.tsx against 13d748c component (RED) =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+ ❯ tests/loan-duration.test.tsx (15 tests | 2 failed) 370ms
+   ❯ UAT-E02 checkout with a stale picker maximum (PR #73 P2) (8)
+     × submits a date that became valid while the form stayed open, exactly once, as UTC ISO 10ms
+     × rejects an empty or unparseable date even if the form is submitted programmatically 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > submits a date that became valid while the form stayed open, exactly once, as UTC ISO
+AssertionError: expected "vi.fn()" to be called once with arguments: [ { id: 'R1', …(3) }, …(1) ]
+
+Number of calls: 0
+
+ ❯ tests/loan-duration.test.tsx:147:24
+    145|     expect(dueInput().validity.rangeOverflow).toBe(true)      // the D…
+    146|     click()
+    147|     expect(onCheckout).toHaveBeenCalledExactlyOnceWith(pending, new Da…
+       |                        ^
+    148|     expect(screen.queryByRole('alert')).toBeNull()
+    149|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > rejects an empty or unparseable date even if the form is submitted programmatically
+TestingLibraryElementError: Unable to find an accessible element with the role "alert"
+
+Here are the accessible roles:
+
+  form:
+
+  Name "Checkout request R1":
+  <form
+    aria-label="Checkout request R1"
+    class="checkout-form"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="checkout-help"
+    id="checkout-due-R1-help"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Check out":
+  <button
+    disabled=""
+    type="submit"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <form
+      aria-label="Checkout request R1"
+      class="checkout-form"
+    >
+      <label
+        for="checkout-due-R1"
+      >
+        Due date for
+        CAM-1
+      </label>
+      <input
+        aria-describedby="checkout-due-R1-help"
+        aria-invalid="false"
+        id="checkout-due-R1"
+        max="2026-12-11T15:24"
+        min="2026-11-20T15:25"
+        required=""
+        type="datetime-local"
+        value=""
+      />
+      <p
+        class="checkout-help"
+        id="checkout-due-R1-help"
+      >
+        Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+        Asia/Bangkok
+        ).
+         Maximum loan period:
+        21
+         days from checkout.
+      </p>
+      <button
+        disabled=""
+        type="submit"
+      >
+        Check out
+      </button>
+    </form>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ tests/loan-duration.test.tsx:191:19
+    189|     act(() => form().requestSubmit())
+    190|     expect(onCheckout).not.toHaveBeenCalled()
+    191|     expect(screen.getByRole('alert').textContent).toBe('Choose a valid…
+       |                   ^
+    192|   })
+    193|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  22:40:52
+   Duration  1.50s (environment 54%, tests 28%, setup 9%, import 5%, transform 4%)

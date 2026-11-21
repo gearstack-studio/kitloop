@@ -27,8 +27,25 @@ export function requestLifecycleWrites(env: NodeJS.ProcessEnv): boolean {
   throw new ConfigurationError("REQUEST_LIFECYCLE_WRITES must be 'enabled' or 'disabled'");
 }
 
+/**
+ * UAT-E02 (#62), BR-11. The maximum loan duration in whole days: a due date may be at most LOAN_MAX_DAYS x 24 hours
+ * after the actual checkout instant (inclusive). The department has not chosen the value yet (SRS OQ-01, owner:
+ * department owner / instructor), so it is a deployment setting with no default: unset or empty means no maximum,
+ * which is the behaviour before this change. 1-3650 is only a sanity range for the setting, not a policy. Any other
+ * value is a startup configuration error, so a typo never silently disables the limit.
+ */
+export function loanMaxDays(env: NodeJS.ProcessEnv): number | null {
+  const value = env.LOAN_MAX_DAYS;
+  if (value === undefined || value === "") return null;
+  if (!/^[1-9]\d{0,3}$/.test(value) || Number(value) > 3650) {
+    throw new ConfigurationError("LOAN_MAX_DAYS must be a whole number of days from 1 to 3650, or unset for no maximum");
+  }
+  return Number(value);
+}
+
 export function runtimeConfig(env: NodeJS.ProcessEnv) {
   requestLifecycleWrites(env);
+  loanMaxDays(env);
   const port = env.PORT ?? "3000";
   if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
     throw new ConfigurationError("PORT must be an integer between 1 and 65535");

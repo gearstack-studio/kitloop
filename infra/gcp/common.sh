@@ -131,6 +131,14 @@ require_safe_revision() {
 # REQUEST_LIFECYCLE_WRITES. Older revisions (8b6e5a9 and earlier) lack it and cannot read DECLINED/CANCELLED/EXPIRED
 # request rows (Prisma enum error, HTTP 500), so they are safe rollback targets only while no such row exists.
 # The operator chooses the setting with KITLOOP_REQUEST_LIFECYCLE_WRITES (default disabled = phase 1).
+# Usage: loan_max_days_setting -> "" (no maximum; SRS OQ-01 undecided) or a whole number of days 1-3650 (UAT-E02 #62).
+# Mirrors the server's LOAN_MAX_DAYS validation so an invalid value is refused before any Cloud Run call.
+loan_max_days_setting() {
+  local value="${KITLOOP_LOAN_MAX_DAYS:-}"
+  [[ -z "$value" ]] || { [[ "$value" =~ ^[1-9][0-9]{0,3}$ ]] && (( value <= 3650 )); } || \
+    die 'KITLOOP_LOAN_MAX_DAYS must be empty (no maximum) or a whole number of days from 1 to 3650. Nothing was changed.'
+  printf '%s' "$value"
+}
 lifecycle_writes_setting() {
   local value="${KITLOOP_REQUEST_LIFECYCLE_WRITES:-disabled}"
   [[ "$value" == enabled || "$value" == disabled ]] || die 'KITLOOP_REQUEST_LIFECYCLE_WRITES must be enabled or disabled.'

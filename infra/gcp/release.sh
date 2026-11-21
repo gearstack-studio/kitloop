@@ -224,6 +224,8 @@ case "$action" in
     note "Production bootstrap previously verified: $bootstrap_execution"
     origin="$(canonical_url)"
     lifecycle="$(lifecycle_writes_setting)"
+    loan_max_days="$(loan_max_days_setting)"
+    note "Maximum loan duration: ${loan_max_days:-none configured (SRS OQ-01 undecided)} (KITLOOP_LOAN_MAX_DAYS)."
     note "Request lifecycle writes: $lifecycle (KITLOOP_REQUEST_LIFECYCLE_WRITES)."
     if [[ "$lifecycle" == enabled ]] && service_exists; then
       # Phase 2 needs a phase-1 (lifecycle-aware) revision serving, so the automatic and manual rollback target can read
@@ -242,7 +244,7 @@ redeploy with enabled. Traffic was not changed."
       --network="$NETWORK" --subnet="$SUBNET" --vpc-egress=private-ranges-only
       --set-cloudsql-instances="$CONNECTION"
       --set-secrets=DATABASE_URL=kitloop-database-url:1,SESSION_CSRF_SECRET=kitloop-csrf:1
-      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12,REQUEST_LIFECYCLE_WRITES=$lifecycle"
+      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12,REQUEST_LIFECYCLE_WRITES=$lifecycle${loan_max_days:+,LOAN_MAX_DAYS=$loan_max_days}"
       --port=8080 --cpu=1 --memory=512Mi --concurrency=10 --min-instances=0 --max-instances=2)
     if ! service_exists; then
       note "First deployment: creates a PRIVATE service with APP_ORIGIN=$origin. Cloud Run routes the first revision immediately, but nobody can invoke it until release.sh publish."

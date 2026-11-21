@@ -45,6 +45,9 @@ export default defineConfig({
         SESSION_CSRF_SECRET: process.env.E2E_SESSION_SECRET!,
         // The browser journeys cover lifecycle phase 2 (writes enabled); phase 1 is covered by the server tests.
         REQUEST_LIFECYCLE_WRITES: "enabled",
+        // UAT-E02 (#62): exercises the maximum-loan-duration mechanism. 21 is a TEST CONFIGURATION ONLY; the real
+        // value is undecided (SRS OQ-01). Existing journeys use due dates of 14 days or less.
+        LOAN_MAX_DAYS: "21",
       },
     },
     {
