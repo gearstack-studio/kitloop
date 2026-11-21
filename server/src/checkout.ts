@@ -1,4 +1,4 @@
-import { Prisma, RequestStatus, type Loan } from "@prisma/client";
+import { Prisma, RequestCloseReason, RequestStatus, type Loan } from "@prisma/client";
 import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
 import { prisma } from "./db.js";
@@ -59,7 +59,9 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
         throw new ApiError(409, "REQUEST_MISMATCH", "Selected equipment does not match this request");
       }
       if (record.status !== RequestStatus.PENDING) {
-        throw new ApiError(409, "REQUEST_NOT_PENDING", "This request has already been checked out");
+        throw new ApiError(409, "REQUEST_NOT_PENDING", record.status === RequestStatus.CHECKED_OUT
+          ? "This request has already been checked out"
+          : "This request is closed and cannot be checked out. Refresh the pending requests.");
       }
       const activeLoanCount = await tx.loan.count({ where: { assetId: record.assetId, ...activeLoanWhere } });
       if (!isBorrowable({ retiredAt: record.asset.retiredAt, activeLoanCount })) {
@@ -71,10 +73,20 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
         where: { id: requestId, status: RequestStatus.PENDING }, data: { status: RequestStatus.CHECKED_OUT },
       });
       if (updated.count !== 1) throw new ApiError(409, "REQUEST_NOT_PENDING", "Request is no longer pending");
-      return tx.loan.create({ data: {
+      const loan = await tx.loan.create({ data: {
         requestId, assetId: record.assetId, borrowerId: record.borrowerId,
         checkoutCustodianId: custodianId, checkedOutAt, dueAt: input.dueAt,
       } });
+      // UAT-E01 (#61): competing requests for the now-loaned asset can never be fulfilled, so close them in
+      // the same transaction (history kept, reason recorded). Any failure rolls back the checkout too.
+      await tx.borrowRequest.updateMany({
+        where: { assetId: record.assetId, status: RequestStatus.PENDING, id: { not: requestId } },
+        data: {
+          status: RequestStatus.DECLINED, closeReason: RequestCloseReason.ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER,
+          closedAt: checkedOutAt, closedById: custodianId,
+        },
+      });
+      return loan;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return loanDto(loan);
   } catch (error) {

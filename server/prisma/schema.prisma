@@ -12,9 +12,24 @@ enum Role {
   CUSTODIAN
 }
 
+// Only PENDING is open. CHECKED_OUT, DECLINED, CANCELLED and EXPIRED are terminal.
+// EXPIRED is reserved: nothing sets it until a documented, configurable expiry policy exists.
 enum RequestStatus {
   PENDING
   CHECKED_OUT
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
+
+// Machine-readable reason a request was closed without a checkout.
+enum RequestCloseReason {
+  ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER // set by checkout only
+  CANCELLED_BY_BORROWER                 // set by borrower cancel only
+  EQUIPMENT_UNAVAILABLE                 // custodian decline reasons
+  BORROWER_NOT_ELIGIBLE
+  DUPLICATE_REQUEST
+  OTHER
 }
 
 model User {
@@ -25,6 +40,7 @@ model User {
   sessions           Session[]
   custodianAssets    CustodianAsset[]
   requests           BorrowRequest[]  @relation("BorrowerRequests")
+  closedRequests     BorrowRequest[]  @relation("ClosedRequests")
   borrowedLoans      Loan[]           @relation("BorrowerLoans")
   checkedOutLoans    Loan[]           @relation("CheckoutCustodian")
   returnedLoans      Loan[]           @relation("ReturnCustodian")
@@ -68,6 +84,12 @@ model BorrowRequest {
   assetId     String
   submittedAt DateTime      @default(now()) @db.Timestamptz(6)
   status      RequestStatus @default(PENDING)
+  // Set together when a request is DECLINED, CANCELLED or EXPIRED; null while PENDING or CHECKED_OUT.
+  // The SQL migration enforces this with the BorrowRequest_closure_consistent check constraint.
+  closedAt    DateTime?           @db.Timestamptz(6)
+  closeReason RequestCloseReason?
+  closedById  String?             @db.Uuid
+  closedBy    User?               @relation("ClosedRequests", fields: [closedById], references: [id])
   borrower    User          @relation("BorrowerRequests", fields: [borrowerId], references: [id])
   asset       Asset         @relation(fields: [assetId], references: [assetId])
   loan        Loan?

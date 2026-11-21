@@ -5,6 +5,7 @@ import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import Checkout from './components/Checkout'
+import { CancelRequest, DeclineRequest } from './components/RequestActions'
 import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
 import { AuthButton, AuthCard, Field } from './components/Auth'
@@ -271,9 +272,14 @@ function App() {
           }} />
       </>}
       <Requests requests={requests} status={requestStatus} onRetry={retryRequests} custodian={identity.role === 'CUSTODIAN'}>
-        {item => identity.role === 'CUSTODIAN' && <Checkout request={item} busy={busy}
-          ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
-          onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, 'Checkout recorded. Request CHECKED_OUT and active loan created.') }} />}
+        {item => identity.role === 'CUSTODIAN' ? <div className="request-actions">
+          <Checkout request={item} busy={busy}
+            ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
+            onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, 'Checkout recorded. Request CHECKED_OUT and active loan created. Any other pending requests for this equipment were declined.') }} />
+          <DeclineRequest request={item} busy={busy}
+            onDecline={(entry, reason) => { void act(`/requests/${entry.id}/decline`, { reason }, 'Request declined.') }} />
+        </div> : <CancelRequest request={item} busy={busy}
+          onCancel={entry => { void act(`/requests/${entry.id}/cancel`, {}, 'Request cancelled.') }} />}
       </Requests>
       <Loans loans={loans} status={loanStatus} custodian={identity.role === 'CUSTODIAN'}
         onRetry={() => { setLoanStatus('loading'); void loadLoans(identity.role) }} />

@@ -481,6 +481,19 @@
 }
 
 .checkout-form input { width: 100%; min-width: 0; }
+/* Custodian queue: checkout and decline stacked in the record's action column. */
+.request-actions { display: grid; gap: var(--space-4); flex: 0 1 360px; min-width: 0; }
+.request-actions .checkout-form { flex: none; }
+/* Same control styling as the borrower's equipment select (.request-form select). */
+.request-actions select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  color: var(--kl-text);
+  background: var(--kl-surface);
+  border: 1px solid var(--kl-border);
+  border-radius: var(--radius-control);
+}
 .checkout-help { font-size: 13px; color: var(--color-text-muted); }
 .record small { overflow-wrap: anywhere; }
 

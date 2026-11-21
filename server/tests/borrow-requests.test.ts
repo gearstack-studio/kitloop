@@ -153,7 +153,9 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("PENDING");
     expect((await checkout(custodian, created.body.id, assetId)).status).toBe(201);
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("CHECKED_OUT");
-    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: competing.body.id } })).status).toBe("PENDING");
+    // UAT-E01 (#61): checkout closes the competing request instead of leaving it PENDING forever.
+    expect(await prisma.borrowRequest.findUniqueOrThrow({ where: { id: competing.body.id } }))
+      .toMatchObject({ status: "DECLINED", closeReason: "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER" });
     expect((await submit(borrower, { assetId })).body.error.code).toBe("ASSET_UNAVAILABLE");
     expect((await submit(other, { assetId })).status).toBe(409);
     expect((await checkout(custodian, competing.body.id, assetId)).status).toBe(409);

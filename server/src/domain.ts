@@ -6,6 +6,7 @@ import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
 import { checkoutInput, checkoutRequest, loanDto } from "./checkout.js";
+import { cancelInput, cancelRequest, declineInput, declineRequest } from "./request-lifecycle.js";
 
 export const domainRouter = Router();
 domainRouter.use(requireAuth);
@@ -142,6 +143,19 @@ domainRouter.post("/requests/:id/checkout", requireRole(Role.CUSTODIAN), require
   const id = recordId(request.params.id);
   const input = checkoutInput(request.body);
   response.status(201).json(await checkoutRequest(request.principal!.id, id, input));
+});
+
+// UAT-E01 (#61): lifecycle actions. Each maps to one terminal status; clients never send a status.
+domainRouter.post("/requests/:id/cancel", requireRole(Role.BORROWER), requireCsrf, async (request, response) => {
+  const id = recordId(request.params.id);
+  cancelInput(request.body);
+  response.json(await cancelRequest(request.principal!.id, id));
+});
+
+domainRouter.post("/requests/:id/decline", requireRole(Role.CUSTODIAN), requireCsrf, async (request, response) => {
+  const id = recordId(request.params.id);
+  const reason = declineInput(request.body);
+  response.json(await declineRequest(request.principal!.id, id, reason));
 });
 
 domainRouter.get("/loans/mine", requireRole(Role.BORROWER), async (request, response) => {
