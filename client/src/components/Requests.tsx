@@ -3,12 +3,14 @@ import type { Asset } from './Catalog'
 import { borrowEligibility } from '../borrowEligibility'
 import { formatLocalTimestamp } from '../localDateTime'
 import { closeReasonLabels, type RequestCloseReason, type RequestLifecycleStatus } from '../requestLifecycle'
+import RecordIds from './RecordIds'
+import { personName, type PersonName } from '../personName'
 
 export type BorrowRequest = {
   id: string; assetId: string; borrowerId?: string; status: RequestLifecycleStatus; submittedAt: string
   closedAt?: string | null; closeReason?: RequestCloseReason | null
   asset?: { assetId: string; name: string; category: string }
-  borrower?: { id: string; username: string }
+  borrower?: PersonName
 }
 export type RequestStatus = 'loading' | 'ready' | 'error'
 
@@ -47,11 +49,15 @@ export default function Requests({ requests, status, onRetry, custodian = false,
         : 'No requests to show yet.'}</p> :
       <div className="record-list">{requests.map(item => <article className="record" key={item.id}>
         <div><strong>{item.asset?.name ?? item.assetId}</strong><small>{item.assetId} · {item.status}</small>
-          <small>Request {item.id}</small>
+          {custodian && <small>Borrower: {personName(item.borrower)}</small>}
           <small>Submitted {formatLocalTimestamp(item.submittedAt)}</small>
           {item.closedAt && <small>Closed {formatLocalTimestamp(item.closedAt)}</small>}
           {item.closeReason && <small>Reason: {closeReasonLabels[item.closeReason] ?? item.closeReason}</small>}
-          {custodian && <small>Borrower: {item.borrower?.username ?? 'Unknown'} · {item.borrower?.id ?? item.borrowerId}</small>}
+          {/* UAT-E03 (#63): IDs are secondary metadata, not labels. */}
+          <RecordIds>
+            <small>Request {item.id}</small>
+            {custodian && (item.borrower?.id ?? item.borrowerId) && <small>Borrower ID {item.borrower?.id ?? item.borrowerId}</small>}
+          </RecordIds>
         </div>{children?.(item)}
       </article>)}</div>)}
   </section>

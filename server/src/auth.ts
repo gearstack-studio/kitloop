@@ -21,6 +21,8 @@ const ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:5173";
 export interface Principal {
   id: string;
   role: Role;
+  /** UAT-E03 (#63): the signed-in user's own username, shown in the UI instead of an ID. Loaded with the session. */
+  username: string;
   tokenHash: string;
 }
 
@@ -88,7 +90,7 @@ export const requireAuth: RequestHandler = async (request, _response, next) => {
       if (session) await prisma.session.deleteMany({ where: { tokenHash } });
       throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     }
-    request.principal = { id: session.user.id, role: session.user.role, tokenHash };
+    request.principal = { id: session.user.id, role: session.user.role, username: session.user.username, tokenHash };
     next();
   } catch (error) {
     next(error);
@@ -177,13 +179,13 @@ authRouter.post("/login", async (request, response) => {
     maxAge: SESSION_HOURS * 60 * 60 * 1000,
   });
   response.set("X-CSRF-Token", csrfFor(tokenHash));
-  response.json({ user: { id: user.id, role: user.role }, features: clientFeatures() });
+  response.json({ user: { id: user.id, role: user.role, username: user.username }, features: clientFeatures() });
 });
 
 authRouter.get("/me", requireAuth, (request, response) => {
   const principal = request.principal!;
   response.set("X-CSRF-Token", csrfFor(principal.tokenHash));
-  response.json({ id: principal.id, role: principal.role, features: clientFeatures() });
+  response.json({ id: principal.id, role: principal.role, username: principal.username, features: clientFeatures() });
 });
 
 authRouter.post("/logout", requireAuth, requireCsrf, async (request, response) => {
