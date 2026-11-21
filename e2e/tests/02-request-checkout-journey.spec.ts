@@ -25,7 +25,8 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await page.getByRole("link", { name: "Equipment dashboard" }).click();
     await page.reload();
     await expect(card(page, "KL-CAM-001").getByText("Available", { exact: true })).toBeVisible();
-    await expect(card(page, "KL-CAM-001").getByRole("button")).toBeEnabled();
+    // UAT-F03 (#57): the borrower's own pending request disables a duplicate request from the catalog card.
+    await expect(card(page, "KL-CAM-001").getByRole("button", { name: /Request pending: you already have a pending request/ })).toBeDisabled();
     await expect(myLoans(page).getByRole("article")).toHaveCount(0);
 
     // The PENDING request persists across a reload.
@@ -88,9 +89,9 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await form.getByRole("button", { name: "Check out" }).click();
     await expect(page.getByText("Checkout recorded. Request CHECKED_OUT and active loan created.")).toBeVisible();
 
-    // The request leaves the queue (Borrower B's competing request stays) and one ACTIVE loan is shown.
-    await expect(pendingQueue(page).getByRole("article")).toHaveCount(1);
-    await expect(pendingQueue(page).getByRole("article")).toContainText("Borrower: e2e.borrower.b");
+    // The request leaves the queue and one ACTIVE loan is shown. UAT-E01 (#61): Borrower B's competing request is
+    // declined by the same checkout, so it leaves the actionable queue too.
+    await expect(pendingQueue(page).getByRole("article")).toHaveCount(0);
     const loans = activeLoans(page).getByRole("article");
     await expect(loans).toHaveCount(1);
     await expect(loans).toContainText("KL-CAM-001 · ACTIVE");
@@ -101,14 +102,13 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await expect(activeLoans(page).getByRole("article")).toHaveCount(1);
   });
 
-  test("Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, competing checkout is blocked", async ({ page }, testInfo) => {
+  test("Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered", async ({ page }, testInfo) => {
     await login(page, "custodianA");
     await expect(card(page, "KL-CAM-001").getByText("Checked out", { exact: true })).toBeVisible();
     await expect(card(page, "KL-CAM-002").getByText("Available", { exact: true })).toBeVisible();
 
-    const competing = pendingQueue(page).getByRole("article").filter({ hasText: "Borrower: e2e.borrower.b" });
-    await expect(competing).toContainText("Equipment is no longer available for checkout.");
-    await expect(competing.getByRole("button", { name: "Check out" })).toBeDisabled();
+    // UAT-E01 (#61): the competing request was declined at checkout, so there is nothing left to check out.
+    await expect(pendingQueue(page).getByRole("article").filter({ hasText: "Borrower: e2e.borrower.b" })).toHaveCount(0);
     await evidence(page, testInfo, "custodian-availability");
   });
 
@@ -126,10 +126,12 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await expect(myLoans(page).getByRole("article")).toHaveCount(1);
   });
 
-  test("Availability (Borrower B view): the checked-out asset can no longer be requested; own request stays PENDING", async ({ page }) => {
+  test("Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason", async ({ page }) => {
     await login(page, "borrowerB");
     await expect(card(page, "KL-CAM-001").getByText("Checked out", { exact: true })).toBeVisible();
-    await expect(myRequests(page).getByRole("article")).toContainText("KL-CAM-001 · PENDING");
+    // UAT-E01 (#61): the competing request is closed, not left PENDING.
+    await expect(myRequests(page).getByRole("article")).toContainText("KL-CAM-001 · DECLINED");
+    await expect(myRequests(page).getByRole("article")).toContainText("Reason: Equipment was checked out to another borrower");
     await page.getByRole("link", { name: "My Requests page" }).click();
     await expect(page.getByLabel("Available equipment").locator("option", { hasText: "KL-CAM-001" })).toHaveCount(0);
   });

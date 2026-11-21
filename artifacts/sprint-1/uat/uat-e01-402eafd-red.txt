@@ -1,0 +1,139 @@
+UAT-E01 / PR #72 re-review of 402eafd (P1: deploy source verification failed open)
+Offline only: fake gcloud/curl in WSL Ubuntu (LF clone), a disposable Git repository of real commits, isolated local
+databases (kitloop_auth_test, kitloop_e2e_pw). No GCP, no production, no GitHub writes.
+
+RED setup: 402eafd release.sh/common.sh with only the new infra/gcp/guards.test.sh.
+Outcome: the suite stops at its first failure, the reviewer's path:
+  FAIL: deploy of an unknown full SHA with registry images and a migration execution (unexpected success)
+The output below shows the unknown commit's image was deployed, passed the candidate /api/version check (the image
+self-reports that commit) and received 100% of traffic. Every earlier case passed on the real-commit harness.
+
+===== guards.test.sh against 402eafd scripts =====
+M infra/gcp/guards.test.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+PASS: BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+PASS: ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)
+PASS: ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check
+PASS: pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image
+PASS: BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+PASS: BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows
+PASS: BLOCKED: the database check cannot run (database unreachable)
+PASS: BLOCKED: the check execution cannot be verified (malformed output)
+PASS: BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed
+PASS: BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)
+PASS: BLOCKED: an operator confirmation never substitutes for a verified zero-row check
+FAIL: deploy of an unknown full SHA with registry images and a migration execution (unexpected success)
+
+--- output ---
+lab-5-cloud-deployment-514310/deploy
+Verified completed kitloop-migrate execution: kitloop-migrate-x8
+Production bootstrap previously verified: kitloop-bootstrap-x2
+Request lifecycle writes: disabled (KITLOOP_REQUEST_LIFECYCLE_WRITES).
+Existing service (public: yes; serving: kitloop-5675eb035179-20261121142015 100 ). The new revision gets 0% traffic
+and tag 'candidate' until its health and database readiness checks pass. Invoker IAM is not changed.
+This will change GCP resources in lab-5-cloud-deployment-514310 (asia-southeast1).
+Type lab-5-cloud-deployment-514310/deploy to continue: PASS https://candidate---kitloop-abc123xyz-as.a.run.app/ HTTP
+200
+PASS https://candidate---kitloop-abc123xyz-as.a.run.app/api/health HTTP 200
+PASS https://candidate---kitloop-abc123xyz-as.a.run.app/api/ready HTTP 200
+PASS https://candidate---kitloop-abc123xyz-as.a.run.app/api/version commit 00368a6888b14a1602b61cc63c933f559df28d12
+PASS https://kitloop-123456789012.asia-southeast1.run.app/ HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/health HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/ready HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/version commit 00368a6888b14a1602b61cc63c933f559df28d12
+Serving revision: kitloop-00368a6888b1-20261121142043 (100%)
+Previous: kitloop-5675eb035179-20261121142015 100
+Canonical URL: https://kitloop-123456789012.asia-southeast1.run.app
+App digest: asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:27084f0fd5416d34865
+1d0179a10b31cf9b1181dae422cce86d6824d7938fee9
+--- calls ---
+gcloud config get-value project
+gcloud auth list --filter=status:ACTIVE --format=value(account) --project=lab-5-cloud-deployment-514310
+gcloud artifacts docker images describe
+asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app:00368a6888b1
+--project=lab-5-cloud-deployment-514310 --format=value(image_summary.fully_qualified_digest)
+gcloud artifacts docker images describe
+asia-southeast1-docker.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-migration:00368a6888b1
+--project=lab-5-cloud-deployment-514310 --format=value(image_summary.fully_qualified_digest)
+gcloud run jobs describe kitloop-migrate --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=value(status.latestCreatedExecution.name)
+gcloud run jobs executions describe kitloop-migrate-x8 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud sql instances describe kitloop-pg --project=lab-5-cloud-deployment-514310 --format=json
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud run services list --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--filter=metadata.name=kitloop --format=value(metadata.name)
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud run deploy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --image=asia-southeast1-dock
+er.pkg.dev/lab-5-cloud-deployment-514310/kitloop/kitloop-app@sha256:27084f0fd5416d348651d0179a10b31cf9b1181dae422cce86d
+6824d7938fee9 --service-account=kitloop-run@lab-5-cloud-deployment-514310.iam.gserviceaccount.com
+--revision-suffix=00368a6888b1-20261121142043 --network=kitloop-vpc --subnet=kitloop-run
+--vpc-egress=private-ranges-only --set-cloudsql-instances=lab-5-cloud-deployment-514310:asia-southeast1:kitloop-pg
+--set-secrets=DATABASE_URL=kitloop-database-url:1,SESSION_CSRF_SECRET=kitloop-csrf:1 --set-env-vars=NODE_ENV=production
+,APP_ORIGIN=https://kitloop-123456789012.asia-southeast1.run.app,SESSION_TTL_HOURS=12,REQUEST_LIFECYCLE_WRITES=disabled
+ --port=8080 --cpu=1 --memory=512Mi --concurrency=10 --min-instances=0 --max-instances=2 --no-traffic --tag=candidate
+gcloud run revisions describe kitloop-00368a6888b1-20261121142043 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud auth print-identity-token --project=lab-5-cloud-deployment-514310
+curl auth=yes https://candidate---kitloop-abc123xyz-as.a.run.app/
+cloudrun aud=32555940559.apps.googleusercontent.com email=operator@example.invalid
+url=https://candidate---kitloop-abc123xyz-as.a.run.app/
+curl auth=yes https://candidate---kitloop-abc123xyz-as.a.run.app/api/health
+cloudrun aud=32555940559.apps.googleusercontent.com email=operator@example.invalid
+url=https://candidate---kitloop-abc123xyz-as.a.run.app/api/health
+curl auth=yes https://candidate---kitloop-abc123xyz-as.a.run.app/api/ready
+cloudrun aud=32555940559.apps.googleusercontent.com email=operator@example.invalid
+url=https://candidate---kitloop-abc123xyz-as.a.run.app/api/ready
+curl auth=yes https://candidate---kitloop-abc123xyz-as.a.run.app/api/version
+cloudrun aud=32555940559.apps.googleusercontent.com email=operator@example.invalid
+url=https://candidate---kitloop-abc123xyz-as.a.run.app/api/version
+gcloud run services update-traffic kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--to-revisions=kitloop-00368a6888b1-20261121142043=100
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/health
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/ready
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/version

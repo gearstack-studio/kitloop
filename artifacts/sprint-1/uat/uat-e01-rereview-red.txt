@@ -1,0 +1,285 @@
+UAT-E01 / PR #72 re-review (P1: unsafe second rollback): RED evidence
+Reviewed commit: bbf8a3681de3e262a907dea3cb9d07f07e48b452
+RED setup: the reviewed commit's release.sh, common.sh and server code, with only the NEW tests:
+  infra/gcp/guards.test.sh (offline fake gcloud, WSL Ubuntu, LF clone) and server/tests/lifecycle-rollout.test.ts
+  (isolated local PostgreSQL 18.4 database kitloop_auth_test, in a temporary bbf8a36 worktree). No GCP, no production.
+
+Outcome:
+  guards.test.sh (normal run, stops at its first failure):
+    FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows (unexpected success)   <- the reviewer's sequence
+  guards.test.sh (evidence-only copy whose fail_test continues; the PASS lines it prints after FAIL lines are not
+    meaningful): every new BLOCKED case moved traffic to the pre-lifecycle revision and the database check job never ran,
+    including "operator confirmation no-lifecycle-rows with lifecycle rows" and "check unavailable". The later phase-2
+    cases cascade from the earlier wrongly-allowed rollbacks.
+  server lifecycle-rollout.test.ts: 4 failed (the new rollback-check --require-zero gate tests) / 9 passed.
+
+===== guards.test.sh, normal run against bbf8a36 release.sh/common.sh =====
+M infra/gcp/guards.test.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+
+--- output ---
+lab-5-cloud-deployment-514310/rollback
+kitloop-prelifecycle-1 predates the request lifecycle: it cannot read DECLINED, CANCELLED or EXPIRED requests.
+Before routing, confirm 'node dist/lifecycle-cli.js rollback-check' reports lifecycleOnlyRows 0.
+Currently serving: kitloop-333333333333-20261121081854 100
+Routes 100% of traffic to kitloop-prelifecycle-1. This does not reverse a database migration. A later release.sh
+deploy moves traffic to its new revision after checks.
+This will change GCP resources in lab-5-cloud-deployment-514310 (asia-southeast1).
+Type lab-5-cloud-deployment-514310/rollback to continue: Project: lab-5-cloud-deployment-514310
+Region: asia-southeast1
+Canonical URL: https://kitloop-123456789012.asia-southeast1.run.app
+Serving revision: kitloop-prelifecycle-1 (100%)
+Latest ready revision: kitloop-555555555555-20261121081901
+PASS https://kitloop-123456789012.asia-southeast1.run.app/ HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/health HTTP 200
+PASS https://kitloop-123456789012.asia-southeast1.run.app/api/ready HTTP 200
+HTTP checks passed. Browser login, request/checkout, session and cross-revision persistence still require separate
+verification.
+--- calls ---
+gcloud config get-value project
+gcloud auth list --filter=status:ACTIVE --format=value(account) --project=lab-5-cloud-deployment-514310
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud run revisions describe kitloop-333333333333-20261121081854 --project=lab-5-cloud-deployment-514310
+--region=asia-southeast1 --format=json
+gcloud run services update-traffic kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--to-revisions=kitloop-prelifecycle-1=100
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+gcloud config get-value project
+gcloud auth list --filter=status:ACTIVE --format=value(account) --project=lab-5-cloud-deployment-514310
+gcloud projects describe lab-5-cloud-deployment-514310 --format=value(projectNumber)
+gcloud run services describe kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json
+gcloud run revisions describe kitloop-prelifecycle-1 --project=lab-5-cloud-deployment-514310 --region=asia-southeast1
+--format=json
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/health
+curl auth=no https://kitloop-123456789012.asia-southeast1.run.app/api/ready
+
+===== guards.test.sh, evidence-only continue-on-failure run against bbf8a36 =====
+release.sh under test: bbf8a36 fix(requests): address PR review findings for rollback and reconciliation
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows (unexpected success)
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows: refusal message missing
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows: traffic was changed
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows: traffic changed to kitloop-prelifecycle-1=100
+FAIL: phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows: refusal did not say traffic was unchanged
+FAIL: the check did not run
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+FAIL: the database check job was not deployed
+FAIL: the check did not run rollback-check --require-zero against the kitloop database
+FAIL: the check did not use the serving lifecycle-aware image
+FAIL: the check did not use the runtime identity
+FAIL: the check did not use the service database secret
+FAIL: traffic moved before the database check
+PASS: ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)
+FAIL: no-op rollback changed traffic
+PASS: ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check
+FAIL: pre-lifecycle -> pre-lifecycle without a lifecycle-aware image (unexpected success)
+FAIL: pre-lifecycle -> pre-lifecycle without a lifecycle-aware image: refusal message missing
+FAIL: pre-lifecycle -> pre-lifecycle without a lifecycle-aware image: traffic was changed
+FAIL: pre-lifecycle -> pre-lifecycle without a lifecycle-aware image: traffic changed to kitloop-prelifecycle-2=100
+FAIL: pre-lifecycle -> pre-lifecycle without a lifecycle-aware image: refusal did not say traffic was unchanged
+FAIL: KITLOOP_ROLLBACK_CHECK_REVISION image was not used for the check
+PASS: BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+FAIL: phase 1 -> pre-lifecycle with lifecycle rows (unexpected success)
+FAIL: phase 1 -> pre-lifecycle with lifecycle rows: refusal message missing
+FAIL: phase 1 -> pre-lifecycle with lifecycle rows: traffic was changed
+FAIL: phase 1 -> pre-lifecycle with lifecycle rows: traffic changed to kitloop-prelifecycle-1=100
+FAIL: phase 1 -> pre-lifecycle with lifecycle rows: refusal did not say traffic was unchanged
+FAIL: the check did not run
+PASS: BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows
+FAIL: check unavailable (unexpected success)
+FAIL: check unavailable: refusal message missing
+FAIL: check unavailable: traffic was changed
+FAIL: check unavailable: traffic changed to kitloop-prelifecycle-1=100
+FAIL: check unavailable: refusal did not say traffic was unchanged
+PASS: BLOCKED: the database check cannot run (database unreachable)
+FAIL: malformed check execution (unexpected success)
+FAIL: malformed check execution: refusal message missing
+FAIL: malformed check execution: traffic was changed
+FAIL: malformed check execution: traffic changed to kitloop-prelifecycle-1=100
+FAIL: malformed check execution: refusal did not say traffic was unchanged
+PASS: BLOCKED: the check execution cannot be verified (malformed output)
+FAIL: jobs cannot be listed (unexpected success)
+FAIL: jobs cannot be listed: refusal message missing
+FAIL: jobs cannot be listed: traffic was changed
+FAIL: jobs cannot be listed: traffic changed to kitloop-prelifecycle-1=100
+FAIL: jobs cannot be listed: refusal did not say traffic was unchanged
+FAIL: reconciliation job present (unexpected success)
+FAIL: reconciliation job present: refusal message missing
+FAIL: reconciliation job present: traffic was changed
+FAIL: reconciliation job present: traffic changed to kitloop-prelifecycle-1=100
+FAIL: reconciliation job present: refusal did not say traffic was unchanged
+PASS: BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed
+FAIL: phase 2 -> pre-lifecycle with lifecycle rows: refusal message missing
+FAIL: phase 2 -> pre-lifecycle even with zero rows: refusal message missing
+PASS: BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)
+FAIL: operator confirmation no-lifecycle-rows with lifecycle rows (unexpected success)
+FAIL: operator confirmation no-lifecycle-rows with lifecycle rows: refusal message missing
+FAIL: operator confirmation no-lifecycle-rows with lifecycle rows: traffic was changed
+FAIL: operator confirmation no-lifecycle-rows with lifecycle rows: traffic changed to kitloop-prelifecycle-1=100
+FAIL: operator confirmation no-lifecycle-rows with lifecycle rows: refusal did not say traffic was unchanged
+FAIL: operator confirmation yes with lifecycle rows (unexpected success)
+FAIL: operator confirmation yes with lifecycle rows: refusal message missing
+FAIL: operator confirmation yes with lifecycle rows: traffic was changed
+FAIL: operator confirmation yes with lifecycle rows: traffic changed to kitloop-prelifecycle-1=100
+FAIL: operator confirmation yes with lifecycle rows: refusal did not say traffic was unchanged
+FAIL: operator confirmation without a database check (unexpected success)
+FAIL: operator confirmation without a database check: refusal message missing
+FAIL: operator confirmation without a database check: traffic was changed
+FAIL: operator confirmation without a database check: traffic changed to kitloop-prelifecycle-1=100
+FAIL: operator confirmation without a database check: refusal did not say traffic was unchanged
+PASS: BLOCKED: an operator confirmation never substitutes for a verified zero-row check
+FAIL: pre-lifecycle deploy was not explained
+PASS: BLOCKED: deploying pre-lifecycle code (8b6e5a9); it may only return through the checked rollback
+PASS: all GCP release guard tests
+
+===== server/tests/lifecycle-rollout.test.ts against bbf8a36 server code =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 <scratchpad>/kitloop-bbf8a36/server
+
+ ✓ tests/lifecycle-rollout.test.ts > REQUEST_LIFECYCLE_WRITES configuration > defaults to disabled and accepts only 'enabled' or 'disabled' 144ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > checkout keeps the pre-lifecycle behaviour: the competing request stays PENDING and no lifecycle value is written 346ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > cancel and decline are unavailable (404 LIFECYCLE_ACTIONS_DISABLED) and change nothing 73ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > login and /auth/me tell the client that lifecycle actions are off 141ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > everything it writes stays readable by the pre-lifecycle 8b6e5a9 client, so 8b6e5a9 remains a safe rollback target 558ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > still reads lifecycle rows written while writes were enabled, so it is a safe rollback target after them 184ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > login and /auth/me tell the client that lifecycle actions are on 11ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes) 108ms
+ × tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 0 and reports SAFE only when the expected database has zero lifecycle-only rows 879ms
+   → expected 2 to be +0 // Object.is equality
+ × tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 4 (UNSAFE) when lifecycle-only rows exist, e.g. after phase 2 and a rollback to phase 1 498ms
+   → expected 2 to be 4 // Object.is equality
+ × tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > refuses (exit 2) without checking when connected to a different database or without --expect-database 359ms
+   → expected 'Unknown argument "--require-zero". Us…' to contain 'Connected to database "kitloop_auth_t…'
+ × tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 1 (not 0) when the database cannot be reached 331ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ tests/lifecycle-rollout.test.ts > Rollback safety check > counts lifecycle-only statuses and says whether pre-lifecycle revisions are safe rollback targets 178ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR
+#72 re-review P1) > exits 0 and reports SAFE only when the expected database has zero lifecycle-only rows
+AssertionError: expected 2 to be +0 // Object.is equality
+
+- Expected
+
+- 0
+
+ ❯ tests/lifecycle-rollout.test.ts:184:27
+    182|     await submit(borrowerA, assetId);
+    183|     const result = gate("--require-zero", `--expect-database=${databas…
+    184|     expect(result.status).toBe(0);
+       |                           ^
+    185|     expect(JSON.parse(result.stdout.slice(0, result.stdout.lastIndexOf…
+    186|       requireZero: true, database, lifecycleOnlyRows: 0, preLifecycleR…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR
+#72 re-review P1) > exits 4 (UNSAFE) when lifecycle-only rows exist, e.g. after phase 2 and a rollback to phase 1
+AssertionError: expected 2 to be 4 // Object.is equality
+
+- Expected
+
+- 4
+
+ ❯ tests/lifecycle-rollout.test.ts:198:27
+    196|     process.env.REQUEST_LIFECYCLE_WRITES = "disabled"; // back on phas…
+    197|     const result = gate("--require-zero", `--expect-database=${databas…
+    198|     expect(result.status).toBe(4);
+       |                           ^
+    199|     expect(result.stderr).toContain("UNSAFE: 1 request row(s)");
+    200|     process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR
+#72 re-review P1) > refuses (exit 2) without checking when connected to a different database or without
+--expect-database
+AssertionError: expected 'Unknown argument "--require-zero". Us…' to contain 'Connected to database "kitloop_auth_t…'
+
+- Expected
+
+- Connected to database "kitloop_auth_test", expected "kitloop"; nothing was checked
+--confirm-database=NAME] [--asset=ID ...]
++
+
+ ❯ tests/lifecycle-rollout.test.ts:206:26
+    204|     const wrong = gate("--require-zero", "--expect-database=kitloop", …
+    205|     expect(wrong.status).toBe(2);
+    206|     expect(wrong.stderr).toContain(`Connected to database "${database}…
+       |                          ^
+    207|     expect(wrong.stdout).not.toContain("SAFE");
+    208|     const missing = gate("--require-zero");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR
+#72 re-review P1) > exits 1 (not 0) when the database cannot be reached
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
+
+- 1
+
+ ❯ tests/lifecycle-rollout.test.ts:219:27
+    217|       "src/lifecycle-cli.ts", "rollback-check", "--require-zero", "--e…
+    218|     { cwd: serverDir, encoding: "utf8", timeout: 60_000, env: { ...pro…
+    219|     expect(result.status).toBe(1);
+       |                           ^
+    220|     expect(`${result.stdout}${result.stderr}`).not.toContain(url.passw…
+    221|     expect(result.stdout).not.toContain("SAFE");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 9 passed (13)
+   Start at  15:20:49
+   Duration  7.62s (tests 93%, import 4%, transform 3%)
+

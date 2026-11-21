@@ -37,6 +37,9 @@ jobs:
     env:
       KITLOOP_AUTOMATED_RELEASE: '1'
       CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      # PR #72 P1: request lifecycle rollout phase. Unset means 'disabled' (phase 1, compatibility release). Set the
+      # environment variable to 'enabled' only after a phase-1 revision is serving; release.sh refuses otherwise.
+      KITLOOP_REQUEST_LIFECYCLE_WRITES: ${{ vars.KITLOOP_REQUEST_LIFECYCLE_WRITES || 'disabled' }}
       DEPLOY_WIF_PROVIDER: ${{ vars.LAB5_DEPLOY_WIF_PROVIDER }}
       DEPLOY_SERVICE_ACCOUNT: ${{ vars.LAB5_DEPLOY_SERVICE_ACCOUNT }}
     steps:

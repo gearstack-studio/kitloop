@@ -2,9 +2,11 @@ import type { FormEvent, ReactNode } from 'react'
 import type { Asset } from './Catalog'
 import { borrowEligibility } from '../borrowEligibility'
 import { formatLocalTimestamp } from '../localDateTime'
+import { closeReasonLabels, type RequestCloseReason, type RequestLifecycleStatus } from '../requestLifecycle'
 
 export type BorrowRequest = {
-  id: string; assetId: string; borrowerId?: string; status: 'PENDING' | 'CHECKED_OUT'; submittedAt: string
+  id: string; assetId: string; borrowerId?: string; status: RequestLifecycleStatus; submittedAt: string
+  closedAt?: string | null; closeReason?: RequestCloseReason | null
   asset?: { assetId: string; name: string; category: string }
   borrower?: { id: string; username: string }
 }
@@ -47,6 +49,8 @@ export default function Requests({ requests, status, onRetry, custodian = false,
         <div><strong>{item.asset?.name ?? item.assetId}</strong><small>{item.assetId} · {item.status}</small>
           <small>Request {item.id}</small>
           <small>Submitted {formatLocalTimestamp(item.submittedAt)}</small>
+          {item.closedAt && <small>Closed {formatLocalTimestamp(item.closedAt)}</small>}
+          {item.closeReason && <small>Reason: {closeReasonLabels[item.closeReason] ?? item.closeReason}</small>}
           {custodian && <small>Borrower: {item.borrower?.username ?? 'Unknown'} · {item.borrower?.id ?? item.borrowerId}</small>}
         </div>{children?.(item)}
       </article>)}</div>)}
