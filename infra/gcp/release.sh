@@ -122,6 +122,17 @@ case "$action" in
       die "No verified production bootstrap is recorded on $SQL_INSTANCE. Run release.sh bootstrap SHA first."
     note "Production bootstrap previously verified: $bootstrap_execution"
     origin="$(canonical_url)"
+    lifecycle="$(lifecycle_writes_setting)"
+    note "Request lifecycle writes: $lifecycle (KITLOOP_REQUEST_LIFECYCLE_WRITES)."
+    if [[ "$lifecycle" == enabled ]] && service_exists; then
+      # Phase 2 needs a phase-1 (lifecycle-aware) revision serving, so the automatic and manual rollback target can read
+      # lifecycle rows. A pre-lifecycle revision serving here would become the rollback target and return 500.
+      for serving_revision in $(serving_revisions "$(service_json)" | cut -d' ' -f1); do
+        [[ "$(revision_lifecycle "$serving_revision")" != absent ]] || die "Serving revision $serving_revision predates the \
+request lifecycle. Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first (phase 1), verify it, then \
+redeploy with enabled. Traffic was not changed."
+      done
+    fi
     suffix="${sha:0:12}-$(date -u +%Y%m%d%H%M%S)"
     revision="$SERVICE-$suffix"
     # shellcheck disable=SC2054 # Commas are gcloud list syntax inside single arguments.
@@ -130,7 +141,7 @@ case "$action" in
       --network="$NETWORK" --subnet="$SUBNET" --vpc-egress=private-ranges-only
       --set-cloudsql-instances="$CONNECTION"
       --set-secrets=DATABASE_URL=kitloop-database-url:1,SESSION_CSRF_SECRET=kitloop-csrf:1
-      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12"
+      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12,REQUEST_LIFECYCLE_WRITES=$lifecycle"
       --port=8080 --cpu=1 --memory=512Mi --concurrency=10 --min-instances=0 --max-instances=2)
     if ! service_exists; then
       note "First deployment: creates a PRIVATE service with APP_ORIGIN=$origin. Cloud Run routes the first revision immediately, but nobody can invoke it until release.sh publish."
@@ -186,6 +197,20 @@ case "$action" in
     origin="$(canonical_url)"
     require_safe_revision "$revision" "$origin"
     service="$(service_json)"
+    if [[ "$(revision_lifecycle "$revision")" == absent ]]; then
+      # PR #72 P1: a pre-lifecycle revision returns 500 for borrowers with DECLINED/CANCELLED/EXPIRED requests.
+      note "$revision predates the request lifecycle: it cannot read DECLINED, CANCELLED or EXPIRED requests."
+      writes_were_on=no
+      for serving_revision in $(serving_revisions "$service" | cut -d' ' -f1); do
+        [[ "$(revision_lifecycle "$serving_revision")" != enabled ]] || writes_were_on=yes
+      done
+      if [[ "$writes_were_on" == yes && "${KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK:-}" != no-lifecycle-rows ]]; then
+        die "Refusing: lifecycle writes are enabled on the serving revision. Roll back to a phase-1 revision \
+(REQUEST_LIFECYCLE_WRITES=disabled) instead. Only if 'node dist/lifecycle-cli.js rollback-check' reports \
+lifecycleOnlyRows 0 may you rerun with KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows. Traffic was not changed."
+      fi
+      note "Before routing, confirm 'node dist/lifecycle-cli.js rollback-check' reports lifecycleOnlyRows 0."
+    fi
     note "Currently serving: $(serving_revisions "$service" | tr '\n' ' ')"
     note "Routes 100% of traffic to $revision. This does not reverse a database migration. A later release.sh deploy moves traffic to its new revision after checks."
     confirm rollback

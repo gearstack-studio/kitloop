@@ -1,0 +1,384 @@
+UAT-E01 / PR #72 review findings (P1, P2): GREEN, compatibility, reconciliation and full regression evidence
+Base: 5738ee1 + uncommitted fix on fix/61-uat-request-lifecycle. Databases: isolated local PostgreSQL 18.4 only
+  (kitloop_auth_test; kitloop_rollback_test, kitloop_reconcile_test and kitloop_e2e_pw are created and dropped per run).
+Windows note: server Vitest runs from a D:\ (upper-case drive) working directory.
+
+Outcome:
+  focused server: 15/15        focused client: 7/7
+  real-server rollback matrix: phase 1 -> 8b6e5a9 SAFE; phase 2 -> 8b6e5a9 UNSAFE (500, documented and now refused by
+     release.sh); phase 2 -> phase-1 revision SAFE
+  infra guard suites (WSL): all pass, incl. 7 new lifecycle rollout cases; 16 deployment guard cases pass
+  P2 reconciliation on data created by the real 8b6e5a9 API: migration keeps all 6 rows; dry run read-only (2 stale,
+     1 kept); 3 refusals change nothing; apply closes 2; rerun closes 0; Team 7 example DECLINED with reason
+  full server 14 files 106/106; full client 7 files 42/42; server typecheck+build, client lint+build, e2e typecheck: exit 0
+  browser E2E (Playwright): 31/31 (first attempt aborted at web-server startup with ECONNRESET before any test ran;
+     clean rerun passed)
+
+===== focused server tests (GREEN) =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > dry run reports stale requests (active loan) and kept requests (loan returned) without changing anything 95ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > refuses to apply without the matching database confirmation or while lifecycle writes are disabled 62ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > apply declines only the stale requests, with reason and time, and keeps every other record and its history 116ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > is idempotent: a second run closes nothing and leaves closure timestamps unchanged 104ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > races safely with a borrower cancelling the same stale request: exactly one closure wins 552ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > does not touch a request whose asset is checked out by a checkout that commits during the run 23ms
+ ✓ tests/lifecycle-rollout.test.ts > REQUEST_LIFECYCLE_WRITES configuration > defaults to disabled and accepts only 'enabled' or 'disabled' 36ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > checkout keeps the pre-lifecycle behaviour: the competing request stays PENDING and no lifecycle value is written 43ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > cancel and decline are unavailable (404 LIFECYCLE_ACTIONS_DISABLED) and change nothing 18ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > login and /auth/me tell the client that lifecycle actions are off 44ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > everything it writes stays readable by the pre-lifecycle 8b6e5a9 client, so 8b6e5a9 remains a safe rollback target 248ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > still reads lifecycle rows written while writes were enabled, so it is a safe rollback target after them 69ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > login and /auth/me tell the client that lifecycle actions are on 3ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes) 29ms
+ ✓ tests/lifecycle-rollout.test.ts > Rollback safety check > counts lifecycle-only statuses and says whether pre-lifecycle revisions are safe rollback targets 35ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  14:15:03
+   Duration  3.95s (tests 83%, import 14%, transform 3%)
+
+    Isolate  2 workers spawned · ~325ms startup each (spawn + environment, per file)
+             at least ~325ms faster with isolate: false — reuses workers across files instead of one per file
+
+===== focused client tests (GREEN) =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure reason and time 51ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > does not let a terminal request block a new request for available equipment 1ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests, posts with CSRF, and refreshes history 219ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > shows lifecycle statuses but no Cancel action in the compatibility release (lifecycle actions off) 29ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and removes the request from the refreshed queue 152ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > hides Decline but keeps checkout in the compatibility release (lifecycle actions off) 30ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons 30ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  13:59:22
+   Duration  1.95s (environment 48%, tests 29%, setup 10%, transform 7%, import 5%)
+
+===== rollback matrix 1/3: fix, phase 1 writes -> real 8b6e5a9 =====
+[fix phase1 (writes disabled) -> rollback 8b6e5a9] isolated database kitloop_rollback_test migrated with kitloop migrations
+[fix phase1 (writes disabled) -> rollback 8b6e5a9] NEW revision writes: checkout 201 | competing request -> PENDING | cancel RB-002 -> 404 PENDING
+[fix phase1 (writes disabled) -> rollback 8b6e5a9] stored statuses: [{"status":"CHECKED_OUT","n":1},{"status":"PENDING","n":2}]
+[fix phase1 (writes disabled) -> rollback 8b6e5a9] OLD revision after rollback: {"A GET /requests/mine":200,"B GET /requests/mine":200,"B GET /requests/:competing":200,"custodian GET /requests/pending":200,"B POST /requests (new request)":409}
+[fix phase1 (writes disabled) -> rollback 8b6e5a9] SAFE rollback target: no 5xx
+
+===== rollback matrix 2/3: fix, phase 2 writes -> real 8b6e5a9 =====
+[fix phase2 (writes enabled) -> rollback 8b6e5a9] isolated database kitloop_rollback_test migrated with kitloop migrations
+[fix phase2 (writes enabled) -> rollback 8b6e5a9] NEW revision writes: checkout 201 | competing request -> DECLINED | cancel RB-002 -> 200 CANCELLED
+[fix phase2 (writes enabled) -> rollback 8b6e5a9] stored statuses: [{"status":"CANCELLED","n":1},{"status":"CHECKED_OUT","n":1},{"status":"DECLINED","n":1}]
+[fix phase2 (writes enabled) -> rollback 8b6e5a9] OLD revision after rollback: {"A GET /requests/mine":200,"B GET /requests/mine":500,"B GET /requests/:competing":500,"custodian GET /requests/pending":200,"B POST /requests (new request)":201}
+[fix phase2 (writes enabled) -> rollback 8b6e5a9] UNSAFE rollback target: 2 endpoint(s) return 5xx
+
+===== rollback matrix 3/3: fix, phase 2 writes -> phase-1 revision (same image, flag unset) =====
+[fix phase2 (writes enabled) -> rollback to phase1 revision (same image, flag unset)] isolated database kitloop_rollback_test migrated with kitloop migrations
+[fix phase2 (writes enabled) -> rollback to phase1 revision (same image, flag unset)] NEW revision writes: checkout 201 | competing request -> DECLINED | cancel RB-002 -> 200 CANCELLED
+[fix phase2 (writes enabled) -> rollback to phase1 revision (same image, flag unset)] stored statuses: [{"status":"CANCELLED","n":1},{"status":"CHECKED_OUT","n":1},{"status":"DECLINED","n":1}]
+[fix phase2 (writes enabled) -> rollback to phase1 revision (same image, flag unset)] OLD revision after rollback: {"A GET /requests/mine":200,"B GET /requests/mine":200,"B GET /requests/:competing":200,"custodian GET /requests/pending":200,"B POST /requests (new request)":201}
+[fix phase2 (writes enabled) -> rollback to phase1 revision (same image, flag unset)] SAFE rollback target: no 5xx
+
+===== infra guard suites with the fix (WSL Ubuntu, LF clone + working-tree infra files) =====
+M .github/workflows/deploy.yml
+ M infra/gcp/common.sh
+ M infra/gcp/guards.test.sh
+ M infra/gcp/release.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: phase 1 may still roll back to a pre-lifecycle revision, with the rollback-check reminder
+PASS: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+PASS: phase 2 deploys only over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: from phase 2, rollback goes to the phase-1 revision; a pre-lifecycle target is refused
+PASS: a pre-lifecycle rollback from phase 2 needs the explicit no-lifecycle-rows confirmation
+PASS: all GCP release guard tests
+PASS: 16 offline deployment guard cases
+
+===== P2 historical reconciliation: real 8b6e5a9 data -> migration -> CLI -> Team 7 retest =====
+===== 1. Pre-lifecycle database (8b6e5a9 migrations only) =====
+applied: 20261102125822_auth_baseline, migration.sql, 20261103090000_unique_pending_request, migration.sql, 20261103100000_checked_out_request_status, migration.sql
+
+===== 2. Team 7's UAT-E01 situation, created through the real 8b6e5a9 API =====
+checkout of A on T7-CAM-01: 201
+checkout of A on T7-LAP-01: 201
+BorrowRequest rows before the lifecycle migration:
+  A cam (checked out)                {"assetId":"T7-CAM-01","status":"CHECKED_OUT"}
+  B cam (competing)                  {"assetId":"T7-CAM-01","status":"PENDING"}
+  C cam (competing)                  {"assetId":"T7-CAM-01","status":"PENDING"}
+  A lap (loan returned)              {"assetId":"T7-LAP-01","status":"CHECKED_OUT"}
+  B lap (competing, loan returned)   {"assetId":"T7-LAP-01","status":"PENDING"}
+  C mic (no loan)                    {"assetId":"T7-MIC-01","status":"PENDING"}
+
+===== 3. Apply the lifecycle migration (existing rows must be unchanged) =====
+applied: 20261121090000_request_lifecycle, migration.sql
+BorrowRequest rows after migration:
+  A cam (checked out)                {"assetId":"T7-CAM-01","status":"CHECKED_OUT","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  B cam (competing)                  {"assetId":"T7-CAM-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  C cam (competing)                  {"assetId":"T7-CAM-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  A lap (loan returned)              {"assetId":"T7-LAP-01","status":"CHECKED_OUT","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  B lap (competing, loan returned)   {"assetId":"T7-LAP-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  C mic (no loan)                    {"assetId":"T7-MIC-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+MIGRATION INTEGRITY: all 6 rows kept their status; closure fields are NULL
+
+===== 4. Rollback check after the migration (phase 1) =====
+$ lifecycle-cli rollback-check  -> exit 0
+{
+  "command": "rollback-check",
+  "byStatus": {
+    "CHECKED_OUT": 2,
+    "PENDING": 4
+  },
+  "lifecycleOnlyRows": 0,
+  "preLifecycleRevisionsSafe": true,
+  "scope": "all"
+}
+
+===== 5. Reconciliation dry run (default; read-only transaction) =====
+$ lifecycle-cli reconcile  -> exit 0
+{
+  "mode": "dry-run",
+  "before": {
+    "pending": 4,
+    "staleOnActiveLoan": 2,
+    "keptLoanReturned": 1
+  },
+  "after": {
+    "pending": 4,
+    "staleOnActiveLoan": 2,
+    "keptLoanReturned": 1
+  },
+  "stale": [
+    "B cam (competing)",
+    "C cam (competing)"
+  ],
+  "kept": [
+    "B lap (competing, loan returned): COMPETING_LOAN_RETURNED"
+  ],
+  "closed": [],
+  "conflicts": []
+}
+DRY RUN changed nothing (row snapshot identical)
+
+===== 6. Apply is refused without confirmation, with the wrong database, or in phase 1 =====
+$ lifecycle-cli reconcile --apply   (REQUEST_LIFECYCLE_WRITES=enabled)  -> exit 2
+  Refusing to apply: pass --confirm-database=kitloop_reconcile_test to confirm the target database
+$ lifecycle-cli reconcile --apply --confirm-database=kitloop_production   (REQUEST_LIFECYCLE_WRITES=enabled)  -> exit 2
+  Refusing to apply: pass --confirm-database=kitloop_reconcile_test to confirm the target database
+$ lifecycle-cli reconcile --apply --confirm-database=kitloop_reconcile_test   (REQUEST_LIFECYCLE_WRITES=disabled)  -> exit 2
+  Refusing to apply: REQUEST_LIFECYCLE_WRITES=enabled is required. Reconciliation writes DECLINED, which pre-lifecycle revisions cannot read; run it only after lifecycle writes are enabled (phase 2).
+REFUSALS changed nothing
+
+===== 7. Apply (phase 2) =====
+$ lifecycle-cli reconcile --apply --confirm-database=kitloop_reconcile_test   (REQUEST_LIFECYCLE_WRITES=enabled)  -> exit 0
+{
+  "mode": "apply",
+  "before": {
+    "pending": 4,
+    "staleOnActiveLoan": 2,
+    "keptLoanReturned": 1
+  },
+  "after": {
+    "pending": 2,
+    "staleOnActiveLoan": 0,
+    "keptLoanReturned": 1
+  },
+  "stale": [
+    "B cam (competing)",
+    "C cam (competing)"
+  ],
+  "kept": [
+    "B lap (competing, loan returned): COMPETING_LOAN_RETURNED"
+  ],
+  "closed": [
+    "C cam (competing)",
+    "B cam (competing)"
+  ],
+  "conflicts": []
+}
+BorrowRequest rows after reconciliation:
+  A cam (checked out)                {"assetId":"T7-CAM-01","status":"CHECKED_OUT","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  B cam (competing)                  {"assetId":"T7-CAM-01","status":"DECLINED","closeReason":"ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER","systemClosed":true,"hasClosedAt":true}
+  C cam (competing)                  {"assetId":"T7-CAM-01","status":"DECLINED","closeReason":"ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER","systemClosed":true,"hasClosedAt":true}
+  A lap (loan returned)              {"assetId":"T7-LAP-01","status":"CHECKED_OUT","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  B lap (competing, loan returned)   {"assetId":"T7-LAP-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+  C mic (no loan)                    {"assetId":"T7-MIC-01","status":"PENDING","closeReason":null,"systemClosed":true,"hasClosedAt":false}
+
+===== 8. Idempotent rerun =====
+$ lifecycle-cli reconcile --apply --confirm-database=kitloop_reconcile_test   (REQUEST_LIFECYCLE_WRITES=enabled)  -> exit 0
+{
+  "mode": "apply",
+  "before": {
+    "pending": 2,
+    "staleOnActiveLoan": 0,
+    "keptLoanReturned": 1
+  },
+  "after": {
+    "pending": 2,
+    "staleOnActiveLoan": 0,
+    "keptLoanReturned": 1
+  },
+  "stale": [],
+  "kept": [
+    "B lap (competing, loan returned): COMPETING_LOAN_RETURNED"
+  ],
+  "closed": [],
+  "conflicts": []
+}
+RERUN changed nothing (closure timestamps preserved)
+
+===== 9. Rollback check after reconciliation =====
+$ lifecycle-cli rollback-check  -> exit 0
+{
+  "command": "rollback-check",
+  "byStatus": {
+    "CHECKED_OUT": 2,
+    "DECLINED": 2,
+    "PENDING": 2
+  },
+  "lifecycleOnlyRows": 2,
+  "preLifecycleRevisionsSafe": false,
+  "scope": "all"
+}
+
+===== 10. Team 7 retest through the lifecycle API (phase 2) =====
+Borrower B /requests/mine: [{"asset":"T7-LAP-01","status":"PENDING","closeReason":null,"closed":false},{"asset":"T7-CAM-01","status":"DECLINED","closeReason":"ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER","closed":true}]
+Custodian queue: ["T7-LAP-01 PENDING (B lap (competing, loan returned))","T7-MIC-01 PENDING (C mic (no loan))"]
+Checkout of B's declined request: 409
+
+Isolated database kitloop_reconcile_test dropped.
+
+===== full server suite (npm test) =====
+> server@1.0.0 test
+> vitest run
+
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  14 passed (14)
+      Tests  106 passed (106)
+   Start at  14:10:04
+   Duration  17.07s (tests 81%, import 17%, transform 2%, worker 1%)
+
+    Isolate  14 workers spawned · ~266ms startup each (spawn + environment, per file)
+             at least ~3.46s faster with isolate: false — reuses workers across files instead of one per file
+
+===== server typecheck + build =====
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+===== full client suite (npm test) =====
+> client@0.0.0 test
+> vitest run
+
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  7 passed (7)
+      Tests  42 passed (42)
+   Start at  14:09:15
+   Duration  9.09s (environment 52%, tests 28%, setup 10%, import 6%, transform 4%)
+
+===== client lint =====
+> client@0.0.0 lint
+> eslint .
+
+===== client build =====
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 37 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-BNkzRQp1.css          31.40 kB │ gzip:  6.95 kB
+dist/assets/index-D5Dy1FJy.js          246.64 kB │ gzip: 76.50 kB
+
+✓ built in 1.28s
+
+===== e2e typecheck =====
+> kitloop-e2e@0.0.0 typecheck
+> tsc --noEmit
+
+===== browser E2E (npx playwright test --reporter=list) =====
+Running 31 tests using 1 worker
+
+  ok  1 [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message (7.4s)
+  ok  2 [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog (1.9s)
+  ok  3 [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login (3.0s)
+  ok  4 [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset (2.2s)
+  ok  5 [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001 (3.5s)
+  ok  6 [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload (6.8s)
+  ok  7 [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests (1.4s)
+  ok  8 [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears (4.1s)
+  ok  9 [chromium] › tests\02-request-checkout-journey.spec.ts:105:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered (2.6s)
+  ok 10 [chromium] › tests\02-request-checkout-journey.spec.ts:115:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload (3.9s)
+  ok 11 [chromium] › tests\02-request-checkout-journey.spec.ts:129:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason (5.0s)
+  ok 12 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login (2.3s)
+  ok 13 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login (1.4s)
+  ok 14 [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls (4.8s)
+  ok 15 [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls (4.8s)
+  ok 16 [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session (200ms)
+  ok 17 [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A) (2.7s)
+  ok 18 [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING (2.2s)
+  ok 19 [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403) (9.5s)
+  ok 20 [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created (2.1s)
+  ok 21 [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING (2.9s)
+  ok 22 [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list (1.8s)
+  ok 23 [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan (3.5s)
+  ok 24 [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING (6.5s)
+  ok 25 [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue (13.7s)
+  ok 26 [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason (11.4s)
+  ok 27 [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action (30.9s)
+  ok 28 [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed (10.6s)
+  ok 29 [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first (9.8s)
+  ok 30 [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions) (7.5s)
+  ok 31 [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first (6.2s)
+
+  31 passed (3.2m)
+

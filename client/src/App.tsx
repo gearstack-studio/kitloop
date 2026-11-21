@@ -15,6 +15,9 @@ import './App.css'
 import './Login.css'
 
 type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN' }
+// PR #72 P1: phase 1 of the lifecycle rollout reads every request status but offers no lifecycle actions.
+type Features = { requestLifecycleActions?: boolean }
+const lifecycleActionsOn = (features?: Features) => features?.requestLifecycleActions === true
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 class ApiFailure extends Error {
@@ -48,6 +51,7 @@ function App() {
   const loanReadId = useRef(0)
   const path = usePath()
   const [identity, setIdentity] = useState<Identity | null>(null)
+  const [lifecycleActions, setLifecycleActions] = useState(false)
   const [csrf, setCsrf] = useState('')
   const [checking, setChecking] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -65,7 +69,7 @@ function App() {
 
   const endSession = useCallback((message: string) => {
     sessionEpoch.current++
-    setIdentity(null); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
+    setIdentity(null); setLifecycleActions(false); setCsrf(''); setAssets([]); setCatalogStatus('loading'); setRequests([]); setRequestStatus('loading'); setSelectedAsset(''); setLoans([]); setLoanStatus('loading'); setNotice(message); setError('')
   }, [])
 
   const loadRequests = useCallback((role: Identity['role'], options: {
@@ -105,8 +109,8 @@ function App() {
 
   useEffect(() => {
     let active = true
-    api<Identity>('/auth/me').then(({ data, token }) => {
-      if (active) { setIdentity(data); setCsrf(token ?? '') }
+    api<Identity & { features?: Features }>('/auth/me').then(({ data, token }) => {
+      if (active) { setIdentity({ id: data.id, role: data.role }); setLifecycleActions(lifecycleActionsOn(data.features)); setCsrf(token ?? '') }
     }).catch((failure: ApiFailure) => {
       if (active && failure.status !== 401) setError(failure.message)
     }).finally(() => { if (active) setChecking(false) })
@@ -167,11 +171,11 @@ function App() {
     if (!username.trim() || !password) { setError('Enter both a username and password.'); return }
     setBusy(true); setError(''); setNotice('')
     try {
-      const result = await api<{ user: Identity }>('/auth/login', {
+      const result = await api<{ user: Identity; features?: Features }>('/auth/login', {
         method: 'POST', body: JSON.stringify({ username: username.trim(), password }),
       })
       sessionEpoch.current++
-      setCsrf(result.token ?? ''); setIdentity(result.data.user); setUsername('')
+      setCsrf(result.token ?? ''); setIdentity(result.data.user); setLifecycleActions(lifecycleActionsOn(result.data.features)); setUsername('')
     } catch (failure) {
       const issue = failure as ApiFailure
       setError(issue.status === 401 ? 'Invalid username or password.' : issue.message)
@@ -275,10 +279,12 @@ function App() {
         {item => identity.role === 'CUSTODIAN' ? <div className="request-actions">
           <Checkout request={item} busy={busy}
             ready={catalogStatus === 'ready'} available={assets.some(asset => asset.assetId === item.assetId && asset.available)}
-            onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, 'Checkout recorded. Request CHECKED_OUT and active loan created. Any other pending requests for this equipment were declined.') }} />
-          <DeclineRequest request={item} busy={busy}
-            onDecline={(entry, reason) => { void act(`/requests/${entry.id}/decline`, { reason }, 'Request declined.') }} />
-        </div> : <CancelRequest request={item} busy={busy}
+            onCheckout={(entry, dueAt) => { void act(`/requests/${entry.id}/checkout`, { assetId: entry.assetId, dueAt }, lifecycleActions
+              ? 'Checkout recorded. Request CHECKED_OUT and active loan created. Any other pending requests for this equipment were declined.'
+              : 'Checkout recorded. Request CHECKED_OUT and active loan created.') }} />
+          {lifecycleActions && <DeclineRequest request={item} busy={busy}
+            onDecline={(entry, reason) => { void act(`/requests/${entry.id}/decline`, { reason }, 'Request declined.') }} />}
+        </div> : lifecycleActions && <CancelRequest request={item} busy={busy}
           onCancel={entry => { void act(`/requests/${entry.id}/cancel`, {}, 'Request cancelled.') }} />}
       </Requests>
       <Loans loans={loans} status={loanStatus} custodian={identity.role === 'CUSTODIAN'}

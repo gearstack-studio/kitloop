@@ -602,4 +602,63 @@ OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC
 refused 'build of unpushed commit'; out_has 'is not on origin/main' 'unpushed commit was not refused'
 pass 'build requires an allowed branch and a pushed commit'
 
+# --- Request lifecycle rollout (PR #72 P1) --------------------------------------------------------
+# Revisions deployed by this release.sh declare REQUEST_LIFECYCLE_WRITES; a pre-lifecycle revision (8b6e5a9 and
+# earlier) does not, and cannot read DECLINED/CANCELLED/EXPIRED rows. State here: $fourth serves, SHA6 is migrated.
+[[ "$(serving)" == "$fourth=100" ]] || fail_test "unexpected traffic before lifecycle cases: $(serving)"
+jq -e '.spec.containers[0].env | any(.name == "REQUEST_LIFECYCLE_WRITES" and .value == "disabled")' \
+  "$FAKE_STATE/revisions/$fourth.json" >/dev/null || fail_test 'deploy did not declare REQUEST_LIFECYCLE_WRITES=disabled by default'
+pass 'deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise'
+
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=yes
+release deploy "$SHA6"
+refused 'invalid lifecycle setting'; out_has 'must be enabled or disabled' 'invalid lifecycle setting was not reported'
+log_lacks 'gcloud run deploy' 'invalid lifecycle setting reached Cloud Run'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment'
+
+pre=kitloop-prelifecycle-1
+jq --arg name "$pre" '.metadata.name = $name | .spec.containers[0].env |= map(select(.name != "REQUEST_LIFECYCLE_WRITES"))' \
+  "$FAKE_STATE/revisions/$fourth.json" >"$FAKE_STATE/revisions/$pre.json"
+release rollback "$pre"
+ok 'rollback to a pre-lifecycle revision while phase 1 serves'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
+out_has 'predates the request lifecycle' 'pre-lifecycle rollback target was not called out'
+out_has 'rollback-check' 'pre-lifecycle rollback did not point to the rollback check'
+pass 'phase 1 may still roll back to a pre-lifecycle revision, with the rollback-check reminder'
+
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
+release deploy "$SHA6"
+refused 'phase 2 over a pre-lifecycle revision'; out_has 'Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first' \
+  'phase 2 over a pre-lifecycle revision was not explained'
+log_lacks 'gcloud run deploy' 'phase 2 over a pre-lifecycle revision reached Cloud Run'
+[[ "$(serving)" == "$pre=100" ]] || fail_test 'refused phase 2 changed traffic'
+pass 'lifecycle writes cannot be enabled while a pre-lifecycle revision serves'
+
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+release rollback "$fourth"; ok 'back to the phase-1 revision'
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
+release deploy "$SHA6"
+ok 'phase 2 over a phase-1 revision'
+sixth="$(revision_for "$SHA6")"
+[[ "$(serving)" == "$sixth=100" ]] || fail_test "phase 2 traffic $(serving)"
+jq -e '.spec.containers[0].env | any(.name == "REQUEST_LIFECYCLE_WRITES" and .value == "enabled")' \
+  "$FAKE_STATE/revisions/$sixth.json" >/dev/null || fail_test 'phase 2 revision does not declare REQUEST_LIFECYCLE_WRITES=enabled'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'phase 2 deploys only over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled'
+
+release rollback "$pre"
+refused 'rollback from phase 2 to a pre-lifecycle revision'; out_has 'Roll back to a phase-1 revision' 'refusal did not name the safe target'
+log_lacks 'update-traffic' 'refused pre-lifecycle rollback changed traffic'
+[[ "$(serving)" == "$sixth=100" ]] || fail_test 'refused pre-lifecycle rollback changed traffic'
+release rollback "$fourth"
+ok 'rollback from phase 2 to phase 1'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
+pass 'from phase 2, rollback goes to the phase-1 revision; a pre-lifecycle target is refused'
+
+release rollback "$sixth"; ok 'back to phase 2'
+export KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows
+release rollback "$pre"
+ok 'confirmed pre-lifecycle rollback'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
+unset KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK
+pass 'a pre-lifecycle rollback from phase 2 needs the explicit no-lifecycle-rows confirmation'
+
 printf 'PASS: all GCP release guard tests\n'

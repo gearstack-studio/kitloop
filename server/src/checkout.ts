@@ -1,6 +1,7 @@
 import { Prisma, RequestCloseReason, RequestStatus, type Loan } from "@prisma/client";
 import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
+import { requestLifecycleWrites } from "./config.js";
 import { prisma } from "./db.js";
 
 const invalidDueDate = () => new ApiError(400, "VALIDATION_ERROR", "Provide a due date later than checkout time", {
@@ -79,13 +80,17 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
       } });
       // UAT-E01 (#61): competing requests for the now-loaned asset can never be fulfilled, so close them in
       // the same transaction (history kept, reason recorded). Any failure rolls back the checkout too.
-      await tx.borrowRequest.updateMany({
-        where: { assetId: record.assetId, status: RequestStatus.PENDING, id: { not: requestId } },
-        data: {
-          status: RequestStatus.DECLINED, closeReason: RequestCloseReason.ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER,
-          closedAt: checkedOutAt, closedById: custodianId,
-        },
-      });
+      // Phase 1 (lifecycle writes disabled) keeps the pre-lifecycle behaviour so 8b6e5a9 stays a safe rollback target;
+      // requests left PENDING then are closed later by the reviewed reconciliation (reconcile-competing-requests.ts).
+      if (requestLifecycleWrites(process.env)) {
+        await tx.borrowRequest.updateMany({
+          where: { assetId: record.assetId, status: RequestStatus.PENDING, id: { not: requestId } },
+          data: {
+            status: RequestStatus.DECLINED, closeReason: RequestCloseReason.ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER,
+            closedAt: checkedOutAt, closedById: custodianId,
+          },
+        });
+      }
       return loan;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return loanDto(loan);

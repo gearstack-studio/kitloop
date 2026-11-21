@@ -115,7 +115,8 @@ describe("FEAT-01 authentication API", () => {
       expect(csrf).toBeTruthy();
       const current = await request(app).get("/api/auth/me").set("Cookie", cookie);
       expect(current.status).toBe(200);
-      expect(current.body).toEqual({ id: expectedId, role });
+      // PR #72 P1: /auth/me also tells the client which lifecycle actions this deployment offers.
+      expect(current.body).toEqual({ id: expectedId, role, features: { requestLifecycleActions: true } });
     }
   });
 

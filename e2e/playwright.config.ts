@@ -43,6 +43,8 @@ export default defineConfig({
         APP_ORIGIN,
         PORT: String(API_PORT),
         SESSION_CSRF_SECRET: process.env.E2E_SESSION_SECRET!,
+        // The browser journeys cover lifecycle phase 2 (writes enabled); phase 1 is covered by the server tests.
+        REQUEST_LIFECYCLE_WRITES: "enabled",
       },
     },
     {

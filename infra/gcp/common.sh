@@ -112,6 +112,22 @@ require_safe_revision() {
   ' <<<"$json" >/dev/null || \
     die "Revision $revision is not a ready $SERVICE revision with a registry digest and APP_ORIGIN=$origin."
 }
+# Request lifecycle rollout (PR #72 P1). Every revision deployed from the lifecycle release onward declares
+# REQUEST_LIFECYCLE_WRITES. Older revisions (8b6e5a9 and earlier) lack it and cannot read DECLINED/CANCELLED/EXPIRED
+# request rows (Prisma enum error, HTTP 500), so they are safe rollback targets only while no such row exists.
+# The operator chooses the setting with KITLOOP_REQUEST_LIFECYCLE_WRITES (default disabled = phase 1).
+lifecycle_writes_setting() {
+  local value="${KITLOOP_REQUEST_LIFECYCLE_WRITES:-disabled}"
+  [[ "$value" == enabled || "$value" == disabled ]] || die 'KITLOOP_REQUEST_LIFECYCLE_WRITES must be enabled or disabled.'
+  printf '%s' "$value"
+}
+# Usage: revision_lifecycle REVISION -> enabled | disabled | absent (absent = pre-lifecycle revision)
+revision_lifecycle() {
+  local json
+  json="$(gcloud run revisions describe "$1" --project="$PROJECT" --region="$REGION" --format=json)" || \
+    die "Cannot describe revision $1."
+  jq -r '[.spec.containers[0].env[]? | select(.name == "REQUEST_LIFECYCLE_WRITES") | .value][0] // "absent"' <<<"$json"
+}
 service_is_public() {
   local policy
   policy="$(gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json)" || \

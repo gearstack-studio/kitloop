@@ -6,6 +6,7 @@ import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
 import { checkoutInput, checkoutRequest, loanDto } from "./checkout.js";
+import { requestLifecycleWrites } from "./config.js";
 import { cancelInput, cancelRequest, declineInput, declineRequest } from "./request-lifecycle.js";
 
 export const domainRouter = Router();
@@ -146,13 +147,22 @@ domainRouter.post("/requests/:id/checkout", requireRole(Role.CUSTODIAN), require
 });
 
 // UAT-E01 (#61): lifecycle actions. Each maps to one terminal status; clients never send a status.
+// PR #72 P1: in phase 1 (lifecycle writes disabled) the routes behave as on 8b6e5a9, where they did not exist.
+function requireLifecycleWrites() {
+  if (!requestLifecycleWrites(process.env)) {
+    throw new ApiError(404, "LIFECYCLE_ACTIONS_DISABLED", "Request lifecycle actions are not enabled on this deployment");
+  }
+}
+
 domainRouter.post("/requests/:id/cancel", requireRole(Role.BORROWER), requireCsrf, async (request, response) => {
+  requireLifecycleWrites();
   const id = recordId(request.params.id);
   cancelInput(request.body);
   response.json(await cancelRequest(request.principal!.id, id));
 });
 
 domainRouter.post("/requests/:id/decline", requireRole(Role.CUSTODIAN), requireCsrf, async (request, response) => {
+  requireLifecycleWrites();
   const id = recordId(request.params.id);
   const reason = declineInput(request.body);
   response.json(await declineRequest(request.principal!.id, id, reason));

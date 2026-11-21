@@ -221,7 +221,7 @@ No development, test or production data was used. Spec `04-request-lifecycle.spe
 - **No notifications.** Borrowers see the decline or cancellation only when they reload their history.
 - **No custodian history view.** The custodian sees only the actionable pending queue; closed requests remain in the database and in the borrower's history.
 - **Conflicts aren't retried automatically.** A serialization conflict returns 409 `REQUEST_CONFLICT` and the user refreshes. Nothing is half-applied.
-- **The enum change is one-way.** PostgreSQL can't drop enum values. A rollback would mean a new forward migration that recreates the type; the change itself is safe to deploy forward.
+- **The enum change is one-way, and pre-lifecycle revisions can't read the new values.** PostgreSQL can't drop enum values, and the Prisma client of `8b6e5a9` and earlier fails on `DECLINED`/`CANCELLED`/`EXPIRED` (PR #72 review P1). This is handled by the two-phase rollout and the rollback guards in §11.1; the enum is never dropped and statuses are never rewritten.
 - **Requires PostgreSQL 12 or later.** The migration was executed on PostgreSQL 18.4 only. The deployed Cloud SQL instance is PostgreSQL 17, inside the supported range by analysis (§7b), but the migration hasn't been run on a 12–17 server.
 - **Browser E2E ran in Chromium at desktop width only.** Mobile width and other browsers weren't re-checked for the new Cancel/Decline controls.
 - **RED setup.** The RED run used the shared test database and Prisma client, which already had the additive schema applied. The baseline code uses only a subset of that schema, so the failures reflect missing behaviour, not schema errors.
@@ -284,6 +284,137 @@ Request expiry policy, free-text decline notes, borrower notifications.
 - [x] Working tree contains only intended changes (§4)
 - [x] Limitations documented (§8)
 - [x] PR title and description drafted (§9)
-- [ ] Commit and push (waiting for authorisation)
-- [ ] Open PR to `sprint-1-staging` (waiting for authorisation)
+- [x] Committed and pushed as `5738ee1`; PR #72 opened to `sprint-1-staging`
+- [x] Review findings P1 (rollback) and P2 (existing competing requests) reproduced, fixed and verified (§11)
+- [x] Expiry deferral documented for Team 7 and #61 (§11.4, `uat-e01-team7-retest.md`)
+- [x] Review RED/GREEN, rollback compatibility, reconciliation and full regression evidence captured (§11.5)
+- [ ] Commit and push of the review fixes (waiting for authorisation)
+- [ ] Post the review response on PR #72 and the retest/expiry note on #61 (waiting for authorisation)
 - [ ] Reviewer approval and merge
+- [ ] After merge: phase 1 deploy, phase 2 enable, reconciliation dry run and apply, then Team 7 retest (§11.3)
+
+## 11. PR #72 review response (P1, P2, expiry)
+
+The reviewer's comment on `5738ee1` raised two findings and an expiry note. All work below is local and uncommitted on `fix/61-uat-request-lifecycle`. Only isolated local databases were used, and nothing was deployed. Paste-ready reply: [`uat-e01-pr72-review-response.md`](uat-e01-pr72-review-response.md).
+
+### 11.1 P1: rollback to the previous revision returns 500
+
+**Root cause.** The lifecycle migration adds `DECLINED`/`CANCELLED`/`EXPIRED` to `RequestStatus`. The previous revision's generated Prisma client (`8b6e5a9`) only knows `PENDING` and `CHECKED_OUT`, so any query that returns a lifecycle row throws `Value 'DECLINED' not found in enum 'RequestStatus'`. `release.sh rollback` only moves traffic. After PR #72 had closed any request, a rollback therefore made `GET /api/requests/mine` and `GET /api/requests/:id` return 500 for the affected borrowers.
+
+**Reproduction with the real previous revision.** I used an `8b6e5a9` worktree with its own `npm ci` and generated client. `5738ee1` wrote `DECLINED` and `CANCELLED` to an isolated database, then the old server served the same database: Borrower B `/requests/mine` → **500**, `/requests/:id` → **500**. Borrower A, the custodian queue and request creation stayed 200/201.
+
+**Resolution: two-phase compatibility rollout.** An already-deployed client can't be made to read new enum values. Instead, a lifecycle-aware revision is guaranteed to exist before any lifecycle value is written.
+
+| | Phase 1 (`REQUEST_LIFECYCLE_WRITES` unset/`disabled`, the default) | Phase 2 (`enabled`) |
+|---|---|---|
+| Reads all statuses | yes | yes |
+| Checkout | Sprint 1 behaviour: competing requests stay `PENDING` | declines competing requests (as reviewed) |
+| Cancel / decline | `404 LIFECYCLE_ACTIONS_DISABLED`; hidden in the UI | enabled |
+| `/auth/me` and login `features.requestLifecycleActions` | `false` | `true` |
+
+- An invalid flag value fails at startup (`ConfigurationError`).
+- **`release.sh deploy`** always sets the flag from `KITLOOP_REQUEST_LIFECYCLE_WRITES`; `deploy.yml` passes the GitHub environment variable, defaulting to `disabled`. It **refuses `enabled` while a pre-lifecycle revision is serving**, so automatic and manual rollback targets can always read lifecycle rows.
+- **`release.sh rollback`** **refuses a pre-lifecycle target while phase 2 is serving** unless the operator sets `KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK=no-lifecycle-rows`. They do that after `lifecycle-cli rollback-check` reports `lifecycleOnlyRows: 0`.
+- No status is rewritten, no enum value is dropped, and no closure data is removed.
+
+**Safe rollback targets.**
+
+| Serving | Lifecycle rows exist? | Safe targets | Unsafe |
+|---|---|---|---|
+| Phase 1 | no | any earlier ready revision, including `8b6e5a9` | n/a |
+| Phase 1 or phase 2 | yes | phase 1 (recommended) or phase 2 revisions of this release or later | `8b6e5a9` and earlier |
+
+The full runbook is [`infra/gcp/REQUEST-LIFECYCLE-ROLLOUT.md`](../../../infra/gcp/REQUEST-LIFECYCLE-ROLLOUT.md), linked from `infra/gcp/README.md`.
+
+**Verified with real servers on an isolated database:** phase 1 → `8b6e5a9`: no 5xx. Phase 2 → `8b6e5a9`: 500 (expected, now refused). Phase 2 → phase 1 revision: no 5xx.
+
+### 11.2 P2: pre-existing competing requests stay PENDING
+
+**Root cause.** Auto-decline runs inside new checkouts only. Requests that competed with a checkout made under Sprint 1 code, or in phase 1, are never revisited, and the migration deliberately doesn't rewrite rows. Team 7's original example therefore stays `PENDING` after deployment.
+
+**Resolution: an explicitly executed, reviewed reconciliation** (`server/src/reconcile-competing-requests.ts`, CLI `server/src/lifecycle-cli.ts`, npm scripts `lifecycle` and `lifecycle:dev`).
+
+- **Rule:** a `PENDING` request is stale when its asset has an **active** loan (`returnedAt IS NULL`). Such a request can't be checked out while the loan is active, which is exactly the state the new checkout would have closed.
+  - **Stale requests** become `DECLINED`, with `closeReason = ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER`, `closedAt` = the reconciliation transaction time, and `closedById = NULL`. The null actor marks a system closure, unlike checkout-time declines, which record the custodian.
+  - **Returned competing loan:** the request stays `PENDING` and is reported as `COMPETING_LOAN_RETURNED`.
+  - **Terminal rows** are never touched.
+- **Dry run by default**, in a `READ ONLY` transaction, reporting Before counts and the stale and kept requests.
+- **Apply needs all of the following:**
+  - `--apply`
+  - `--confirm-database=<current_database()>`
+  - `REQUEST_LIFECYCLE_WRITES=enabled`, so it can't write values a pre-lifecycle revision can't read during phase 1
+- **Concurrency:** each asset is processed in a Serializable transaction that locks the `Asset` row first (the same order as checkout) and re-checks the rule under the lock. Serialization or deadlock aborts retry up to 5 times; leftovers are reported with exit code 3 for a rerun.
+- **Idempotent:** a rerun changes nothing.
+- **Scope:** `--asset=ID` (repeatable) restricts it to specific assets, for example a single UAT example.
+
+**Verified on data created by the real `8b6e5a9` API** (reproduced in `uat-e01-review-green.txt`):
+
+| Step | Result |
+|---|---|
+| Lifecycle migration over 6 existing rows | all kept their status; closure fields NULL |
+| `rollback-check` (phase 1) | `lifecycleOnlyRows: 0`, pre-lifecycle safe |
+| Dry run | Before: pending 4, stale 2 (Team 7-style B and C), kept 1 (loan returned); row snapshot unchanged |
+| Apply without confirmation, with the wrong database, and in phase 1 | all refused (exit 2); nothing changed |
+| Apply (phase 2) | closed 2; After: pending 2, stale 0, kept 1 |
+| Rerun | closed 0; snapshot unchanged (closure timestamps preserved) |
+| Retest through the API | B sees `DECLINED` + reason; custodian queue lists only fulfillable requests; checkout of B's request → 409 |
+
+### 11.3 Deployment order and Team 7 retest
+
+1. Merge, then `release.sh migrate`, then `release.sh deploy` with the flag unset (**phase 1**). Verify, run `rollback-check` (expect 0), and record the phase 1 revision.
+2. `KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled release.sh deploy` with the same SHA (**phase 2**). Also set the GitHub environment variable so automated deploys keep phase 2.
+3. Run the reconciliation **dry run**, review it, then **apply**, then rerun the dry run (expect `staleOnActiveLoan: 0`). Keep the JSON as evidence.
+4. Team 7 retests using [`uat-e01-team7-retest.md`](uat-e01-team7-retest.md): their original example, a fresh competing-request run, and cancel/decline.
+
+### 11.4 Expiry policy (deferred)
+
+`EXPIRED` is reserved. No code sets it, and no timeout was invented. Supported closures now:
+- checkout (`CHECKED_OUT`)
+- checkout auto-decline of competitors
+- borrower cancel
+- custodian decline with a reason
+- the reconciliation in §11.2
+
+Unattended requests stay `PENDING`. Automatic expiry needs an approved, documented, configurable policy, delivered as a separate change. The deferral is stated in the runbook and in the Team 7 retest note, ready to post on #61.
+
+### 11.5 Tests and results
+
+**New and changed tests**
+
+| Test | Covers | RED (`5738ee1` code) | GREEN |
+|---|---|---|---|
+| `server/tests/lifecycle-rollout.test.ts` (9) | flag parsing; phase 1 checkout, 404 actions and features; **`8b6e5a9` client** reads phase 1 data and fails on `DECLINED`; phase 1 reads phase 2 data; `rollback-check` | 7 failed / 2 passed* | 9/9 |
+| `server/tests/reconcile-competing-requests.test.ts` (6) | dry run (no changes), refusals, apply (only stale rows, reason, time, history kept), idempotency, race with borrower cancel, race with concurrent checkout | module missing (not run) | 6/6 |
+| `client/tests/request-lifecycle.test.tsx` (+2) | no Cancel or Decline when lifecycle actions are off; statuses still shown | 2 failed | 7/7 |
+| `infra/gcp/guards.test.sh` (+7) | flag declared by default, invalid value refused, phase 2 blocked over a pre-lifecycle revision, phase 2 → phase 1 rollback allowed, phase 2 → pre-lifecycle refused unless confirmed | first new case failed | all pass |
+| `server/tests/auth.test.ts` (1 assertion) | `/auth/me` now includes `features` (intentional contract addition) | n/a | pass |
+
+\* Expected to pass at RED: the hazard characterisation, which also proves the legacy client is real, and "phase 1 reads lifecycle rows", which `5738ee1` already did and the fix must keep.
+
+The `8b6e5a9` client is generated at test time from [`server/tests/fixtures/schema-8b6e5a9.prisma`](../../../server/tests/fixtures/schema-8b6e5a9.prisma), a verbatim copy, into `server/node_modules/.cache`.
+
+**Full regression** (final code, isolated databases)
+
+| Check | Result |
+|---|---|
+| Server tests | **14 files, 106/106** |
+| Client tests | **7 files, 42/42** |
+| Browser E2E (Playwright, phase 2) | **31/31** (first attempt aborted at web-server startup with `ECONNRESET` before any test; clean rerun passed) |
+| Server typecheck + build (emits `dist/lifecycle-cli.js`) | exit 0 |
+| Client lint, client build, E2E typecheck | exit 0 |
+| Infra guard suites (WSL Ubuntu, LF clone) | all pass, plus 16 deployment guard cases |
+| Compiled CLI smoke test | bad args → exit 2; `rollback-check --apply` refused; dry run read-only |
+| Migration | integrity tests in the server suite; real upgrade from `8b6e5a9` data (§11.2) |
+| Rollback compatibility | real-server matrix (§11.1) and legacy-client tests |
+
+Evidence: [`uat-e01-review-red.txt`](uat-e01-review-red.txt), [`uat-e01-review-green.txt`](uat-e01-review-green.txt). The E2E screenshots `uat-e01-e2e-*.png` were regenerated by this run, with the same scenarios.
+
+### 11.6 Remaining risks
+
+- **Phase discipline is partly procedural.** `release.sh` blocks the dangerous paths it can see, but it can't see the database. A sequence of phase 2 → phase 1 → pre-lifecycle rollback isn't blocked by the script. The runbook requires `rollback-check` before any pre-lifecycle rollback.
+- **GitHub environment variable.** If `KITLOOP_REQUEST_LIFECYCLE_WRITES` isn't set to `enabled` in `lab5-production`, the next automated `main` deploy returns the service to phase 1. That's safe, but cancel and decline disappear.
+- **Phase 1 still has the UAT-E01 behaviour.** Competing requests stay `PENDING` until phase 2 and the reconciliation run. Team 7 must retest only after step 3 of §11.3.
+- **The reconciliation Cloud Run job is a template that hasn't been executed in GCP.** Review its IAM (runtime service account, database secret) before first use.
+- **PostgreSQL versions.** The migration and reconciliation SQL were executed only on PostgreSQL 18.4 (Cloud SQL runs 17). Docker wasn't running, so 12–17 weren't tested.
+- **Phase 1 in the browser.** The browser E2E covers phase 2 only. Phase 1 behaviour is covered by server tests, client tests and the real-server harness.
+- **Reconciliation closure time.** Reconciled declines use the reconciliation time as `closedAt`, not the original checkout time. That's truthful about when the closure happened, but it's later than a borrower might expect.

@@ -14,7 +14,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:bootstrap": "node dist/bootstrap-cli.js",
-    "db:deploy:job": "node scripts/migrate.mjs"
+    "db:deploy:job": "node scripts/migrate.mjs",
+    "lifecycle": "node dist/lifecycle-cli.js",
+    "lifecycle:dev": "tsx src/lifecycle-cli.ts"
   },
   "keywords": [],
   "author": "",

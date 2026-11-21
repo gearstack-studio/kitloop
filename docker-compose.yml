@@ -24,6 +24,8 @@ services:
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN in .env}
       SESSION_CSRF_SECRET: ${SESSION_CSRF_SECRET:?Set SESSION_CSRF_SECRET in .env}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      # Local development has no pre-lifecycle revision to roll back to, so lifecycle actions are on by default.
+      REQUEST_LIFECYCLE_WRITES: ${REQUEST_LIFECYCLE_WRITES:-enabled}
     depends_on:
       db:
         condition: service_healthy
