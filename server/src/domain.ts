@@ -5,7 +5,7 @@ import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
-import { checkoutInput, checkoutRequest, loanDto } from "./checkout.js";
+import { borrowerLoanDetails, checkoutInput, checkoutRequest, custodianLoanDetails, loanDto } from "./checkout.js";
 import { requestLifecycleWrites } from "./config.js";
 import { cancelInput, cancelRequest, declineInput, declineRequest } from "./request-lifecycle.js";
 
@@ -171,6 +171,7 @@ domainRouter.post("/requests/:id/decline", requireRole(Role.CUSTODIAN), requireC
 domainRouter.get("/loans/mine", requireRole(Role.BORROWER), async (request, response) => {
   response.json((await prisma.loan.findMany({
     where: { borrowerId: request.principal!.id },
+    include: borrowerLoanDetails,
     orderBy: { checkedOutAt: "desc" },
   })).map(loanDto));
 });
@@ -181,20 +182,19 @@ domainRouter.get("/loans/active", requireRole(Role.CUSTODIAN), async (request, r
       returnedAt: null,
       asset: { custodianAssets: { some: { custodianId: request.principal!.id } } },
     },
+    include: custodianLoanDetails,
     orderBy: { checkedOutAt: "desc" },
   })).map(loanDto));
 });
 
 domainRouter.get("/loans/:id", async (request, response) => {
   const principal = request.principal!;
-  const record = await prisma.loan.findFirst({
-    where: {
-      id: recordId(request.params.id),
-      ...(principal.role === Role.BORROWER
-        ? { borrowerId: principal.id }
-        : { asset: { custodianAssets: { some: { custodianId: principal.id } } } }),
-    },
-  });
+  const id = recordId(request.params.id);
+  // Each role reads its own allowlist (UAT-E03 final privacy audit): borrowers never receive person names.
+  const record = principal.role === Role.BORROWER
+    ? await prisma.loan.findFirst({ include: borrowerLoanDetails, where: { id, borrowerId: principal.id } })
+    : await prisma.loan.findFirst({ include: custodianLoanDetails,
+      where: { id, asset: { custodianAssets: { some: { custodianId: principal.id } } } } });
   if (!record) throw notFound();
   response.json(loanDto(record));
 });

@@ -1,0 +1,48 @@
+UAT-E03 (#63) final privacy audit: borrowers must not receive custodian usernames (SRS FR-11 least privilege)
+Branch fix/63-uat-readable-names on base 13df7d4. Isolated databases (kitloop_auth_test, kitloop_e2e_pw), synthetic data.
+
+RED: the stricter tests against the first UAT-E03 implementation (borrower loan reads included checkoutCustodian
+{ id, username }; My loans showed "Checked out by: <username>").
+  server tests/readable-names.test.ts: 3 failed | 4 passed (7). /loans/mine and /loans/:id (owner) carried
+    checkoutCustodian and borrower objects; the custodian's username appeared in the borrower response body.
+  client tests/readable-names.test.tsx: 1 failed | 9 passed (10). The borrower My loans card showed "Checked out by".
+  Playwright 06-readable-names.spec.ts test 3: failed. The borrower card read "Checked out by: e2e.custodian.a".
+
+===== server (RED) =====
+❯ tests/readable-names.test.ts (7 tests | 3 failed) 567ms
+     × a borrower's loans carry the equipment name, keeping every ID, and no person names 10ms
+     × no borrower loan response contains a custodian's username anywhere in the body 7ms
+     × a single loan read gives a scoped custodian the names and its owner the equipment name only 10ms
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > a borrower's loans carry the equipment name,
+AssertionError: expected { …(13) } to not have property "checkoutCustodian"
+- Expected:
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > no borrower loan response contains a custodian's
+AssertionError: expected '[{"id":"f90e7400-323c-4728-abe7-32461…' not to contain 'carol.1cca3190'
+Expected: "carol.1cca3190"
+Received: "[{"id":"f90e7400-323c-4728-abe7-32461e79ac14","requestId":"71135b33-6c4e-47d4-9a03-d3626616a62e","assetId":"
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > a single loan read gives a scoped custodian the
+AssertionError: expected { …(13) } to not have property "checkoutCustodian"
+- Expected:
+ Test Files  1 failed (1)
+      Tests  3 failed | 4 passed (7)
+
+===== client (RED, DOM dumps omitted) =====
+❯ tests/readable-names.test.tsx (10 tests | 1 failed) 752ms
+     × borrower My loans: equipment name and dates, no person names or custodian ID 10ms
+ FAIL  tests/readable-names.test.tsx > UAT-E03 loans show names > borrower My loans: equipment name and dates, no
+AssertionError: expected <small></small> to be null
+- Expected:
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+
+===== Playwright 06 (RED) =====
+Error: expect(locator).not.toContainText(expected) failed
+    Expected substring: not "Checked out by"
+    Received string: "Readable names camera · ACTIVEKL-E03-CAMChecked out by: e2e.custodian.aChecked out 11/21/2026, 11:24:20 PM GMT+7 (Asia/Bangkok)Due 11/28/2026, 11:24:00 PM GMT+7 (Asia/Bangkok)Record IDsLoan eb2d43a3-2eb4-41c2-96bd-fcddeee6be45Request 398e32cf-5988-4fbc-b35a-07ea720a2b05Custodian ID 31ad1050-28a8-4c25-860a-3071530b91e8"
+        20 × locator resolved to <article class="record">…</article>
+           - unexpected value "Readable names camera · ACTIVEKL-E03-CAMChecked out by: e2e.custodian.aChecked out 11/21/2026, 11:24:20 PM GMT+7 (Asia/Bangkok)Due 11/28/2026, 11:24:00 PM GMT+7 (Asia/Bangkok)Record IDsLoan eb2d43a3-2eb4-41c2-96bd-fcddeee6be45Request 398e32cf-5988-4fbc-b35a-07ea720a2b05Custodian ID 31ad1050-28a8-4c25-860a-3071530b91e8"
+    test-results\artifacts\06-readable-names-UAT-E03--3ced9-e-and-no-custodian-identity-chromium\test-failed-1.png
+    Error Context: test-results\artifacts\06-readable-names-UAT-E03--3ced9-e-and-no-custodian-identity-chromium\error-context.md
+  1 failed
+  3 did not run
+  3 passed (22.3s)

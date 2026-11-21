@@ -110,13 +110,14 @@ describe("FEAT-01 authentication API", () => {
       [usernames.custodianA, custodianAId, Role.CUSTODIAN],
     ] as const) {
       const { cookie, csrf, response } = await login(username);
-      expect(response.body.user).toEqual({ id: expectedId, role });
+      // UAT-E03 (#63): the user's own username is returned so the UI can show it instead of an ID.
+      expect(response.body.user).toEqual({ id: expectedId, role, username });
       expect(response.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(csrf).toBeTruthy();
       const current = await request(app).get("/api/auth/me").set("Cookie", cookie);
       expect(current.status).toBe(200);
       // PR #72 P1: /auth/me also tells the client which lifecycle actions this deployment offers.
-      expect(current.body).toEqual({ id: expectedId, role, features: { requestLifecycleActions: true, loanMaxDays: null } });
+      expect(current.body).toEqual({ id: expectedId, role, username, features: { requestLifecycleActions: true, loanMaxDays: null } });
     }
   });
 

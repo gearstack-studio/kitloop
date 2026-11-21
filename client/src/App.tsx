@@ -5,6 +5,7 @@ import Backdrop from './components/Backdrop'
 import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import Checkout from './components/Checkout'
+import IdentityTag from './components/IdentityTag'
 import { CancelRequest, DeclineRequest } from './components/RequestActions'
 import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
@@ -14,7 +15,8 @@ import { borrowEligibility } from './borrowEligibility'
 import './App.css'
 import './Login.css'
 
-type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN' }
+// UAT-E03 (#63): username is the signed-in user's own name from /auth/me or login; optional for an older API.
+type Identity = { id: string; role: 'BORROWER' | 'CUSTODIAN'; username?: string }
 // PR #72 P1: phase 1 of the lifecycle rollout reads every request status but offers no lifecycle actions.
 type Features = { requestLifecycleActions?: boolean; loanMaxDays?: number | null }
 const lifecycleActionsOn = (features?: Features) => features?.requestLifecycleActions === true
@@ -114,7 +116,7 @@ function App() {
   useEffect(() => {
     let active = true
     api<Identity & { features?: Features }>('/auth/me').then(({ data, token }) => {
-      if (active) { setIdentity({ id: data.id, role: data.role }); setLifecycleActions(lifecycleActionsOn(data.features)); setLoanMaxDays(loanMaxDaysOf(data.features)); setCsrf(token ?? '') }
+      if (active) { setIdentity({ id: data.id, role: data.role, username: data.username }); setLifecycleActions(lifecycleActionsOn(data.features)); setLoanMaxDays(loanMaxDaysOf(data.features)); setCsrf(token ?? '') }
     }).catch((failure: ApiFailure) => {
       if (active && failure.status !== 401) setError(failure.message)
     }).finally(() => { if (active) setChecking(false) })
@@ -252,7 +254,7 @@ function App() {
     {!identity && <Backdrop />}
     <header className="topbar"><Brand />
       {!identity && <AmbientLink variant="secondary" href="/">← Back to home</AmbientLink>}
-      {identity && <div className="topbar-controls"><span className="identity-tag">Account {identity.id.slice(0, 8)}</span><AmbientButton variant="secondary" onClick={signOut} disabled={busy}>{busy ? 'Please wait…' : 'Sign out'}</AmbientButton></div>}
+      {identity && <div className="topbar-controls"><IdentityTag identity={identity} /><AmbientButton variant="secondary" onClick={signOut} disabled={busy}>{busy ? 'Please wait…' : 'Sign out'}</AmbientButton></div>}
     </header>
     {!identity ? <AuthCard title="Welcome back" subtitle="Sign in to your KitLoop account.">
         <form onSubmit={signIn}>
@@ -263,7 +265,7 @@ function App() {
         {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
       </AuthCard>
     : <main className="dashboard">
-      <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div><span className="identity-tag">Account {identity.id.slice(0, 8)}</span></div>
+      <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div></div>
       {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
       {identity.role === 'BORROWER' && <nav aria-label="Borrower pages"><AmbientLink href={route === '/requests' ? '/dashboard' : '/requests'}>{route === '/requests' ? 'Equipment dashboard' : 'My Requests page'}</AmbientLink></nav>}
       {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog}

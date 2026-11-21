@@ -94,7 +94,9 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await expect(pendingQueue(page).getByRole("article")).toHaveCount(0);
     const loans = activeLoans(page).getByRole("article");
     await expect(loans).toHaveCount(1);
-    await expect(loans).toContainText("KL-CAM-001 · ACTIVE");
+    // UAT-E03 (#63): the equipment name is the primary label; the Asset ID stays as secondary text.
+    await expect(loans).toContainText("Mirrorless camera · ACTIVE");
+    await expect(loans).toContainText("KL-CAM-001");
     await expect(loans).toContainText("Checked out by");
     await evidence(page, testInfo, "checkout-success");
 
@@ -118,7 +120,8 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await expect(card(page, "KL-CAM-001").getByRole("button", { name: /is checked out and cannot be requested/ })).toBeDisabled();
     await expect(myRequests(page).getByRole("article").filter({ hasText: "KL-CAM-001 · CHECKED_OUT" })).toHaveCount(1);
     await expect(myRequests(page).getByRole("article").filter({ hasText: "KL-LAP-001 · PENDING" })).toHaveCount(1);
-    await expect(myLoans(page).getByRole("article")).toContainText("KL-CAM-001 · ACTIVE");
+    await expect(myLoans(page).getByRole("article")).toContainText("Mirrorless camera · ACTIVE");
+    await expect(myLoans(page).getByRole("article")).toContainText("KL-CAM-001");
     await evidence(page, testInfo, "borrower-a-after-checkout");
 
     await page.reload();

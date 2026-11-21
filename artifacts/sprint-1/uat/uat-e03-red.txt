@@ -1,0 +1,271 @@
+UAT-E03 (#63) pages show internal IDs instead of user and equipment names
+Branch fix/63-uat-readable-names, base 13df7d4 (origin/sprint-1-staging incl. merged PR #72 and #73).
+Isolated databases only (kitloop_auth_test, kitloop_e2e_pw); synthetic users and assets. No production.
+
+RED: the new tests against the unmodified 13df7d4 source.
+  server tests/readable-names.test.ts: 5 failed | 1 passed (6). No username in /auth/me or login; loans carry no
+    asset name, borrower or checkout-custodian summaries. The passing test is the pre-existing privacy boundary
+    (no other borrower's loans, scope 404s), which must stay true.
+  client tests/readable-names.test.tsx: 10 failed (10). The header shows "Account <uuid prefix>"; loans are labelled
+    by Asset ID with borrower/custodian UUIDs; request and borrower UUIDs are primary text.
+  Playwright tests/06-readable-names.spec.ts: setup passed, test 1 failed: '.identity-tag' resolved to 2 elements
+    ("Account <uuid prefix>" in the top bar and again in the page heading); 5 did not run (serial).
+    Before screenshot: uat-e03-before-borrower-header-account-uuid.png
+
+===== server tests/readable-names.test.ts (RED) =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ❯ tests/readable-names.test.ts (6 tests | 5 failed) 580ms
+   ❯ UAT-E03 readable names: identity (1)
+     × /auth/me and login return the signed-in user's own username with the existing id and role 10ms
+   ❯ UAT-E03 readable names: loans (3)
+     × a borrower's loans carry the equipment name and the checkout custodian's name, keeping every ID 6ms
+     × a custodian's active loans name each borrower, item and checkout custodian correctly across users and assets 4ms
+     × a single loan read carries the same names for its owner and a scoped custodian 4ms
+   ❯ UAT-E03 readable names: privacy boundaries (2)
+     × person summaries expose exactly id and username, never credentials, role or sessions 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: identity > /auth/me and login return the signed-in
+user's own username with the existing id and role
+AssertionError: expected { …(3) } to match object { …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
+
+  {
+    "id": "7d8a5319-1ae0-486f-b7c0-5f66b8fc41c8",
+-   "username": "alice.1a987230",
+  }
+
+ ❯ tests/readable-names.test.ts:71:23
+     69|       const me = await get(who, "auth/me");
+     70|       expect(me.status).toBe(200);
+     71|       expect(me.body).toMatchObject({ id: who.id, username: who.userna…
+       |                       ^
+     72|       expect(me.body).not.toHaveProperty("passwordHash");
+     73|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > a borrower's loans carry the equipment name and
+the checkout custodian's name, keeping every ID
+AssertionError: expected { …(10) } to match object { …(9) }
+(4 matching properties omitted from actual)
+
+- Expected
+
+  {
+-   "asset": {
+-     "assetId": "NAMES-3e63a9e3",
+-     "name": "Readable camera",
+-   },
+    "assetId": "NAMES-3e63a9e3",
+-   "borrower": {
+-     "id": "7d8a5319-1ae0-486f-b7c0-5f66b8fc41c8",
+-     "username": "alice.1a987230",
+-   },
+    "borrowerId": "7d8a5319-1ae0-486f-b7c0-5f66b8fc41c8",
+-   "checkoutCustodian": {
+-     "id": "b4926af8-e3de-4259-8225-c6f18328e4f9",
+-     "username": "carol.5feabae5",
+-   },
+    "checkoutCustodianId": "b4926af8-e3de-4259-8225-c6f18328e4f9",
+    "id": "cd4c0b41-d570-49c3-ac64-e4992efddbe8",
+    "requestId": "3bba1eb5-611c-4190-aac4-41647b3c51fb",
+    "status": "ACTIVE",
+  }
+
+ ❯ tests/readable-names.test.ts:84:26
+     82|     expect(mine.status).toBe(200);
+     83|     expect(mine.body).toHaveLength(1);
+     84|     expect(mine.body[0]).toMatchObject({
+       |                          ^
+     85|       id: loans.aliceCamera.id, requestId: loans.aliceCamera.requestId…
+     86|       borrowerId: alice.id, checkoutCustodianId: carol.id, status: "AC…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > a custodian's active loans name each borrower,
+item and checkout custodian correctly across users and assets
+AssertionError: expected { …(10) } to match object { …(3) }
+(10 matching properties omitted from actual)
+
+- Expected
+
+  {
+-   "asset": {
+-     "name": "Readable camera",
+-   },
+-   "borrower": {
+-     "id": "7d8a5319-1ae0-486f-b7c0-5f66b8fc41c8",
+-     "username": "alice.1a987230",
+-   },
+-   "checkoutCustodian": {
+-     "id": "b4926af8-e3de-4259-8225-c6f18328e4f9",
+-     "username": "carol.5feabae5",
+-   },
+  }
+
+ ❯ tests/readable-names.test.ts:96:40
+     94|     expect(active.status).toBe(200);
+     95|     const byId = Object.fromEntries((active.body as Array<{ id: string…
+     96|     expect(byId[loans.aliceCamera.id]).toMatchObject({
+       |                                        ^
+     97|       asset: { name: "Readable camera" }, borrower: person(alice), che…
+     98|     expect(byId[loans.bobTripod.id]).toMatchObject({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: loans > a single loan read carries the same names for
+its owner and a scoped custodian
+AssertionError: expected { …(10) } to match object { …(3) }
+(10 matching properties omitted from actual)
+
+- Expected
+
+  {
+-   "asset": {
+-     "name": "Readable camera",
+-   },
+-   "borrower": {
+-     "id": "7d8a5319-1ae0-486f-b7c0-5f66b8fc41c8",
+-     "username": "alice.1a987230",
+-   },
+-   "checkoutCustodian": {
+-     "id": "b4926af8-e3de-4259-8225-c6f18328e4f9",
+-     "username": "carol.5feabae5",
+-   },
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  23:08:29
+   Duration  1.03s (tests 67%, import 23%, transform 9%)
+
+  }
+
+ ❯ tests/readable-names.test.ts:106:24
+    104|       const one = await get(who, `loans/${loans.aliceCamera.id}`);
+    105|       expect(one.status).toBe(200);
+    106|       expect(one.body).toMatchObject({ asset: { name: "Readable camera…
+       |                        ^
+    107|     }
+    108|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/readable-names.test.ts > UAT-E03 readable names: privacy boundaries > person summaries expose exactly id
+and username, never credentials, role or sessions
+TypeError: Cannot convert undefined or null to object
+ ❯ tests/readable-names.test.ts:117:76
+    115|     for (const list of lists) {
+    116|       for (const loan of list as Array<Record<string, Record<string, u…
+    117|         for (const key of ["borrower", "checkoutCustodian"]) expect(Ob…
+       |                                                                            ^
+    118|         expect(Object.keys(loan.asset).sort()).toEqual(["assetId", "na…
+    119|       }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+===== client tests/readable-names.test.tsx (RED, final selectors; DOM dumps omitted) =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+     × custodian Active loans: equipment, borrower and checkout custodian by name for each record 52ms
+     × borrower My loans: equipment and checkout custodian by name, no redundant self line 5ms
+     × keeps loan, request and person IDs as collapsed secondary metadata 4ms
+     × falls back to the Asset ID and "Name unavailable" without inventing names or showing UUIDs as names 5ms
+     × custodian Pending requests: equipment and borrower by name; UUIDs only in Record IDs 4ms
+     × borrower My requests: equipment name first, status kept, request ID secondary 5ms
+     × BORROWER: shows the username once, never an account UUID prefix 1024ms
+     × CUSTODIAN: shows the username once, never an account UUID prefix 1014ms
+     × uses the username from the login response 1670ms
+     × falls back to the role, not a UUID, if the server sends no username 1021ms
+ FAIL  tests/readable-names.test.tsx > UAT-E03 loans show names > custodian Active loans: equipment, borrower and checkout custodian by name for each record
+TestingLibraryElementError: Unable to find an element with the text: Mirrorless camera · ACTIVE. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  tests/readable-names.test.tsx > UAT-E03 loans show names > borrower My loans: equipment and checkout custodian by name, no redundant self line
+TestingLibraryElementError: Unable to find an element with the text: Mirrorless camera · ACTIVE. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  tests/readable-names.test.tsx > UAT-E03 loans show names > keeps loan, request and person IDs as collapsed secondary metadata
+TestingLibraryElementError: Unable to find an element with the text: Mirrorless camera · ACTIVE. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  tests/readable-names.test.tsx > UAT-E03 loans show names > falls back to the Asset ID and "Name unavailable" without inventing names or showing UUIDs as names
+TestingLibraryElementError: Unable to find an element with the text: Borrower: Name unavailable. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  tests/readable-names.test.tsx > UAT-E03 requests show names > custodian Pending requests: equipment and borrower by name; UUIDs only in Record IDs
+TestingLibraryElementError: Unable to find an element with the text: Borrower: alice.borrower. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  tests/readable-names.test.tsx > UAT-E03 requests show names > borrower My requests: equipment name first, status kept, request ID secondary
+AssertionError: expected null not to be null
+ FAIL  tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > BORROWER: shows the username once, never an account UUID prefix
+TestingLibraryElementError: Unable to find an element with the text: (_, el) => !!el?.classList.contains("identity-tag") && el.textContent === text. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > CUSTODIAN: shows the username once, never an account UUID prefix
+TestingLibraryElementError: Unable to find an element with the text: (_, el) => !!el?.classList.contains("identity-tag") && el.textContent === text. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > uses the username from the login response
+TestingLibraryElementError: Unable to find an element with the text: (_, el) => !!el?.classList.contains("identity-tag") && el.textContent === text. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > falls back to the role, not a UUID, if the server sends no username
+TestingLibraryElementError: Unable to find an element with the text: (_, el) => !!el?.classList.contains("identity-tag") && el.textContent === text. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Test Files  1 failed (1)
+      Tests  10 failed (10)
+   Duration  6.00s (tests 82%, environment 13%, setup 2%, transform 2%, import 1%)
+
+===== Playwright 06-readable-names.spec.ts (RED, final spec) =====
+Running 7 tests using 1 worker
+
+[1/7] [chromium] › tests\06-readable-names.spec.ts:59:7 › UAT-E03 (#63) readable user and equipment names in the browser › setup: Borrower A's request is checked out by Custodian A; Borrower B's request is pending
+[2/7] [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID
+  1) [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('.identity-tag')
+    Expected: "Signed in as e2e.borrower.a"
+    Error: strict mode violation: locator('.identity-tag') resolved to 2 elements:
+        1) <span class="identity-tag">Account 7ac326fa</span> aka getByRole('banner').getByText('Account 7ac326fa')
+        2) <span class="identity-tag">Account 7ac326fa</span> aka getByRole('main').getByText('Account 7ac326fa')
+
+    Call log:
+      - Expect "toHaveText" locator('.identity-tag') with timeout 8000ms
+      - waiting for locator('.identity-tag')
+
+
+      73 |   test("1. Borrower header and dashboard show the username, not an account UUID", async ({ page }, testInfo) => {
+      74 |     await login(page, "borrowerA");
+    > 75 |     await expect(page.locator(".identity-tag")).toHaveText("Signed in as e2e.borrower.a");
+         |                                                 ^
+      76 |     await expectNoAccountUuid(page);
+      77 |     await shot(page, testInfo, "01-borrower-dashboard-header");
+      78 |   });
+        at D:\SWE_Project\kitloop\e2e\tests\06-readable-names.spec.ts:75:49
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\06-readable-names-UAT-E03--09413-sername-not-an-account-UUID-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\artifacts\06-readable-names-UAT-E03--09413-sername-not-an-account-UUID-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\artifacts\06-readable-names-UAT-E03--09413-sername-not-an-account-UUID-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\artifacts\06-readable-names-UAT-E03--09413-sername-not-an-account-UUID-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\artifacts\06-readable-names-UAT-E03--09413-sername-not-an-account-UUID-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/7] [chromium] › tests\06-readable-names.spec.ts:80:7 › UAT-E03 (#63) readable user and equipment names in the browser › 2. Borrower My requests shows equipment names; request IDs are secondary
+[4/7] [chromium] › tests\06-readable-names.spec.ts:90:7 › UAT-E03 (#63) readable user and equipment names in the browser › 3. Borrower My loans shows the equipment and checkout custodian by name
+[5/7] [chromium] › tests\06-readable-names.spec.ts:101:7 › UAT-E03 (#63) readable user and equipment names in the browser › 4. Custodian Pending requests shows borrower and equipment names; actions remain
+[6/7] [chromium] › tests\06-readable-names.spec.ts:113:7 › UAT-E03 (#63) readable user and equipment names in the browser › 5. Custodian Active loans shows equipment, borrower and checkout custodian names
+[7/7] [chromium] › tests\06-readable-names.spec.ts:126:7 › UAT-E03 (#63) readable user and equipment names in the browser › 6. Mobile layout keeps names readable without horizontal scrolling
+  1 failed
+    [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID
+  5 did not run
+  1 passed (12.7s)

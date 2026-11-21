@@ -52,9 +52,25 @@ export function isCheckoutConflict(error: unknown) {
   return error.code === "P2010" && (sqlState === "40001" || sqlState === "40P01");
 }
 
-export function loanDto(loan: Loan) {
+export function loanDto<T extends Loan>(loan: T) {
   return { ...loan, status: loan.returnedAt === null ? "ACTIVE" as const : "RETURNED" as const };
 }
+
+/**
+ * UAT-E03 (#63): readable names for loan views, explicit allowlists per role (least privilege). Every existing FEAT-04
+ * ID field stays; Prisma loads each relation with one batched query per list, so there is no per-loan query.
+ * - Borrower (FR-11: own loans with checkout, due and return information): the equipment name only. No requirement
+ *   grants borrowers custodian identity, and a username is also a login identifier.
+ * - Custodian (FR-08 requester identity, FR-12 return support, scoped by BR-05): equipment name plus { id, username }
+ *   of the borrower and checkout custodian; never credentials, roles or sessions.
+ */
+const loanAssetName = { asset: { select: { assetId: true, name: true } } } satisfies Prisma.LoanInclude;
+export const borrowerLoanDetails = loanAssetName;
+export const custodianLoanDetails = {
+  ...loanAssetName,
+  borrower: { select: { id: true, username: true } },
+  checkoutCustodian: { select: { id: true, username: true } },
+} satisfies Prisma.LoanInclude;
 
 export async function checkoutRequest(custodianId: string, requestId: string, input: { assetId: string; dueAt: Date }, now = () => new Date()) {
   try {
