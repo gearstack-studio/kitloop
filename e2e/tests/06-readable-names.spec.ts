@@ -1,9 +1,9 @@
-import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
-import { API_BASE, DB_NAME, REPO_ROOT, SERVER_DIR, e2eDatabaseUrl } from "../support/env";
-import { activeLoans, card, evidence, futureLocal, login, myLoans, myRequests, pendingQueue } from "../support/helpers";
+import { API_BASE, DB_NAME, SERVER_DIR, e2eDatabaseUrl } from "../support/env";
+import { activeLoans, card, futureLocal, login, myLoans, myRequests, pendingQueue } from "../support/helpers";
+import { captureEvidence } from "../support/evidence";
 
 // UAT-E03 (#63): the signed-in user, equipment, borrowers and checkout custodians are shown by name in the real
 // browser; UUIDs are only secondary "Record IDs". Synthetic e2e data only.
@@ -11,13 +11,10 @@ test.describe.configure({ mode: "serial" });
 
 const LOANED = { assetId: "KL-E03-CAM", name: "Readable names camera" } as const;    // Borrower A, checked out
 const PENDING = { assetId: "KL-E03-MIC", name: "Readable names microphone" } as const; // Borrower B, pending
-const SHOTS = path.join(REPO_ROOT, "artifacts", "sprint-1", "uat");
-mkdirSync(SHOTS, { recursive: true });
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 
 async function shot(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: path.join(SHOTS, `uat-e03-e2e-${name}.png`), fullPage: true });
-  await evidence(page, testInfo, name);
+  await captureEvidence(page, testInfo, "e03", name);
 }
 /** Text a sighted user sees in a record: collapsed <details> (secondary Record IDs) excluded. */
 async function visible(record: Locator) {

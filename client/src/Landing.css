@@ -63,9 +63,9 @@ a.landing-link:hover { color: var(--kl-text); }
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent), linear-gradient(90deg, rgb(0 0 0 / 4%) 0%, rgb(0 0 0 / 14%) 45%, #000 85%);
   mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent), linear-gradient(90deg, rgb(0 0 0 / 4%) 0%, rgb(0 0 0 / 14%) 45%, #000 85%);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
-.landing-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 60%; mix-blend-mode: screen; -webkit-mask-image: none; mask-image: none; transform-origin: 60% 60%; animation: art-pan 22s ease-in-out infinite alternate, art-breathe 7s ease-in-out infinite alternate; }
+.landing-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 60%; mix-blend-mode: screen; -webkit-mask-image: none; mask-image: none; transform-origin: 60% 60%; animation: art-pan 22s ease-in-out infinite alternate; }
+/* UAT-E05 (#65): the art only pans (transform). Its former full-hero filter: brightness() "breathing" is removed. */
 @keyframes art-pan { from { transform: scale(1.04) translate3d(-1.5%, 1%, 0); } to { transform: scale(1.16) translate3d(2%, -2%, 0); } }
-@keyframes art-breathe { from { filter: brightness(0.8) saturate(0.95); } to { filter: brightness(1.2) saturate(1.15); } }
 
 /* Features */
 .landing-features { padding-block: clamp(64px, 12vh, 140px); border-top: 1px solid var(--kl-border); }
@@ -167,14 +167,18 @@ a.landing-link:hover { color: var(--kl-text); }
 
 /* Self-animating backdrop: light pulses travelling down the hero grid lines */
 .landing-hero > .landing-beams { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, #000, transparent 80%); mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, #000, transparent 80%); }
-.landing-drop { position: absolute; top: 0; color: var(--kl-accent); opacity: 0; animation: landing-fall 10s cubic-bezier(0.45, 0, 0.9, 0.7) infinite; }
+.landing-drop { position: absolute; top: 0; left: var(--fall-x); color: var(--kl-accent); opacity: 0; animation: landing-fall 10s cubic-bezier(0.45, 0, 0.9, 0.7) infinite; }
 @keyframes landing-fall {
   0% { transform: translateY(-80px) rotate(0); opacity: 0; }
   10% { opacity: 0.45; }
   75% { opacity: 0.45; }
   100% { transform: translateY(max(100vh, 900px)) rotate(var(--spin)); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .landing-beams { display: none; } }
+/* UAT-E05 (#65) reduced motion: a deliberate static scene. The icons rest at fixed places (Backdrop.tsx), dimmer than
+   in flight, instead of being hidden. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-drop { left: var(--rest-x); top: var(--rest-y); opacity: 0.28; transform: rotate(var(--spin)); animation: none; }
+}
 
 /* Ambient light: soft washes drifting behind the whole page */
 .landing-ambient { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
@@ -186,7 +190,9 @@ a.landing-link:hover { color: var(--kl-text); }
 @keyframes ambient-a { from { transform: translate3d(-8vw, -4vw, 0) scale(0.9); opacity: 0.55; } to { transform: translate3d(22vw, 12vw, 0) scale(1.25); opacity: 1; } }
 @keyframes ambient-b { from { transform: translate3d(8vw, 8vw, 0) scale(1.2); opacity: 1; } to { transform: translate3d(-24vw, -10vw, 0) scale(0.9); opacity: 0.5; } }
 @keyframes ambient-c { from { transform: translate3d(-14vw, 4vw, 0) scale(1); opacity: 0.5; } to { transform: translate3d(18vw, -12vw, 0) scale(1.3); opacity: 0.95; } }
-@media (prefers-reduced-motion: reduce) { .landing-ambient span { animation: none; } }
+/* UAT-E05 (#65): ":nth-child(n)" matches the specificity of the per-wash rules above. The former plain
+   ".landing-ambient span" lost to them, so the washes kept looping (at the global 0.01ms reduced-motion duration). */
+@media (prefers-reduced-motion: reduce) { .landing-ambient span:nth-child(n) { animation: none; } }
 
 /* Section title: editorial display */
 .landing-section-title { margin: 0 0 clamp(32px, 6vw, 72px); font-size: clamp(40px, 7vw, 104px); font-weight: 760; line-height: 0.95; letter-spacing: -0.07em; background: linear-gradient(180deg, #fff 35%, var(--kl-text-muted)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

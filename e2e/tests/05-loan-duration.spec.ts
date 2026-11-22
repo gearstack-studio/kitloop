@@ -1,9 +1,9 @@
-import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { DB_NAME, REPO_ROOT, SERVER_DIR, e2eDatabaseUrl } from "../support/env";
-import { api, card, evidence, futureLocal, login, myRequests, pendingQueue } from "../support/helpers";
+import { DB_NAME, SERVER_DIR, e2eDatabaseUrl } from "../support/env";
+import { api, card, futureLocal, login, myRequests, pendingQueue } from "../support/helpers";
+import { captureEvidence } from "../support/evidence";
 
 // UAT-E02 (#62), BR-11, SRS OQ-01: checkout due dates are bounded by the configured maximum loan duration. The e2e API
 // runs with LOAN_MAX_DAYS=21 (playwright.config.ts), a TEST CONFIGURATION ONLY; the approved value is still undecided.
@@ -12,12 +12,9 @@ test.describe.configure({ mode: "serial" });
 const MAX_DAYS = 21;
 const ASSET = { assetId: "KL-E02-CAM", name: "Loan period camera" } as const;
 const STALE = { assetId: "KL-E02-LEN", name: "Loan period lens" } as const;   // PR #73 P2 stale-maximum regression
-const SHOTS = path.join(REPO_ROOT, "artifacts", "sprint-1", "uat");
-mkdirSync(SHOTS, { recursive: true });
 
 async function shot(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: path.join(SHOTS, `uat-e02-e2e-${name}.png`), fullPage: true });
-  await evidence(page, testInfo, name);
+  await captureEvidence(page, testInfo, "e02", name);
 }
 const queued = (page: Page) => pendingQueue(page).getByRole("article").filter({ hasText: ASSET.assetId });
 const ids: Record<string, string> = {};

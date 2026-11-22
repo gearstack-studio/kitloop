@@ -1,21 +1,16 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { REPO_ROOT } from "../support/env";
-import { evidence, login } from "../support/helpers";
+import { login } from "../support/helpers";
+import { captureEvidence } from "../support/evidence";
 
 // UAT-E04 (#64): borrowers see two persistent links, "Equipment dashboard" and "My requests", with the current page
 // marked visually and by aria-current="page". Read-only journey: sign in and navigate; no records are written.
-const SHOTS = path.join(REPO_ROOT, "artifacts", "sprint-1", "uat");
-mkdirSync(SHOTS, { recursive: true });
 
 const nav = (page: Page) => page.getByRole("navigation", { name: "Borrower pages" });
 const dashboardLink = (page: Page) => nav(page).getByRole("link", { name: "Equipment dashboard" });
 const requestsLink = (page: Page) => nav(page).getByRole("link", { name: "My requests" });
 
 async function shot(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: path.join(SHOTS, `uat-e04-e2e-${name}.png`), fullPage: true });
-  await evidence(page, testInfo, name);
+  await captureEvidence(page, testInfo, "e04", name);
 }
 
 /** Both links visible on screen with real hrefs, and only `current` marked as the current page. */
@@ -32,7 +27,8 @@ async function expectCurrent(page: Page, current: "dashboard" | "requests") {
   await expect(off).not.toHaveAttribute("aria-current", /.*/);
   // The current page is distinguishable without relying on the attribute: a different fill from the other link.
   const fill = (locator: typeof on) => locator.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(await fill(on)).not.toBe(await fill(off));
+  // .btn animates background-color (150 ms), so wait for the fills to settle rather than sampling mid-transition.
+  await expect.poll(async () => (await fill(on)) !== (await fill(off))).toBe(true);
 }
 
 test.describe("UAT-E04 (#64) persistent borrower navigation", () => {
