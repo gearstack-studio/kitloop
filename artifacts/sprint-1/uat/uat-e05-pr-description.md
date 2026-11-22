@@ -1,0 +1,106 @@
+# fix(landing): stabilize background animation and reduced-motion behavior (#65)
+
+Refs #65. The issue stays open until this change is deployed and Team 7 retests it on the laptops that showed the problem.
+
+## Summary
+
+UAT-E05: some laptops showed the falling-equipment animation on the landing page, while others showed "a flickering light". The audit found two implementation defects and one requirement gap. This PR fixes all three without changing the page's composition or artwork.
+
+## Root cause and evidence
+
+1. **Confirmed: reduced motion left three full-page light layers looping every 0.01 ms.**
+   - The override `.landing-ambient span { animation: none }` (specificity 0,1,1) lost to the per-wash `:nth-child()` rules (0,2,1). The global reduced-motion reset then shortened their infinite 16–24 s drift to 0.01 ms per cycle.
+   - What is shown therefore depends on each frame's timestamp. Moving the timeline by 3–12 µs changed a wash's opacity between 0.55 and 1.0.
+   - **Reproduced in Chromium with `reducedMotion: 'reduce'`:** the washes jumped (opacity 0.775 → 0.634, up to about 120 px of movement) within a 15 s window. At the same time the equipment icons were hidden (`display: none`).
+   - A laptop with Windows "Animation effects" off therefore showed no icons and a light that could jump. This matches the report; Team 7 should confirm the setting.
+2. **Confirmed: falling icons popped in and teleported (all devices).**
+   - The per-loop re-roll changed `animationDuration` on a running animation, which moves its progress.
+   - A per-frame sampler recorded 14 jumps in 20 s, for example opacity 0.01 → 0.45 and the top −5 → 331 px in one frame.
+3. **Requirement gap: a full-hero `filter: brightness(0.8↔1.2)` "breathing" animation** on the blended light-trails image.
+
+**Not confirmed:** GPU-specific flicker from the filter or `mix-blend-mode: screen`, because no affected hardware was available. The filter animation is removed anyway. The static blend mode is kept and flagged as the next suspect if flicker persists with motion on.
+
+## Implementation
+
+- **`Landing.css`:**
+  - The reduced-motion override for the washes uses `:nth-child(n)` so it wins and `animation: none` applies.
+  - Under reduced motion, the icons rest at fixed places (opacity 0.28) instead of being hidden, giving a deliberate static scene.
+  - `art-breathe` is removed; the art keeps its transform-only pan.
+  - The icon's x position comes from `--fall-x`.
+- **`Backdrop.tsx`:**
+  - The fall duration is chosen once per icon. The loop re-roll changes only icon, position, size and tilt, while the icon is transparent above the hero.
+  - Each icon has a fixed resting place (`--rest-x`, `--rest-y`).
+- **`index.css`:** the global reduced-motion reset adds `animation-iteration-count: 1 !important`, so a future missed infinite animation plays once instead of looping every frame.
+- **Unchanged:**
+  - no new dependency;
+  - no changes to text, colours, artwork, routes or signed-in pages.
+  - The sign-in page shares `Backdrop` and gets the same fixes.
+
+## RED / GREEN
+
+| Suite | RED (baseline `4376248`) | GREEN |
+|---|---|---|
+| E2E `08-landing-animation.spec.ts` (Chromium, `reducedMotion` controlled) | 6 failed, 8 passed | 14/14 |
+| Client `landing-animation.test.tsx` | 2 failed, 1 passed | 3/3 |
+
+What the E2E spec checks:
+- **Animation state:** an inventory from `document.getAnimations()`.
+- **Flashing:** a per-frame sampler, 20 s with normal motion and 15 s with reduced motion.
+- **Stability:** cumulative layout shift.
+- **Nothing blocks controls:** hit-testing at control and text centres.
+- **Behaviour:** `/login` navigation, keyboard focus, no horizontal scroll at 1280 px and 375 px, and recordings.
+
+During the full run, the 20 s sampler failed once because of a roughly 29-minute frame gap (host suspended). It now skips frame pairs more than 250 ms apart. Re-checked: it still fails on the baseline and passes on the fix.
+
+## Full regression
+
+| Check | Result |
+|---|---|
+| Full client (Vitest) | **PASS**: 11 files, 80/80 (77 before, plus 3 new) |
+| Full server (Vitest, `kitloop_auth_test`) | **PASS**: 16 files, 129/129 (no server change) |
+| Full browser E2E (Playwright, Chromium) | **PASS**: 67/67 = 01 auth/catalog 3, 02 request/checkout 8, 03 access control 12, 04 request lifecycle (UAT-E01 #61) 8, 05 loan duration (UAT-E02 #62) 5, 06 readable names (UAT-E03 #63) 7, 07 borrower navigation (UAT-E04 #64) 10, 08 landing animation (UAT-E05) 14 |
+| Client lint (`eslint .`) | **PASS**: exit 0, no findings |
+| Client production build | **PASS**: exit 0 |
+| Server typecheck and production build | **PASS**: exit 0 |
+| E2E typecheck (`tsc --noEmit`) | **PASS**: exit 0 |
+| Firefox / WebKit smoke | **NOT RUN**: browsers not installed |
+
+An earlier full run had 66/67; the one failure was the stalled-frame artefact described in §7, and the sampler was fixed and rechecked. The UAT-E01 to E04 screenshots regenerated by the full runs were restored to their committed versions.
+
+## Accessibility and performance
+
+- **Reduced motion:** nothing animates. In a 10 s trace, style recalculations went from 181 to 0 (headless Chromium).
+- **Normal motion:** 0 filter animations (was 1), smooth icon fades.
+- **Both modes:**
+  - decorative layers are `pointer-events: none` and `aria-hidden`;
+  - text and controls are on top (hit-tested);
+  - Tab reaches Login with a visible focus ring;
+  - 0 console errors.
+- No FPS or GPU figures are claimed; the headless numbers do not represent laptop GPUs.
+- Firefox and WebKit were **not run**: only Chromium is installed.
+
+## Before / after evidence
+
+These are in `artifacts/sprint-1/uat/`:
+- `uat-e05-lab6-report.md`
+- `uat-e05-red.txt`, `uat-e05-green.txt`
+- `uat-e05-{before,after}-0{1..4}-*.png`
+- `uat-e05-{before,after}-recording-*.webm`
+
+## Remaining limitations
+
+- The flicker was not seen frame by frame on this machine. The mechanism is confirmed and removed, but it is only resolved on the affected hardware once Team 7 confirms it.
+- The static `mix-blend-mode: screen` and the nav's `backdrop-filter` are unchanged.
+- Only Chromium was tested.
+
+## Independent retest (Team 7)
+
+Follow `uat-e05-lab6-report.md` §11 on **the same laptops**:
+- Note whether Windows Animation effects is on or off on each.
+- Watch `/` for 20 s in both states:
+  - **effects on:** smooth falling icons, no flashing or brightness pulse;
+  - **effects off:** a completely still scene with resting icons.
+- Check that Get Started and Login lead to sign in.
+- Attach a short recording from each laptop.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

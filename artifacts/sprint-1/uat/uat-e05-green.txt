@@ -1,0 +1,130 @@
+UAT-E05 (#65) GREEN: stable landing animation and deliberate reduced-motion scene
+Branch fix/65-uat-landing-animation on base 4376248. Isolated databases (kitloop_auth_test, kitloop_e2e_pw), synthetic data.
+
+  focused e2e 08-landing-animation 14/14; focused client landing-animation 3/3
+  full client 11 files 80/80; full server 16 files 129/129
+  client lint, client build, server typecheck+build, e2e typecheck: exit 0
+  full browser E2E 67/67 (01:3 02:8 03:12 04:8 05:5 06:7 07:10 08:14), incl. UAT-E01..E04 specs
+  An earlier full run had 66/67: the 20 s sampler saw one ~29 min frame gap (host suspended); the sampler now skips
+  frame pairs > 250 ms apart (recheck below). E2E global setup hit a pre-test 'read ECONNRESET' 3 times (retried).
+
+===== performance trace, Chromium headless 1280x800, 10 s window (not representative of laptop GPUs) =====
+{"label":"baseline","reducedMotion":"no-preference","windowMs":10000,"rafFrames":115,"paint":{"n":10,"ms":1.8},"updateLayoutTree":{"n":115,"ms":33.6},"layout":{"n":5,"ms":1.2},"styleRecalcCountDelta":116,"layoutCountDelta":5,"taskMsDelta":172,"running":13,"infinite":13,"filterAnims":1,"domElements":102,"errors":[]}
+{"label":"baseline","reducedMotion":"reduce","windowMs":10000,"rafFrames":181,"paint":{"n":0,"ms":0},"updateLayoutTree":{"n":181,"ms":13.9},"layout":{"n":0,"ms":0},"styleRecalcCountDelta":183,"layoutCountDelta":0,"taskMsDelta":136,"running":3,"infinite":3,"filterAnims":0,"domElements":100,"errors":[]}
+{"label":"fixed","reducedMotion":"no-preference","windowMs":10000,"rafFrames":123,"paint":{"n":4,"ms":0.2},"updateLayoutTree":{"n":123,"ms":34.5},"layout":{"n":2,"ms":0.2},"styleRecalcCountDelta":123,"layoutCountDelta":2,"taskMsDelta":124,"running":12,"infinite":12,"filterAnims":0,"domElements":103,"errors":[]}
+{"label":"fixed","reducedMotion":"reduce","windowMs":10000,"rafFrames":602,"paint":{"n":0,"ms":0},"updateLayoutTree":{"n":0,"ms":0},"layout":{"n":0,"ms":0},"styleRecalcCountDelta":0,"layoutCountDelta":0,"taskMsDelta":210,"running":0,"infinite":0,"filterAnims":0,"domElements":99,"errors":[]}
+
+===== focused e2e =====
+  ok  1 [chromium] › tests\08-landing-animation.spec.ts:133:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (5.8s)
+  ok  2 [chromium] › tests\08-landing-animation.spec.ts:142:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (780ms)
+  ok  3 [chromium] › tests\08-landing-animation.spec.ts:148:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.3s)
+  ok  4 [chromium] › tests\08-landing-animation.spec.ts:160:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (3.3s)
+  ok  5 [chromium] › tests\08-landing-animation.spec.ts:171:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (3.9s)
+  ok  6 [chromium] › tests\08-landing-animation.spec.ts:184:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (1.9s)
+  ok  7 [chromium] › tests\08-landing-animation.spec.ts:191:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (2.6s)
+  ok  8 [chromium] › tests\08-landing-animation.spec.ts:199:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (16.8s)
+  ok  9 [chromium] › tests\08-landing-animation.spec.ts:212:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (670ms)
+  ok 10 [chromium] › tests\08-landing-animation.spec.ts:222:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.7s)
+  ok 11 [chromium] › tests\08-landing-animation.spec.ts:236:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (1.1s)
+  ok 12 [chromium] › tests\08-landing-animation.spec.ts:236:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (739ms)
+  ok 13 [chromium] › tests\08-landing-animation.spec.ts:252:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference) (13.5s)
+  ok 14 [chromium] › tests\08-landing-animation.spec.ts:252:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce) (14.0s)
+  14 passed (1.7m)
+
+===== recheck: 20 s observation with stalled-frame guard (fixed) =====
+  ok 1 [chromium] › tests\08-landing-animation.spec.ts:153:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.1s)
+  1 passed (59.7s)
+
+===== focused client =====
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+
+===== full client =====
+ Test Files  11 passed (11)
+      Tests  80 passed (80)
+
+===== full server =====
+ Test Files  16 passed (16)
+      Tests  129 passed (129)
+
+===== client lint / build, server build, e2e typecheck =====
+eslint: 0 lines of output (no findings)
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-D5BMNUG5.css          32.14 kB │ gzip:  7.14 kB
+dist/assets/index-CRfDxlJI.js          248.30 kB │ gzip: 77.05 kB
+
+✓ built in 996ms
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+e2e tsc --noEmit: 0 bytes of output (no errors)
+
+===== full Playwright =====
+  ok  1 [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message (1.7s)
+  ok  2 [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog (1.4s)
+  ok  3 [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login (1.5s)
+  ok  4 [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset (1.9s)
+  ok  5 [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001 (2.1s)
+  ok  6 [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload (2.0s)
+  ok  7 [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests (1.7s)
+  ok  8 [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears (2.2s)
+  ok  9 [chromium] › tests\02-request-checkout-journey.spec.ts:107:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered (1.6s)
+  ok 10 [chromium] › tests\02-request-checkout-journey.spec.ts:117:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload (1.9s)
+  ok 11 [chromium] › tests\02-request-checkout-journey.spec.ts:132:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason (1.4s)
+  ok 12 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login (776ms)
+  ok 13 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login (889ms)
+  ok 14 [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls (1.6s)
+  ok 15 [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls (1.4s)
+  ok 16 [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session (143ms)
+  ok 17 [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A) (1.2s)
+  ok 18 [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING (1.8s)
+  ok 19 [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403) (1.3s)
+  ok 20 [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created (1.4s)
+  ok 21 [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING (1.3s)
+  ok 22 [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list (1.3s)
+  ok 23 [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan (1.3s)
+  ok 24 [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING (2.9s)
+  ok 25 [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue (2.3s)
+  ok 26 [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason (1.6s)
+  ok 27 [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action (1.9s)
+  ok 28 [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed (3.6s)
+  ok 29 [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first (4.1s)
+  ok 30 [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions) (5.0s)
+  ok 31 [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first (4.3s)
+  ok 32 [chromium] › tests\05-loan-duration.spec.ts:51:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date (2.9s)
+  ok 33 [chromium] › tests\05-loan-duration.spec.ts:73:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent (1.8s)
+  ok 34 [chromium] › tests\05-loan-duration.spec.ts:85:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING (2.0s)
+  ok 35 [chromium] › tests\05-loan-duration.spec.ts:99:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created (1.7s)
+  ok 36 [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum) (2.8s)
+  ok 37 [chromium] › tests\06-readable-names.spec.ts:59:7 › UAT-E03 (#63) readable user and equipment names in the browser › setup: Borrower A's request is checked out by Custodian A; Borrower B's request is pending (3.6s)
+  ok 38 [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID (1.8s)
+  ok 39 [chromium] › tests\06-readable-names.spec.ts:80:7 › UAT-E03 (#63) readable user and equipment names in the browser › 2. Borrower My requests shows equipment names; request IDs are secondary (2.2s)
+  ok 40 [chromium] › tests\06-readable-names.spec.ts:90:7 › UAT-E03 (#63) readable user and equipment names in the browser › 3. Borrower My loans shows the equipment by name and no custodian identity (1.7s)
+  ok 41 [chromium] › tests\06-readable-names.spec.ts:105:7 › UAT-E03 (#63) readable user and equipment names in the browser › 4. Custodian Pending requests shows borrower and equipment names; actions remain (1.7s)
+  ok 42 [chromium] › tests\06-readable-names.spec.ts:117:7 › UAT-E03 (#63) readable user and equipment names in the browser › 5. Custodian Active loans shows equipment, borrower and checkout custodian names (2.0s)
+  ok 43 [chromium] › tests\06-readable-names.spec.ts:130:7 › UAT-E03 (#63) readable user and equipment names in the browser › 6. Mobile layout keeps names readable without horizontal scrolling (2.6s)
+  ok 44 [chromium] › tests\07-borrower-navigation.spec.ts:39:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked (2.5s)
+  ok 45 [chromium] › tests\07-borrower-navigation.spec.ts:53:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page (1.8s)
+  ok 46 [chromium] › tests\07-borrower-navigation.spec.ts:61:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates (1.7s)
+  ok 47 [chromium] › tests\07-borrower-navigation.spec.ts:80:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker (1.6s)
+  ok 48 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll (2.0s)
+  ok 49 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll (1.8s)
+  ok 50 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll (1.8s)
+  ok 51 [chromium] › tests\07-borrower-navigation.spec.ts:117:7 › UAT-E04 (#64) persistent borrower navigation › custodians do not get the borrower navigation (1.3s)
+  ok 52 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /dashboard still redirects to sign in, with no borrower navigation (756ms)
+  ok 53 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /requests still redirects to sign in, with no borrower navigation (957ms)
+  ok 54 [chromium] › tests\08-landing-animation.spec.ts:138:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (5.2s)
+  ok 55 [chromium] › tests\08-landing-animation.spec.ts:147:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (1.1s)
+  ok 56 [chromium] › tests\08-landing-animation.spec.ts:153:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.2s)
+  ok 57 [chromium] › tests\08-landing-animation.spec.ts:165:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (3.1s)
+  ok 58 [chromium] › tests\08-landing-animation.spec.ts:176:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (4.1s)
+  ok 59 [chromium] › tests\08-landing-animation.spec.ts:189:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (1.8s)
+  ok 60 [chromium] › tests\08-landing-animation.spec.ts:196:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (2.3s)
+  ok 61 [chromium] › tests\08-landing-animation.spec.ts:204:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (16.9s)
+  ok 62 [chromium] › tests\08-landing-animation.spec.ts:217:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (816ms)
+  ok 63 [chromium] › tests\08-landing-animation.spec.ts:227:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.6s)
+  ok 64 [chromium] › tests\08-landing-animation.spec.ts:241:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (863ms)
+  ok 65 [chromium] › tests\08-landing-animation.spec.ts:241:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (735ms)
+  ok 66 [chromium] › tests\08-landing-animation.spec.ts:257:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference) (13.6s)
+  ok 67 [chromium] › tests\08-landing-animation.spec.ts:257:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce) (14.0s)
+  67 passed (3.9m)

@@ -132,5 +132,7 @@ p {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    /* UAT-E05 (#65): an infinite animation shortened to 0.01ms would otherwise loop every frame. */
+    animation-iteration-count: 1 !important;
   }
 }
