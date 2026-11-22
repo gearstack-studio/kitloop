@@ -47,7 +47,27 @@ All under `e2e/` and git-ignored:
 
 - `test-results/results.json`: machine-readable results.
 - `playwright-report/`: HTML report, including screenshots attached at key steps of the main journeys (also for passing tests).
-- `test-results/artifacts/<test>/`: for **failed** tests only: `test-failed-1.png`, `video.webm`, `trace.zip`, `error-context.md`. Open a trace with `npx playwright show-trace <path>/trace.zip`.
+- `test-results/artifacts/<test>/`: each test's own output folder. Step screenshots of the UAT journeys (specs 04 to 08) are saved here as `uat-eNN-…png` for every run, so the same name in two tests never collides. For **failed** tests it also holds `test-failed-1.png`, `video.webm`, `trace.zip` and `error-context.md`. Open a trace with `npx playwright show-trace <path>/trace.zip`. Playwright clears this folder at the start of each run.
+
+A routine run never writes to the committed Lab 6 evidence in `artifacts/sprint-1/uat/`. To prove it for a run, use `npm run test:e2e:guarded` (same arguments as `playwright test`). It hashes every file in that folder and records its `git status` before and after the run, and fails (exit 3) if anything was added, changed or removed. It never restores files.
+
+## UAT evidence export (deliberate, local only)
+
+Lab 6 screenshots and recordings are copied into `artifacts/sprint-1/uat/` only when you ask for a finding explicitly:
+
+| Variable | Values | Meaning |
+| --- | --- | --- |
+| `UAT_EVIDENCE_EXPORT` | `e01` … `e05`, comma-separated; unset, empty, `0`, `off`, `false` or `no` = no export | Which findings' evidence to export |
+| `UAT_EVIDENCE_PHASE` | `before` or `after` | Required for `e05`, whose files are named `uat-e05-<phase>-…`; rejected for the others |
+| `UAT_EVIDENCE_OVERWRITE` | `1` or `0` (default) | Without `1` an existing evidence file is never replaced: files are created exclusively and an existing name fails the test with a clear message |
+
+```sh
+# UAT-E05 "after" evidence: 4 screenshots plus the two 12 s recordings (the recordings run only while exporting e05)
+UAT_EVIDENCE_EXPORT=e05 UAT_EVIDENCE_PHASE=after npx playwright test tests/08-landing-animation.spec.ts
+# "before" evidence: check out the baseline commit first, then use UAT_EVIDENCE_PHASE=before
+```
+
+Any other value stops the run before a test starts. Export is refused when `CI` is set; CI never exports. Exporting one finding cannot write another finding's files. The retired `UAT_E05_PHASE` variable is rejected so that old instructions cannot silently do nothing. Review and commit exported files deliberately.
 
 A trace or video of a failed test can contain the credentials typed in that run. They are random and belong to a database that is dropped at the end of the run, but do not publish these folders.
 

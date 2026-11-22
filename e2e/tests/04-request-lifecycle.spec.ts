@@ -1,9 +1,9 @@
-import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
-import { API_BASE, APP_ORIGIN, DB_NAME, REPO_ROOT, SERVER_DIR, e2eDatabaseUrl, type UserKey } from "../support/env";
-import { api, card, evidence, futureLocal, login, myRequests, pendingQueue } from "../support/helpers";
+import { API_BASE, APP_ORIGIN, DB_NAME, SERVER_DIR, e2eDatabaseUrl, type UserKey } from "../support/env";
+import { api, card, futureLocal, login, myRequests, pendingQueue } from "../support/helpers";
+import { captureEvidence } from "../support/evidence";
 
 // UAT-E01 (#61) request lifecycle, end to end: real React client, real Express API, isolated e2e PostgreSQL database.
 //   competing requests -> checkout auto-declines the loser -> borrower cancel -> custodian decline -> scope/role
@@ -19,13 +19,10 @@ const ASSETS = {
   stale: { assetId: "KL-E01-LIT", name: "Lifecycle light" },
 } as const;
 
-const SHOTS = path.join(REPO_ROOT, "artifacts", "sprint-1", "uat");
-mkdirSync(SHOTS, { recursive: true });
 
-/** Lab 6 evidence: full-page screenshot saved under artifacts/sprint-1/uat and attached to the HTML report. */
+/** Lab 6 evidence: full-page screenshot in this test's output folder and the HTML report; exported only on request. */
 async function shot(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: path.join(SHOTS, `uat-e01-e2e-${name}.png`), fullPage: true });
-  await evidence(page, testInfo, name);
+  await captureEvidence(page, testInfo, "e01", name);
 }
 
 const request = (page: Page, assetId: string) => myRequests(page).getByRole("article").filter({ hasText: assetId });

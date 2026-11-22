@@ -5,6 +5,7 @@
   "description": "Playwright browser end-to-end tests for KitLoop (isolated database, own API and Vite ports).",
   "scripts": {
     "test:e2e": "playwright test",
+    "test:e2e:guarded": "node scripts/check-evidence-integrity.mjs",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report playwright-report",
     "install:browsers": "playwright install chromium",

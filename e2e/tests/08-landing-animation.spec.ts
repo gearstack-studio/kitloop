@@ -1,22 +1,18 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
+import { readFileSync } from "node:fs";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { REPO_ROOT } from "../support/env";
-import { evidence } from "../support/helpers";
+import { EXPORT, captureEvidence, evidenceName, exportEvidence, exporting } from "../support/evidence";
 
 // UAT-E05 (#65): the landing page background must animate smoothly with normal motion and be a deliberate static
 // scene with reduced motion (Windows "Animation effects" off reports prefers-reduced-motion: reduce in Chromium).
 // Signed-out, read-only: no records are created. Time-dependent behaviour is checked by sampling computed styles on
 // every animation frame and by inspecting document.getAnimations(), not by screenshots alone.
-const SHOTS = path.join(REPO_ROOT, "artifacts", "sprint-1", "uat");
-mkdirSync(SHOTS, { recursive: true });
-const PHASE = process.env.UAT_E05_PHASE ?? "after";   // "before" when capturing the baseline
+// Screenshots go to each test's output folder and the HTML report; they are exported to artifacts/sprint-1/uat/ only
+// with UAT_EVIDENCE_EXPORT=e05 UAT_EVIDENCE_PHASE=before|after (support/evidence.ts, e2e/README.md).
 const DESKTOP = { width: 1280, height: 800 };
 const MOBILE = { width: 375, height: 812 };
 
 async function shot(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: path.join(SHOTS, `uat-e05-${PHASE}-${name}.png`) });
-  await evidence(page, testInfo, name);
+  await captureEvidence(page, testInfo, "e05", name, { fullPage: false });
 }
 
 async function openLanding(page: Page) {
@@ -48,6 +44,11 @@ function inventory(page: Page) {
  * appears (opacity jump) or teleports while visible, and any frame-to-frame opacity jump of the ambient light washes.
  * Consecutive frames more than 250 ms apart (the host stalled or slept) are not compared: the animation legitimately
  * advanced in between. They are counted as `gaps` so a stalled run is visible in the result.
+ * The limits scale with the frame interval and come from the landing-fall keyframes: opacity rises 0 -> 0.45 within the
+ * first 10% of a fall of at least 8 s, and the easing's steepest slope is 3, so it can change by at most ~1.7 per
+ * second; the icon descends about 980 px over at least 8 s, at most ~370 px per second. A jump beyond
+ * 0.05 + 2/s x interval (opacity) or 20 px + 400 px/s x interval (position) cannot come from the animation itself.
+ * At 60 fps this is stricter than a fixed 0.15 / 150 px; on a slow, loaded host it no longer flags a normal fade-in.
  */
 function observe(page: Page, ms: number) {
   return page.evaluate(async (duration) => {
@@ -61,6 +62,7 @@ function observe(page: Page, ms: number) {
     await new Promise<void>((done) => {
       const tick = (now: number) => {
         frames++;
+        const interval = (now - last) / 1000;
         if (now - last > 250) { gaps++; previous.clear(); }
         last = now;
         for (const element of [...drops, ...washes]) {
@@ -70,7 +72,7 @@ function observe(page: Page, ms: number) {
           if (before && washes.includes(element as HTMLElement)) washJump = Math.max(washJump, Math.abs(opacity - before.opacity));
           if (before && !washes.includes(element as HTMLElement)) {
             const visible = before.opacity > 0.1 && opacity > 0.1;
-            if (Math.abs(opacity - before.opacity) > 0.15 || (visible && Math.abs(top - before.top) > 150)) {
+            if (Math.abs(opacity - before.opacity) > 0.05 + 2 * interval || (visible && Math.abs(top - before.top) > 20 + 400 * interval)) {
               popIns.push({ at: Math.round(now - start), from: +before.opacity.toFixed(2), to: +opacity.toFixed(2), topFrom: Math.round(before.top), topTo: Math.round(top) });
             }
           }
@@ -251,18 +253,29 @@ test.describe("UAT-E05 (#65) keyboard access", () => {
   }
 });
 
-// Evidence only: short recordings of each mode (Playwright video, Chromium). Not a pass/fail check.
+// Evidence only: 12 s recordings of each mode (Playwright video, Chromium). Not a pass/fail check, so they are skipped
+// in routine runs and recorded only while exporting e05. The video is recorded into this test's output folder; only
+// the export step copies it into the UAT folder (never replacing an existing file without UAT_EVIDENCE_OVERWRITE=1).
 test.describe("UAT-E05 (#65) recordings", () => {
+  test.skip(!exporting("e05"), "evidence-only recordings: run with UAT_EVIDENCE_EXPORT=e05 UAT_EVIDENCE_PHASE=before|after");
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
-    test(`record 12 s of the landing page (${reducedMotion})`, async ({ browser, baseURL }) => {
+    test(`record 12 s of the landing page (${reducedMotion})`, async ({ browser, baseURL }, testInfo) => {
       test.setTimeout(60_000);
-      const context = await browser.newContext({ baseURL, reducedMotion, viewport: DESKTOP, recordVideo: { dir: test.info().outputPath("video"), size: DESKTOP } });
-      const page = await context.newPage();
-      await openLanding(page);
-      await page.waitForTimeout(12_000);
-      const video = page.video()!;
-      await context.close();
-      await video.saveAs(path.join(SHOTS, `uat-e05-${PHASE}-recording-${reducedMotion === "reduce" ? "reduced-motion" : "normal-motion"}.webm`));
+      const mode = reducedMotion === "reduce" ? "reduced-motion" : "normal-motion";
+      const context = await browser.newContext({ baseURL, reducedMotion, viewport: DESKTOP, recordVideo: { dir: testInfo.outputPath("video"), size: DESKTOP } });
+      let video: ReturnType<Page["video"]> = null;
+      try {
+        const page = await context.newPage();
+        video = page.video();
+        await openLanding(page);
+        await page.waitForTimeout(12_000);
+      } finally {
+        await context.close();   // finalises the video and frees the browser context even when a step failed
+      }
+      const local = testInfo.outputPath(`uat-e05-recording-${mode}.webm`);
+      await video!.saveAs(local);
+      await testInfo.attach(`recording-${mode}`, { path: local, contentType: "video/webm" });
+      exportEvidence("e05", evidenceName("e05", `recording-${mode}`, "webm", EXPORT.phase), readFileSync(local));
     });
   }
 });

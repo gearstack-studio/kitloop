@@ -1,0 +1,72 @@
+PR #76 review (P2) RED: routine E2E runs overwrite committed UAT evidence
+Reviewed commit 5b12506, run in an isolated git worktree (scratchpad), never in the real checkout. No export flags.
+Guard: e2e/scripts/check-evidence-integrity.mjs hashes artifacts/sprint-1/uat/* and records git status before/after.
+
+  spec 08 only: 14/14 tests passed, guard FAIL: modified 4 committed uat-e05-after-*.png, added 2 untracked .webm
+  full suite:   guard FAIL: modified 36 tracked screenshots (e01 11, e02 5, e03 7, e04 9, e05 4), added 2 .webm
+                (66 passed, 1 failed: the 20 s sampler flagged a normal fade-in under load, see the GREEN log)
+
+===== spec 08 under the guard (baseline 5b12506) =====
+evidence guard: 81 files under artifacts/sprint-1/uat hashed before the run
+  14 passed (2.4m)
+evidence guard: 83 files after the run; added 2, modified 4, removed 0
+  added: artifacts/sprint-1/uat/uat-e05-after-recording-normal-motion.webm
+  added: artifacts/sprint-1/uat/uat-e05-after-recording-reduced-motion.webm
+  modified: artifacts/sprint-1/uat/uat-e05-after-01-desktop-normal-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-02-mobile-normal-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-03-desktop-reduced-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-04-mobile-reduced-motion.png
+evidence guard: git status for artifacts/sprint-1/uat changed
+ M artifacts/sprint-1/uat/uat-e05-after-02-mobile-normal-motion.png
+ M artifacts/sprint-1/uat/uat-e05-after-03-desktop-reduced-motion.png
+ M artifacts/sprint-1/uat/uat-e05-after-04-mobile-reduced-motion.png
+?? artifacts/sprint-1/uat/uat-e05-after-recording-normal-motion.webm
+?? artifacts/sprint-1/uat/uat-e05-after-recording-reduced-motion.webm
+evidence guard: FAIL, the run changed committed UAT evidence
+
+===== full suite under the guard (baseline 5b12506) =====
+evidence guard: 81 files under artifacts/sprint-1/uat hashed before the run
+    test-results\artifacts\08-landing-animation-UAT-E-bf5d5-e-smoothly-layout-is-stable-chromium\test-failed-1.png
+  1 failed
+  66 passed (5.3m)
+evidence guard: 83 files after the run; added 2, modified 36, removed 0
+  added: artifacts/sprint-1/uat/uat-e05-after-recording-normal-motion.webm
+  added: artifacts/sprint-1/uat/uat-e05-after-recording-reduced-motion.webm
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-01-borrower-b-competing-request-pending.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-02-custodian-queue-two-competing-requests.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-03-custodian-queue-after-checkout-competitor-removed.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-04-borrower-a-request-checked-out.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-05-borrower-b-my-requests-declined-with-reason.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-06-borrower-b-pending-request-with-cancel.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-07-borrower-b-request-cancelled.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-08-custodian-decline-reason-selected.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-09-custodian-queue-after-decline.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-10-borrower-a-request-declined-by-custodian.png
+  modified: artifacts/sprint-1/uat/uat-e01-e2e-11-custodian-stale-decline-conflict-message.png
+  modified: artifacts/sprint-1/uat/uat-e02-e2e-01-custodian-picker-shows-maximum.png
+  modified: artifacts/sprint-1/uat/uat-e02-e2e-02-beyond-maximum-refused-in-browser.png
+  modified: artifacts/sprint-1/uat/uat-e02-e2e-03-api-probe-refused-request-still-pending.png
+  modified: artifacts/sprint-1/uat/uat-e02-e2e-04-latest-allowed-due-date-checked-out.png
+  modified: artifacts/sprint-1/uat/uat-e02-e2e-05-stale-maximum-date-checked-out.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-01-borrower-dashboard-header.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-02-borrower-my-requests.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-03-borrower-my-loans.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-04-custodian-pending-requests.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-05-custodian-active-loans-ids-expanded.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-06-mobile-borrower.png
+  modified: artifacts/sprint-1/uat/uat-e03-e2e-07-mobile-custodian.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-01-dashboard-current.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-02-requests-current.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-03-keyboard-focus.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-360-dashboard.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-360-requests.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-375-dashboard.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-375-requests.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-390-dashboard.png
+  modified: artifacts/sprint-1/uat/uat-e04-e2e-04-390-requests.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-01-desktop-normal-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-02-mobile-normal-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-03-desktop-reduced-motion.png
+  modified: artifacts/sprint-1/uat/uat-e05-after-04-mobile-reduced-motion.png
+evidence guard: git status for artifacts/sprint-1/uat changed
+evidence guard: FAIL, the run changed committed UAT evidence
