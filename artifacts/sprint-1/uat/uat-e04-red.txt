@@ -1,0 +1,117 @@
+UAT-E04 (#64) RED: borrower navigation is a single toggle whose label names the other page
+Branch fix/64-uat-borrower-navigation on base b9883f1 (includes merged PR #74). Isolated e2e database kitloop_e2e_pw, synthetic data.
+
+RED: the new tests against the unchanged implementation (App.tsx: one AmbientLink, label flips between
+"My Requests page" and "Equipment dashboard", no current-page marker).
+  client tests/borrower-navigation.test.tsx: 7 failed | 3 passed (10). Only one link was present on each page.
+  Playwright 07-borrower-navigation.spec.ts: 7 failed | 3 passed (10).
+  The 3 passing tests in each are guards that must hold before and after: custodians have no borrower
+  navigation, and signed-out /dashboard and /requests redirect to /login.
+
+===== client (RED, DOM dumps omitted) =====
+     × /dashboard shows both links and marks only its own page as current 111ms
+     × /requests shows both links and marks only its own page as current 15ms
+     × treats a trailing slash as the same page 18ms
+     × clicking each link navigates to its route and moves the current marker; both stay visible 34ms
+     × clicking the current page link does not add a history entry 18ms
+     × is keyboard operable: both links are in the tab order in reading order and Enter navigates 68ms
+     × browser Back and Forward restore the route and its current marker 13ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /dashboard shows both links and marks only its own page as current
+AssertionError: expected [ 'My Requests page' ] to deeply equal [ Array(2) ]
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /requests shows both links and marks only its own page as current
+AssertionError: expected [ 'Equipment dashboard' ] to deeply equal [ Array(2) ]
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > treats a trailing slash as the same page
+AssertionError: expected [ 'Equipment dashboard' ] to deeply equal [ Array(2) ]
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking each link navigates to its route and moves the current marker; both stay visible
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "My requests"
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking the current page link does not add a history entry
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "Equipment dashboard"
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > is keyboard operable: both links are in the tab order in reading order and Enter navigates
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "Equipment dashboard"
+ FAIL  tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > browser Back and Forward restore the route and its current marker
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "My requests"
+ Test Files  1 failed (1)
+      Tests  7 failed | 3 passed (10)
+
+===== Playwright (RED) =====
+  x   1 [chromium] › tests\07-borrower-navigation.spec.ts:39:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked (9.4s)
+  x   2 [chromium] › tests\07-borrower-navigation.spec.ts:53:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page (9.3s)
+  x   3 [chromium] › tests\07-borrower-navigation.spec.ts:61:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates (9.1s)
+  x   4 [chromium] › tests\07-borrower-navigation.spec.ts:80:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker (9.3s)
+  x   5 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll (9.0s)
+  x   6 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll (9.1s)
+  x   7 [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll (9.0s)
+  ok  8 [chromium] › tests\07-borrower-navigation.spec.ts:117:7 › UAT-E04 (#64) persistent borrower navigation › custodians do not get the borrower navigation (1.1s)
+  ok  9 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /dashboard still redirects to sign in, with no borrower navigation (480ms)
+  ok 10 [chromium] › tests\07-borrower-navigation.spec.ts:126:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /requests still redirects to sign in, with no borrower navigation (523ms)
+  1) [chromium] › tests\07-borrower-navigation.spec.ts:39:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 2
+    + Received  + 1
+      - Expect "toHaveText" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link') with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-300fe--the-current-page-is-marked-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-300fe--the-current-page-is-marked-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  2) [chromium] › tests\07-borrower-navigation.spec.ts:53:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 1
+    + Received  + 0
+      - Expect "toHaveText" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link') with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-bdc8a-ss-marks-the-requested-page-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-bdc8a-ss-marks-the-requested-page-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  3) [chromium] › tests\07-borrower-navigation.spec.ts:61:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates 
+    Error: expect(locator).toBeFocused() failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link', { name: 'Equipment dashboard' })
+    Expected: focused
+    Error: element(s) not found
+      - Expect "toBeFocused" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link', { name: 'Equipment dashboard' }) with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-41773-dicator-and-Enter-navigates-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-41773-dicator-and-Enter-navigates-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  4) [chromium] › tests\07-borrower-navigation.spec.ts:80:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 1
+    + Received  + 0
+      - Expect "toHaveText" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link') with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-e3f1d-oute-and-its-current-marker-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-e3f1d-oute-and-its-current-marker-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  5) [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 2
+    + Received  + 1
+      - Expect "toHaveText" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link') with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-957d6-ppable-no-horizontal-scroll-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-957d6-ppable-no-horizontal-scroll-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  6) [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 2
+    + Received  + 1
+      - Expect "toHaveText" getByRole('navigation', { name: 'Borrower pages' }).getByRole('link') with timeout 8000ms
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\artifacts\07-borrower-navigation-UAT-21d63-ppable-no-horizontal-scroll-chromium\test-failed-1.png
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    Error Context: test-results\artifacts\07-borrower-navigation-UAT-21d63-ppable-no-horizontal-scroll-chromium\error-context.md
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+  7) [chromium] › tests\07-borrower-navigation.spec.ts:91:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll 
+    Error: expect(locator).toHaveText(expected) failed
+    Locator: getByRole('navigation', { name: 'Borrower pages' }).getByRole('link')
+    - Expected  - 2

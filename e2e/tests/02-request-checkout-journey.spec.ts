@@ -30,7 +30,7 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await expect(myLoans(page).getByRole("article")).toHaveCount(0);
 
     // The PENDING request persists across a reload.
-    await page.getByRole("link", { name: "My Requests page" }).click();
+    await page.getByRole("link", { name: "My requests" }).click();
     await page.reload();
     await expect(myRequests(page).getByRole("article").filter({ hasText: "KL-CAM-001 · PENDING" })).toHaveCount(1);
   });
@@ -42,7 +42,7 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     await signOut(page);
 
     await login(page, "borrowerB");
-    await expect(page.getByRole("link", { name: "My Requests page" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "My requests" })).toBeVisible();
     await requestFromCatalog(page, "KL-CAM-001");
     // Borrower B only ever sees their own request.
     await expect(myRequests(page).getByRole("article")).toHaveCount(1);
@@ -135,7 +135,7 @@ test.describe("FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> a
     // UAT-E01 (#61): the competing request is closed, not left PENDING.
     await expect(myRequests(page).getByRole("article")).toContainText("KL-CAM-001 · DECLINED");
     await expect(myRequests(page).getByRole("article")).toContainText("Reason: Equipment was checked out to another borrower");
-    await page.getByRole("link", { name: "My Requests page" }).click();
+    await page.getByRole("link", { name: "My requests" }).click();
     await expect(page.getByLabel("Available equipment").locator("option", { hasText: "KL-CAM-001" })).toHaveCount(0);
   });
 });

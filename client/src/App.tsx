@@ -6,6 +6,7 @@ import Catalog, { type Asset, type CatalogStatus } from './components/Catalog'
 import Requests, { BorrowRequestForm, type BorrowRequest, type RequestStatus } from './components/Requests'
 import Checkout from './components/Checkout'
 import IdentityTag from './components/IdentityTag'
+import BorrowerNav from './components/BorrowerNav'
 import { CancelRequest, DeclineRequest } from './components/RequestActions'
 import Loans, { type Loan, type LoanStatus } from './components/Loans'
 import { AmbientButton, AmbientLink } from './components/Ambient'
@@ -267,7 +268,7 @@ function App() {
     : <main className="dashboard">
       <div className="page-heading"><div><span className="eyebrow">{identity.role} WORKSPACE</span><h1>{identity.role === 'BORROWER' ? 'Find your next tool.' : 'Manage the handoff.'}</h1><p>{identity.role === 'BORROWER' ? 'Browse equipment and follow your requests and loans.' : 'Review requests and check out equipment in your assigned inventory.'}</p></div></div>
       {error && <p className="alert" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
-      {identity.role === 'BORROWER' && <nav aria-label="Borrower pages"><AmbientLink href={route === '/requests' ? '/dashboard' : '/requests'}>{route === '/requests' ? 'Equipment dashboard' : 'My Requests page'}</AmbientLink></nav>}
+      {identity.role === 'BORROWER' && <BorrowerNav path={route} />}
       {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog}
         canRequest={identity.role === 'BORROWER'} requests={requests} requestStatus={requestStatus}
         busy={busy} onRequest={assetId => { setSelectedAsset(assetId); navigate('/requests') }} />}

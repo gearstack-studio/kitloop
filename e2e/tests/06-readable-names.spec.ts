@@ -79,7 +79,7 @@ test.describe("UAT-E03 (#63) readable user and equipment names in the browser", 
 
   test("2. Borrower My requests shows equipment names; request IDs are secondary", async ({ page }, testInfo) => {
     await login(page, "borrowerA");
-    await page.getByRole("link", { name: "My Requests page" }).click();
+    await page.getByRole("link", { name: "My requests" }).click();
     const record = myRequests(page).getByRole("article").filter({ hasText: LOANED.name });
     await expect(record).toContainText(`${LOANED.assetId} · CHECKED_OUT`);
     expect(await visible(record)).not.toMatch(UUID);

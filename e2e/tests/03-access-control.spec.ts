@@ -17,7 +17,7 @@ test.describe("Unauthorized access and role restrictions (UI)", () => {
     await page.goto("/requests");
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText("CUSTODIAN WORKSPACE")).toBeVisible();
-    await expect(page.getByRole("link", { name: "My Requests page" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "My requests" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Request to borrow/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Request equipment" })).toHaveCount(0);
     await evidence(page, testInfo, "custodian-no-borrower-controls");
