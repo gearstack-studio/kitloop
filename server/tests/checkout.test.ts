@@ -57,6 +57,18 @@ afterAll(async () => {
 });
 
 describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
+  it("returns 413 for a checkout body over 16 KB without changing the request or creating a loan", async () => {
+    const { requestId, assetId } = await fixture();
+    const response = await checkout(custodian, requestId, assetId, { pad: "x".repeat(17_000) });
+
+    await assertUntouched(requestId, assetId);
+    expect(response.status).toBe(413);
+    expect(response.headers["content-type"]).toMatch(/application\/json/);
+    expect(response.body).toEqual({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
+  });
+
   it("shows only scoped pending requests with borrower and equipment details", async () => {
     const { requestId, assetId } = await fixture();
     const response = await request(app).get("/api/requests/pending").set("Cookie", custodian.cookie);
@@ -159,7 +171,9 @@ describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
     const results = await Promise.all([checkout(custodian, requestId, assetId), checkout(foreignCustodian, competing.id, assetId)]);
     expect(results.map(result => result.status).sort()).toEqual([201, 409]);
     const loserId = results[0].status === 409 ? requestId : competing.id;
-    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: loserId } })).status).toBe("PENDING");
+    // UAT-E01 (#61): the winning checkout declines the competing request in the same transaction.
+    expect(await prisma.borrowRequest.findUniqueOrThrow({ where: { id: loserId } }))
+      .toMatchObject({ status: "DECLINED", closeReason: "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER" });
     expect(await prisma.loan.count({ where: { assetId, returnedAt: null } })).toBe(1);
     expect((await checkout(custodian, loserId, assetId)).status).toBe(409);
     await expect(prisma.loan.create({ data: { requestId: loserId, assetId, borrowerId: other.id,

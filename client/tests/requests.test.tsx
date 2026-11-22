@@ -39,6 +39,8 @@ describe('Borrow Request UI', () => {
     expect(screen.getByText('Microphone')).toBeTruthy()
     expect(screen.getByText(/C · PENDING/)).toBeTruthy()
     expect(screen.getByText(/A · CHECKED_OUT/)).toBeTruthy()
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    expect(screen.getAllByText(/^Submitted /).every(item => item.textContent?.includes(timezone))).toBe(true)
     expect(screen.queryByRole('button', { name: /Check out/ })).toBeNull()
   })
   it('distinguishes loading, error/retry and empty history', async () => {

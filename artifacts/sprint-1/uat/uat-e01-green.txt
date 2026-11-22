@@ -1,0 +1,160 @@
+UAT-E01 GREEN and full regression evidence (GitHub issue #61)
+Branch: fix/61-uat-request-lifecycle (uncommitted working tree on top of 8b6e5a9)
+Database: isolated local test database kitloop_auth_test; migration 20261121090000_request_lifecycle applied with
+  prisma migrate deploy (no reset). The deployed production database was not used.
+Note: on Windows run the server tests from a D:\ (upper-case drive) working directory; a lower-case d:\ cwd makes
+  Vitest load its runner twice and every file fails with "Vitest failed to find the runner".
+Outcome:
+  targeted server: 34 passed (34)        targeted client: 5 passed (5)
+  full server:     12 files, 91 passed    full client:     7 files, 40 passed
+  server typecheck + build: exit 0        client lint: exit 0, client build: exit 0
+  prisma migrate status (test DB): 4 migrations, schema up to date
+
+Captured output (ANSI colors and trailing whitespace removed):
+
+===== targeted server (GREEN) =====
+node.exe : ◇ injected env (4) from .env.test
+At C:\Users\Phurithip P\AppData\Roaming\npm\npx.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (◇ injected env (4) from .env.test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > declines every competing PENDING request with a reason in the checkout transaction, keeping history 252ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > rolls back the checkout, the loan and every decline when a competing decline fails 365ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > gives concurrent checkouts of competing requests exactly one winner, one loan, and a declined loser 214ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > lets a borrower cancel their own PENDING request once, keeping it in history and out of the queue 79ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > rejects cancelling another borrower's request, custodians, missing sessions, CSRF failures and status payloads 88ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets an assigned custodian decline a PENDING request with a valid reason 67ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > requires a custodian-selectable reason and rejects unassigned custodians, borrowers and CSRF failures 68ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets exactly one of a concurrent cancel and decline close the request 44ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > never leaves a loan for a request cancelled concurrently with its checkout 69ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > allows a new request after a cancelled or declined one while the asset is available, and not while on loan 151ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > does not expire old PENDING requests without an explicit expiry policy 94ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > rejects inconsistent closure data and keeps one PENDING request per borrower and asset 92ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > migrates existing PENDING and CHECKED_OUT rows without rewriting them 356ms
+ ✓ tests/borrow-requests.test.ts > request payload unit validation > accepts only a trimmed Asset ID 3ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > returns 413 for a borrow request body over 16 KB without creating a request 28ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > persists PENDING with server identity/time, exposes asset details, and never reserves 104ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects concurrent duplicate submissions and the database independently guards uniqueness 90ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > allows concurrent submissions by different borrowers without reserving 52ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects unknown, retired, malformed, and client-controlled fields without writes 49ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > enforces authentication, role and CSRF for creation 18ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs, forbids status writes and checks out atomically 196ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rolls back failed loan creation, preserves availability, and permits a clean retry 158ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > does not expose database failure details during submission 6ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > returns 413 for a checkout body over 16 KB without changing the request or creating a loan 45ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > shows only scoped pending requests with borrower and equipment details 49ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads 90ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects invalid due dates and supplied status/identity without partial changes 63ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > checks due date against checkout time inside the transaction, not an earlier form timestamp 32ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects missing sessions, wrong role, CSRF failures and foreign-scope requests 41ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects a missing request, malformed ID, asset mismatch, and retired equipment 56ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects repeated and concurrent checkout of the same request 116ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different pending requests and custodians for one exclusive asset 94ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > does not expose a loan status mutation API to borrowers 30ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > preserves historic rows when the enum migration renames FULFILLED to CHECKED_OUT 17ms
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  11:02:56
+   Duration  7.04s (tests 81%, import 13%, transform 6%)
+
+    Isolate  3 workers spawned · ~212ms startup each (spawn + environment, per file)
+             at least ~424ms faster with isolate: false — reuses workers across files instead of one per file
+
+===== targeted client (GREEN) =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure reason and time 59ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > does not let a terminal request block a new request for available equipment 1ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests, posts with CSRF, and refreshes history 191ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and removes the request from the refreshed queue 133ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons 27ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  11:03:06
+   Duration  2.69s (environment 58%, tests 17%, setup 11%, transform 9%, import 5%)
+
+===== full server test suite =====
+> server@1.0.0 test
+> vitest run
+
+node.exe : ◇ injected env (4) from .env.test
+At C:\Users\Phurithip P\AppData\Roaming\npm\npm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npm-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (◇ injected env (4) from .env.test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  12 passed (12)
+      Tests  91 passed (91)
+   Start at  11:03:09
+   Duration  12.25s (tests 79%, import 18%, transform 2%, worker 1%)
+
+    Isolate  12 workers spawned · ~201ms startup each (spawn + environment, per file)
+             at least ~2.21s faster with isolate: false — reuses workers across files instead of one per file
+
+===== full client test suite =====
+> client@0.0.0 test
+> vitest run
+
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  7 passed (7)
+      Tests  40 passed (40)
+   Start at  11:03:23
+   Duration  8.72s (tests 37%, environment 35%, setup 14%, import 9%, transform 4%)
+
+===== server typecheck + build =====
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+===== client lint =====
+> client@0.0.0 lint
+> eslint .
+
+===== client build =====
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 37 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-BNkzRQp1.css          31.40 kB │ gzip:  6.95 kB
+dist/assets/index-DImKNed4.js          246.42 kB │ gzip: 76.42 kB
+
+✓ built in 533ms
+
+===== prisma migrate status (test database) =====
+node.exe : Environment variables loaded from .env
+At C:\Users\Phurithip P\AppData\Roaming\npm\npx.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Environment variables loaded from .env:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "kitloop_auth_test", schema "public" at "localhost:5432"
+
+4 migrations found in prisma/migrations
+
+Database schema is up to date!

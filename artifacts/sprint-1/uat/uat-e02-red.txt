@@ -1,0 +1,352 @@
+UAT-E02 (#62) checkout due date has no upper limit: BR-11, FEAT-04, SRS OQ-01 (open)
+Branch fix/62-uat-checkout-due-date-limit, base a381de3 (origin/sprint-1-staging incl. merged PR #72).
+Isolated databases only (kitloop_auth_test, kitloop_e2e_pw); offline fake gcloud for release tooling. No production.
+LOAN_MAX_DAYS=21 in tests is a TEST CONFIGURATION ONLY; no loan period has been approved (OQ-01).
+
+RED: new tests run against the unmodified a381de3 source (only the new test files present).
+  server tests/loan-duration.test.ts: 7 failed | 5 passed (12)
+    failures: over-limit dates accepted (expected 400, got 201; validateDueDate does not throw; the transaction
+    resolves instead of rejecting), no LOAN_MAX_DAYS setting, no features.loanMaxDays
+    passing already: within-limit accepted, past/current/invalid rejected, no maximum when unset
+  client tests/loan-duration.test.tsx: 6 failed | 1 passed (7)
+    failures: picker has no max, no period text, beyond-maximum not refused, App does not pass the maximum
+
+===== server tests/loan-duration.test.ts (RED) =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+ ❯ tests/loan-duration.test.ts (12 tests | 7 failed) 492ms
+   ❯ UAT-E02 maximum loan duration: rule (validateDueDate) (4)
+     × rejects one second and one millisecond beyond the maximum, 100 years ahead and year 9999 6ms
+   ❯ UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS) (2)
+     × is unset by default and accepts a whole number of days 1ms
+     × refuses to start with an invalid value 3ms
+   ❯ UAT-E02 maximum loan duration: checkout API (PostgreSQL) (6)
+     × measures the boundary from the actual checkout time inside the transaction (inclusive) 33ms
+     × rejects due dates beyond the maximum with 400 VALIDATION_ERROR and a dueAt field message, changing nothing 21ms
+     × a rejected over-limit checkout leaves competing requests PENDING (UAT-E01 auto-decline does not run) 23ms
+     × tells the client the configured maximum through login and /auth/me 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: rule (validateDueDate) > rejects one second and
+one millisecond beyond the maximum, 100 years ahead and year 9999
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
+undefined
+
+ ❯ tests/loan-duration.test.ts:76:73
+     74|     for (const dueAt of [new Date(latest.getTime() + 1000), new Date(l…
+     75|       new Date(checkedOutAt.getTime() + 100 * 365 * DAY), new Date("99…
+     76|       expect(() => validateDueDate(dueAt, checkedOutAt, TEST_MAX_DAYS)…
+       |                                                                         ^
+     77|     }
+     78|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS) > is unset by
+default and accepts a whole number of days
+TypeError: loanMaxDays is not a function
+ ❯ tests/loan-duration.test.ts:91:12
+     89| describe("UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS)…
+     90|   it("is unset by default and accepts a whole number of days", () => {
+     91|     expect(loanMaxDays({})).toBeNull();
+       |            ^
+     92|     expect(loanMaxDays({ LOAN_MAX_DAYS: "" })).toBeNull();
+     93|     expect(loanMaxDays({ LOAN_MAX_DAYS: "1" })).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS) > refuses to start
+with an invalid value
+AssertionError: expected [Function] to throw error including 'LOAN_MAX_DAYS' but got '(0 ,
+__vite_ssr_import_6__.loanMaxDay…'
+
+Expected: "LOAN_MAX_DAYS"
+Received: "(0 , __vite_ssr_import_6__.loanMaxDays) is not a function"
+
+ ❯ tests/loan-duration.test.ts:99:52
+     97|   it("refuses to start with an invalid value", () => {
+     98|     for (const LOAN_MAX_DAYS of ["0", "-1", "1.5", "14d", " 14", "014"…
+     99|       expect(() => loanMaxDays({ LOAN_MAX_DAYS })).toThrow("LOAN_MAX_D…
+       |                                                    ^
+    100|       expect(() => runtimeConfig({ LOAN_MAX_DAYS })).toThrow("LOAN_MAX…
+    101|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > measures the boundary
+from the actual checkout time inside the transaction (inclusive)
+AssertionError: promise resolved "{ …(10) }" instead of rejecting
+
+- Expected
+
+- Error {
+-   "message": "rejected promise",
+  }
+
+ ❯ tests/loan-duration.test.ts:129:98
+    127|     const beyond = await fixture();
+    128|     await expect(checkoutRequest(custodian.id, beyond.requestId,
+    129|       { assetId: beyond.assetId, dueAt: new Date(latest.getTime() + 10…
+       |                                                                                                  ^
+    130|       .rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" }…
+    131|     await assertUntouched(beyond.requestId, beyond.assetId);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > rejects due dates
+beyond the maximum with 400 VALIDATION_ERROR and a dueAt field message, changing nothing
+AssertionError: expected 201 to be 400 // Object.is equality
+
+- Expected
+
+- 400
+
+ ❯ tests/loan-duration.test.ts:139:29
+    137|       new Date(Date.now() + 100 * 365 * DAY).toISOString(), "9999-12-3…
+    138|       const result = await checkout(requestId, assetId, dueAt);
+    139|       expect(result.status).toBe(400);
+       |                             ^
+    140|       expect(result.body.error).toMatchObject({ code: "VALIDATION_ERRO…
+    141|         message: `Choose a due date within ${TEST_MAX_DAYS} days of ch…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > a rejected over-limit
+checkout leaves competing requests PENDING (UAT-E01 auto-decline does not run)
+AssertionError: expected 201 to be 400 // Object.is equality
+
+- Expected
+
+- 400
+
+ ❯ tests/loan-duration.test.ts:162:27
+    160|     const rivalId = await requestAs(rival, assetId);
+    161|     const result = await checkout(requestId, assetId, "9999-12-31T23:5…
+    162|     expect(result.status).toBe(400);
+       |                           ^
+    163|     await assertUntouched(requestId, assetId);
+    164|     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > tells the client the
+configured maximum through login and /auth/me
+AssertionError: expected { requestLifecycleActions: true } to match object { loanMaxDays: 21 }
+(1 matching property omitted from actual)
+
+- Expected
+
+  {
+-   "loanMaxDays": 21,
+  }
+
+ ❯ tests/loan-duration.test.ts:174:30
+    172|   it("tells the client the configured maximum through login and /auth/…
+    173|     const me = await request(app).get("/api/auth/me").set("Cookie", cu…
+    174|     expect(me.body.features).toMatchObject({ loanMaxDays: TEST_MAX_DAY…
+       |                              ^
+    175|     delete process.env.LOAN_MAX_DAYS;
+    176|     const unset = await request(app).get("/api/auth/me").set("Cookie",…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 5 passed (12)
+   Start at  22:02:23
+   Duration  897ms (tests 66%, import 24%, transform 9%, worker 1%)
+
+===== client tests/loan-duration.test.tsx (RED) =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+ ❯ tests/loan-duration.test.tsx (7 tests | 6 failed) 308ms
+   ❯ UAT-E02 checkout due-date maximum (component) (6)
+     × sets the picker maximum to the latest browser-local minute within the period and states the period 53ms
+     × refreshes the maximum with the minimum as time passes 10ms
+     × accepts a due date at the maximum and submits it as a UTC ISO timestamp 119ms
+     × rejects a due date beyond the maximum, and year 9999, even when native validation is bypassed 18ms
+     × reports native range overflow with the same message 5ms
+   ❯ UAT-E02 checkout due-date maximum (app, mocked HTTP) (1)
+     × passes the server maximum to the picker and shows a server-side rejection without claiming success 31ms
+node.exe :
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > sets the picker maximum to the
+latest browser-local minute within the period and states the period
+AssertionError: expected '' to be '2026-12-11T15:24' // Object.is equality
+
+- Expected
+
+- 2026-12-11T15:24
+
+ ❯ tests/loan-duration.test.tsx:26:28
+     24|     render(<Checkout request={pending} available ready busy={false} ma…
+     25|     expect(dueInput().min).toBe('2026-11-20T15:25')
+     26|     expect(dueInput().max).toBe(local(new Date(2026, 10, 20 + TEST_MAX…
+       |                            ^
+     27|     const help = document.getElementById(`checkout-due-R1-help`)
+     28|     expect(help?.textContent).toContain(`Maximum loan period: ${TEST_M…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > refreshes the maximum with the
+minimum as time passes
+AssertionError: expected '' to be '2026-12-11T16:00' // Object.is equality
+
+- Expected
+
+- 2026-12-11T16:00
+
+ ❯ tests/loan-duration.test.tsx:38:28
+     36|     fireEvent.focus(dueInput())
+     37|     expect(dueInput().min).toBe('2026-11-20T16:01')
+     38|     expect(dueInput().max).toBe(local(new Date(2026, 10, 20 + TEST_MAX…
+       |                            ^
+     39|   })
+     40|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > accepts a due date at the
+maximum and submits it as a UTC ISO timestamp
+RangeError: Invalid time value
+ ❯ tests/loan-duration.test.tsx:47:77
+     45|     fireEvent.change(dueInput(), { target: { value } })
+     46|     await userEvent.click(screen.getByRole('button', { name: 'Check ou…
+     47|     expect(submit).toHaveBeenCalledExactlyOnceWith(pending, new Date(v…
+       |                                                                             ^
+     48|   })
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > rejects a due date beyond the
+maximum, and year 9999, even when native validation is bypassed
+TestingLibraryElementError: Unable to find an accessible element with the role "alert"
+
+Here are the accessible roles:
+
+  form:
+
+  Name "Checkout request R1":
+  <form
+    aria-label="Checkout request R1"
+    class="checkout-form"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="checkout-help"
+    id="checkout-due-R1-help"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Check out":
+  <button
+    type="submit"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <form
+      aria-label="Checkout request R1"
+      class="checkout-form"
+    >
+      <label
+        for="checkout-due-R1"
+      >
+        Due date for
+        CAM-1
+      </label>
+      <input
+        aria-describedby="checkout-due-R1-help"
+        aria-invalid="false"
+        id="checkout-due-R1"
+        min="2026-11-21T22:03"
+        required=""
+        type="datetime-local"
+        value="2026-12-13T22:02"
+      />
+      <p
+        class="checkout-help"
+        id="checkout-due-R1-help"
+      >
+        Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+        Asia/Bangkok
+        ).
+      </p>
+      <button
+        type="submit"
+      >
+        Check out
+      </button>
+    </form>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ tests/loan-duration.test.tsx:56:21
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  22:02:25
+   Duration  1.48s (environment 58%, tests 23%, setup 9%, import 5%, transform 5%)
+
+     54|       fireEvent.change(dueInput(), { target: { value } })
+     55|       fireEvent.submit(form())
+     56|       expect(screen.getByRole('alert').textContent).toBe(`Choose a due…
+       |                     ^
+     57|       expect(dueInput().getAttribute('aria-invalid')).toBe('true')
+     58|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > reports native range overflow
+with the same message
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
+
+- true
+
+ ❯ tests/loan-duration.test.tsx:65:47
+     63|     render(<Checkout request={pending} available ready busy={false} ma…
+     64|     fireEvent.change(dueInput(), { target: { value: '9999-12-31T23:59'…
+     65|     expect(dueInput().validity.rangeOverflow).toBe(true)
+       |                                               ^
+     66|     fireEvent.invalid(dueInput())
+     67|     expect(screen.getByRole('alert').textContent).toBe(`Choose a due d…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (app, mocked HTTP) > passes the server maximum
+to the picker and shows a server-side rejection without claiming success
+AssertionError: expected '' not to be '' // Object.is equality
+ ❯ tests/loan-duration.test.tsx:110:25
+    108|     render(<App />)
+    109|     const due = await screen.findByLabelText<HTMLInputElement>('Due da…
+    110|     expect(due.max).not.toBe('')
+       |                         ^
+    111|     fireEvent.change(due, { target: { value: local(new Date(Date.now()…
+    112|     await userEvent.click(screen.getByRole('button', { name: 'Check ou…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯

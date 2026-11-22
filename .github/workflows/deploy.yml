@@ -37,6 +37,12 @@ jobs:
     env:
       KITLOOP_AUTOMATED_RELEASE: '1'
       CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      # PR #72 P1: request lifecycle rollout phase. Unset means 'disabled' (phase 1, compatibility release). Set the
+      # environment variable to 'enabled' only after a phase-1 revision is serving; release.sh refuses otherwise.
+      KITLOOP_REQUEST_LIFECYCLE_WRITES: ${{ vars.KITLOOP_REQUEST_LIFECYCLE_WRITES || 'disabled' }}
+      # UAT-E02 (#62): maximum loan duration in days. Empty means no maximum, because SRS OQ-01 is undecided. Set the
+      # environment variable only after the department owner approves a value.
+      KITLOOP_LOAN_MAX_DAYS: ${{ vars.KITLOOP_LOAN_MAX_DAYS || '' }}
       DEPLOY_WIF_PROVIDER: ${{ vars.LAB5_DEPLOY_WIF_PROVIDER }}
       DEPLOY_SERVICE_ACCOUNT: ${{ vars.LAB5_DEPLOY_SERVICE_ACCOUNT }}
     steps:
@@ -94,9 +100,9 @@ jobs:
         run: |
           if gcloud run services get-iam-policy kitloop --project=lab-5-cloud-deployment-514310 --region=asia-southeast1 --format=json |
             jq -e 'any(.bindings[]?; .role == "roles/run.invoker" and any(.members[]?; . == "allUsers"))' >/dev/null; then
-            bash infra/gcp/verify.sh public
+            bash infra/gcp/verify.sh public "$GITHUB_SHA"
           else
-            bash infra/gcp/verify.sh private
+            bash infra/gcp/verify.sh private "$GITHUB_SHA"
           fi
 
       - name: Roll back traffic after a failed release or verification

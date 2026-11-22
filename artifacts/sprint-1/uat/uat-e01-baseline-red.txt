@@ -1,0 +1,3676 @@
+UAT-E01 baseline RED evidence (GitHub issue #61)
+Baseline: 8b6e5a9 (origin/sprint-1-staging, HEAD of fix/61-uat-request-lifecycle before any change)
+Working tree: detached git worktree at 8b6e5a9 with only the new/changed UAT-E01 tests copied in:
+  server/tests/request-lifecycle.test.ts (new), server/tests/checkout.test.ts, server/tests/borrow-requests.test.ts,
+  client/tests/request-lifecycle.test.tsx (new). Production code is the unmodified baseline.
+Database: isolated local test database kitloop_auth_test (name enforced by server/vitest.config.ts). The shared test
+  database and generated Prisma client already carried the additive lifecycle schema; baseline code uses only a subset.
+Commands:
+  server: npx vitest run tests/request-lifecycle.test.ts tests/checkout.test.ts tests/borrow-requests.test.ts --reporter=verbose
+  client: npx vitest run tests/request-lifecycle.test.tsx --reporter=verbose
+Exit code: 1 (server), 1 (client)
+Outcome: server 14 failed | 20 passed (34); client 4 failed | 1 passed (5).
+  Expected passes at baseline: "does not expire old PENDING requests without an explicit expiry policy" (guard: no
+  invented timeout) and "does not let a terminal request block a new request" (client guard), plus pre-existing
+  Sprint 1 checkout/borrow tests. Failures show: competing requests stay PENDING after checkout (UAT-E01), cancel and
+  decline endpoints return 404, no closure reason in the UI, migration file absent (ENOENT).
+
+Captured runner output (ANSI colors and trailing whitespace removed):
+
+===== server =====
+node.exe : ◇ injected env (4) from .env.test
+At C:\Users\Phurithip P\AppData\Roaming\npm\npx.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (◇ injected env (4) from .env.test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+ RUN  v5.0.5 <scratchpad>/kitloop-red/server
+
+ × tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > declines every competing PENDING request with a reason in the checkout transaction, keeping history 290ms
+   → expected { …(8) } to match object { status: 'DECLINED', …(2) }
+(5 matching properties omitted from actual)
+ × tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > rolls back the checkout, the loan and every decline when a competing decline fails 100ms
+   → expected 201 to be 500 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > gives concurrent checkouts of competing requests exactly one winner, one loan, and a declined loser 276ms
+   → expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+ × tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > lets a borrower cancel their own PENDING request once, keeping it in history and out of the queue 33ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > rejects cancelling another borrower's request, custodians, missing sessions, CSRF failures and status payloads 47ms
+   → expected 404 to be 403 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets an assigned custodian decline a PENDING request with a valid reason 28ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 custodian decline > requires a custodian-selectable reason and rejects unassigned custodians, borrowers and CSRF failures 27ms
+   → expected 404 to be 400 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets exactly one of a concurrent cancel and decline close the request 37ms
+   → expected [ 404, 404 ] to deeply equal [ 200, 409 ]
+ × tests/request-lifecycle.test.ts > UAT-E01 custodian decline > never leaves a loan for a request cancelled concurrently with its checkout 74ms
+   → expected 404 to be 409 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > allows a new request after a cancelled or declined one while the asset is available, and not while on loan 45ms
+   → expected 404 to be 200 // Object.is equality
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > does not expire old PENDING requests without an explicit expiry policy 94ms
+ × tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > rejects inconsistent closure data and keeps one PENDING request per borrower and asset 198ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > migrates existing PENDING and CHECKED_OUT rows without rewriting them 6ms
+   → ENOENT: no such file or directory, open '<scratchpad>\kitloop-red\server\prisma\migrations\20261121090000_request_lifecycle\migration.sql'
+ ✓ tests/borrow-requests.test.ts > request payload unit validation > accepts only a trimmed Asset ID 4ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > returns 413 for a borrow request body over 16 KB without creating a request 37ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > persists PENDING with server identity/time, exposes asset details, and never reserves 129ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects concurrent duplicate submissions and the database independently guards uniqueness 157ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > allows concurrent submissions by different borrowers without reserving 78ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects unknown, retired, malformed, and client-controlled fields without writes 105ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > enforces authentication, role and CSRF for creation 36ms
+ × tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs, forbids status writes and checks out atomically 203ms
+   → expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rolls back failed loan creation, preserves availability, and permits a clean retry 244ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > does not expose database failure details during submission 8ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > returns 413 for a checkout body over 16 KB without changing the request or creating a loan 44ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > shows only scoped pending requests with borrower and equipment details 60ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads 97ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects invalid due dates and supplied status/identity without partial changes 102ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > checks due date against checkout time inside the transaction, not an earlier form timestamp 30ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects missing sessions, wrong role, CSRF failures and foreign-scope requests 49ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects a missing request, malformed ID, asset mismatch, and retired equipment 91ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects repeated and concurrent checkout of the same request 139ms
+ × tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different pending requests and custodians for one exclusive asset 95ms
+   → expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > does not expose a loan status mutation API to borrowers 90ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > preserves historic rows when the enum migration renames FULFILLED to CHECKED_OUT 98ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs,
+forbids status writes and checks out atomically
+AssertionError: expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "closeReason": "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+-   "status": "DECLINED",
++   "closeReason": null,
++   "status": "PENDING",
+  }
+
+ ❯ tests/borrow-requests.test.ts:158:8
+    156|     // UAT-E01 (#61): checkout closes the competing request instead of…
+    157|     expect(await prisma.borrowRequest.findUniqueOrThrow({ where: { id:…
+    158|       .toMatchObject({ status: "DECLINED", closeReason: "ASSET_CHECKED…
+       |        ^
+    159|     expect((await submit(borrower, { assetId })).body.error.code).toBe…
+    160|     expect((await submit(other, { assetId })).status).toBe(409);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different
+pending requests and custodians for one exclusive asset
+AssertionError: expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "closeReason": "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+-   "status": "DECLINED",
++   "closeReason": null,
++   "status": "PENDING",
+  }
+
+ ❯ tests/checkout.test.ts:176:8
+    174|     // UAT-E01 (#61): the winning checkout declines the competing requ…
+    175|     expect(await prisma.borrowRequest.findUniqueOrThrow({ where: { id:…
+    176|       .toMatchObject({ status: "DECLINED", closeReason: "ASSET_CHECKED…
+       |        ^
+    177|     expect(await prisma.loan.count({ where: { assetId, returnedAt: nul…
+    178|     expect((await checkout(custodian, loserId, assetId)).status).toBe(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > declines every competing
+PENDING request with a reason in the checkout transaction, keeping history
+AssertionError: expected { …(8) } to match object { status: 'DECLINED', …(2) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "closeReason": "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+-   "closedById": "580298d8-d36c-44a7-8b73-651521f46e5c",
+-   "status": "DECLINED",
++   "closeReason": null,
++   "closedById": null,
++   "status": "PENDING",
+  }
+
+ ❯ tests/request-lifecycle.test.ts:91:22
+     89|     expect(await prisma.loan.count({ where: { assetId, returnedAt: nul…
+     90|     const declined = await stored(b);
+     91|     expect(declined).toMatchObject({ status: "DECLINED", closeReason: …
+       |                      ^
+     92|     expect(declined.closedAt?.toISOString()).toBe(result.body.checkedO…
+     93|     expect(declined.submittedAt.getTime()).toBeLessThan(declined.close…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > rolls back the checkout,
+the loan and every decline when a competing decline fails
+AssertionError: expected 201 to be 500 // Object.is equality
+
+- Expected
++ Received
+
+- 500
++ 201
+
+ ❯ tests/request-lifecycle.test.ts:114:29
+    112|     try {
+    113|       const result = await checkout(custodian, a, assetId);
+    114|       expect(result.status).toBe(500);
+       |                             ^
+    115|       expect(result.body.error.message).toBe("An unexpected error occu…
+    116|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > gives concurrent
+checkouts of competing requests exactly one winner, one loan, and a declined loser
+AssertionError: expected { …(8) } to match object { status: 'DECLINED', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "closeReason": "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+-   "status": "DECLINED",
++   "closeReason": null,
++   "status": "PENDING",
+  }
+
+ ❯ tests/request-lifecycle.test.ts:135:33
+    133|     const [winner, loser] = results[0].status === 201 ? [a, b] : [b, a…
+    134|     expect((await stored(winner)).status).toBe("CHECKED_OUT");
+    135|     expect(await stored(loser)).toMatchObject({ status: "DECLINED", cl…
+       |                                 ^
+    136|     expect(await prisma.loan.count({ where: { assetId } })).toBe(1);
+    137|     expect((await prisma.loan.findFirstOrThrow({ where: { assetId } })…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > lets a borrower cancel their own PENDING
+request once, keeping it in history and out of the queue
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:146:27
+    144|     const id = await submit(borrowerA, assetId);
+    145|     const result = await cancel(borrowerA, id);
+    146|     expect(result.status).toBe(200);
+       |                           ^
+    147|     expect(result.body).toMatchObject({ id, status: "CANCELLED", close…
+    148|     expect(await stored(id)).toMatchObject({ status: "CANCELLED", clos…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > rejects cancelling another borrower's
+request, custodians, missing sessions, CSRF failures and status payloads
+AssertionError: expected 404 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:164:50
+    162|     const foreign = await cancel(borrowerB, id);
+    163|     expect(foreign.status).toBe(404); expect(JSON.stringify(foreign.bo…
+    164|     expect((await cancel(custodian, id)).status).toBe(403);
+       |                                                  ^
+    165|     expect((await request(app).post(`/api/requests/${id}/cancel`).send…
+    166|     expect((await request(app).post(`/api/requests/${id}/cancel`).set(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets an assigned custodian decline a PENDING
+request with a valid reason
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:188:27
+    186|     const id = await submit(borrowerB, assetId);
+    187|     const result = await decline(custodian, id, { reason: "BORROWER_NO…
+    188|     expect(result.status).toBe(200);
+       |                           ^
+    189|     expect(result.body).toMatchObject({ id, status: "DECLINED", closeR…
+    190|     expect(await stored(id)).toMatchObject({ status: "DECLINED", close…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 custodian decline > requires a custodian-selectable reason and
+rejects unassigned custodians, borrowers and CSRF failures
+AssertionError: expected 404 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:206:30
+    204|       { reason: "CANCELLED_BY_BORROWER" }, { reason: "OTHER", status: …
+    205|       const invalid = await decline(custodian, id, body);
+    206|       expect(invalid.status).toBe(400); expect(invalid.body.error.code…
+       |                              ^
+    207|     }
+    208|     expect((await decline(foreignCustodian, id)).status).toBe(404);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets exactly one of a concurrent cancel and
+decline close the request
+AssertionError: expected [ 404, 404 ] to deeply equal [ 200, 409 ]
+
+- Expected
++ Received
+
+  [
+-   200,
+-   409,
++   404,
++   404,
+  ]
+
+ ❯ tests/request-lifecycle.test.ts:220:57
+    218|     const id = await submit(borrowerB, assetId);
+    219|     const results = await Promise.all([cancel(borrowerB, id), decline(…
+    220|     expect(results.map(result => result.status).sort()).toEqual([200, …
+       |                                                         ^
+    221|     expect(["CANCELLED", "DECLINED"]).toContain((await stored(id)).sta…
+    222|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 custodian decline > never leaves a loan for a request cancelled
+concurrently with its checkout
+AssertionError: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:231:80
+    229|       // Exactly one action wins; the other gets a 409 and changes not…
+    230|       expect([checkedOut.status === 201, cancelled.status === 200].fil…
+    231|       expect(checkedOut.status === 201 ? cancelled.status : checkedOut…
+       |                                                                                ^
+    232|       const final = await stored(id);
+    233|       expect(await prisma.loan.count({ where: { assetId } })).toBe(fin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > allows a new request after a
+cancelled or declined one while the asset is available, and not while on loan
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:243:53
+    241|     const assetId = await asset();
+    242|     const first = await submit(borrowerA, assetId);
+    243|     expect((await cancel(borrowerA, first)).status).toBe(200);
+       |                                                     ^
+    244|     const second = await submit(borrowerA, assetId);
+    245|     expect((await decline(custodian, second)).status).toBe(200);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > rejects inconsistent closure data and
+keeps one PENDING request per borrower and asset
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+
+ Test Files  3 failed (3)
+      Tests  14 failed | 20 passed (34)
+   Start at  11:02:10
+   Duration  8.48s (tests 77%, import 18%, transform 5%)
+- 200
++ 404
+
+ ❯ tests/request-lifecycle.test.ts:276:50
+    274|     await expectPending(id);
+    275|     await expect(prisma.borrowRequest.create({ data: { borrowerId: bor…
+    276|     expect((await cancel(borrowerA, id)).status).toBe(200);
+       |                                                  ^
+    277|     await expect(prisma.borrowRequest.create({ data: { borrowerId: bor…
+    278|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/14]⎯
+
+ FAIL  tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > migrates existing PENDING and CHECKED_OUT
+rows without rewriting them
+Error: ENOENT: no such file or directory, open 'C:\Users\Phurithip P\AppData\Local\Temp\claude\86fa9e95d6076171\b075a58
+4-6f2c-4d64-8f42-bff96900480d\scratchpad\kitloop-red\server\prisma\migrations\20261121090000_request_lifecycle\migratio
+n.sql'
+ ❯ tests/request-lifecycle.test.ts:281:23
+    279|
+    280|   it("migrates existing PENDING and CHECKED_OUT rows without rewriting…
+    281|     const migration = await readFile(new URL("../prisma/migrations/202…
+       |                       ^
+    282|     const statements = migration.split(/;\s*$/m).map(sql => sql.replac…
+    283|     const schema = `migration_test_${randomUUID().replaceAll("-", "_")…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: -4058, code: 'ENOENT', syscall: 'open', path: 'C:\Users\Phurithip P\AppData\Local\Temp\claud
+e\86fa9e95d6076171\b075a584-6f2c-4d64-8f42-bff96900480d\scratchpad\kitloop-red\server\prisma\migrations\20261121090000_
+request_lifecycle\migration.sql' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/14]⎯
+
+
+    Isolate  3 workers spawned · ~280ms startup each (spawn + environment, per file)
+             at least ~560ms faster with isolate: false — reuses workers across files instead of one per file
+
+===== client =====
+RUN  v5.1.0 <scratchpad>/kitloop-red/client
+
+ × tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure reason and time 1160ms
+   → Unable to find an element with the text: /Reason: Equipment was checked out to another borrower/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<article
+  class="record"
+>
+  <div>
+    <strong>
+      Camera
+    </strong>
+    <small>
+      CAM-01
+       ·
+      DECLINED
+    </small>
+    <small>
+      Request
+      R2
+    </small>
+    <small>
+      Submitted
+      3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+    </small>
+  </div>
+</article>
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > does not let a terminal request block a new request for available equipment 2ms
+ × tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests, posts with CSRF, and refreshes history 468ms
+   → Unable to find an accessible element with the role "button" and name `/Cancel request/`
+
+Here are the accessible roles:
+
+  banner:
+
+  Name "":
+  <header
+    class="topbar"
+  />
+
+  --------------------------------------------------
+  link:
+
+  Name "KitLoop home":
+  <a
+    aria-label="KitLoop home"
+    class="brand"
+    href="/"
+  />
+
+  Name "My Requests page":
+  <a
+    class="btn btn--primary"
+    href="/requests"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Sign out":
+  <button
+    class="btn btn--secondary"
+  />
+
+  Name "Request pending: you already have a pending request for Camera, CAM-01":
+  <button
+    aria-label="Request pending: you already have a pending request for Camera, CAM-01"
+    disabled=""
+    type="button"
+  />
+
+  --------------------------------------------------
+  main:
+
+  Name "":
+  <main
+    class="dashboard"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Find your next tool.":
+  <h1 />
+
+  Name "Equipment catalog":
+  <h2
+    id="catalog-heading"
+  />
+
+  Name "Camera":
+  <h3 />
+
+  Name "My requests":
+  <h2
+    id="requests-heading"
+  />
+
+  Name "My loans":
+  <h2
+    id="loans-heading"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p
+    class="empty"
+  />
+
+  --------------------------------------------------
+  navigation:
+
+  Name "Borrower pages":
+  <nav
+    aria-label="Borrower pages"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Equipment catalog":
+  <section
+    aria-busy="false"
+    aria-labelledby="catalog-heading"
+    class="panel catalog"
+  />
+
+  Name "My requests":
+  <section
+    aria-busy="false"
+    aria-labelledby="requests-heading"
+    class="panel"
+  />
+
+  Name "My loans":
+  <section
+    aria-busy="false"
+    aria-labelledby="loans-heading"
+    class="panel"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="asset-grid"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  article:
+
+  Name "":
+  <article
+    class="asset-card"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  <code />
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  <strong />
+
+  Name "":
+  <strong />
+
+  Name "":
+  <strong />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            B1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            B1
+          </span>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+        >
+          <a
+            class="btn btn--primary"
+            href="/requests"
+          >
+            <span
+              class="btn-label"
+            >
+              My Requests page
+            </span>
+          </a>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Request pending: you already have a pending request for Camera, CAM-01"
+                    disabled=""
+                    type="button"
+                  >
+                    Request pending
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              3
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  DECLINED
+                </small>
+                <small>
+                  Request
+                  R2
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  CANCELLED
+                </small>
+                <small>
+                  Request
+                  R3
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ × tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and removes the request from the refreshed queue 1023ms
+   → Unable to find a label with the text of: Decline reason for CAM-01
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ × tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons 1013ms
+   → Unable to find a label with the text of: Decline reason for CAM-01
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone (
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+node.exe :
+At C:\Users\Phurithip P\AppData\Roaming\npm\npx.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure
+reason and time
+TestingLibraryElementError: Unable to find an element with the text: /Reason: Equipment was checked out to another
+borrower/. This could be because the text is broken up by multiple elements. In this case, you can provide a function
+for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<article
+  class="record"
+>
+  <div>
+    <strong>
+      Camera
+    </strong>
+    <small>
+      CAM-01
+       ·
+      DECLINED
+    </small>
+    <small>
+      Request
+      R2
+    </small>
+    <small>
+      Submitted
+      3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+    </small>
+  </div>
+</article>
+ ❯ Object.getElementError D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ tests/request-lifecycle.test.tsx:48:35
+     46|     const declinedRecord = screen.getByText('Request R2').closest('art…
+     47|     expect(within(declinedRecord).getByText('CAM-01 · DECLINED')).toBe…
+     48|     expect(within(declinedRecord).getByText(/Reason: Equipment was che…
+       |                                   ^
+     49|     expect(within(declinedRecord).getByText(/^Closed /)).toBeTruthy()
+     50|     const cancelledRecord = screen.getByText('Request R3').closest('ar…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests,
+posts with CSRF, and refreshes history
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/Cancel request/`
+
+Here are the accessible roles:
+
+  banner:
+
+  Name "":
+  <header
+    class="topbar"
+  />
+
+  --------------------------------------------------
+  link:
+
+  Name "KitLoop home":
+  <a
+    aria-label="KitLoop home"
+    class="brand"
+    href="/"
+  />
+
+  Name "My Requests page":
+  <a
+    class="btn btn--primary"
+    href="/requests"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Sign out":
+  <button
+    class="btn btn--secondary"
+  />
+
+  Name "Request pending: you already have a pending request for Camera, CAM-01":
+  <button
+    aria-label="Request pending: you already have a pending request for Camera, CAM-01"
+    disabled=""
+    type="button"
+  />
+
+  --------------------------------------------------
+  main:
+
+  Name "":
+  <main
+    class="dashboard"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Find your next tool.":
+  <h1 />
+
+  Name "Equipment catalog":
+  <h2
+    id="catalog-heading"
+  />
+
+  Name "Camera":
+  <h3 />
+
+  Name "My requests":
+  <h2
+    id="requests-heading"
+  />
+
+  Name "My loans":
+  <h2
+    id="loans-heading"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p
+    class="empty"
+  />
+
+  --------------------------------------------------
+  navigation:
+
+  Name "Borrower pages":
+  <nav
+    aria-label="Borrower pages"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Equipment catalog":
+  <section
+    aria-busy="false"
+    aria-labelledby="catalog-heading"
+    class="panel catalog"
+  />
+
+  Name "My requests":
+  <section
+    aria-busy="false"
+    aria-labelledby="requests-heading"
+    class="panel"
+  />
+
+  Name "My loans":
+  <section
+    aria-busy="false"
+    aria-labelledby="loans-heading"
+    class="panel"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="asset-grid"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  article:
+
+  Name "":
+  <article
+    class="asset-card"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  Name "":
+  <article
+    class="record"
+  />
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  <code />
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  <strong />
+
+  Name "":
+  <strong />
+
+  Name "":
+  <strong />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89
+C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11
+C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78
+C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            B1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            B1
+          </span>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+        >
+          <a
+            class="btn btn--primary"
+            href="/requests"
+          >
+            <span
+              class="btn-label"
+            >
+              My Requests page
+            </span>
+          </a>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Request pending: you already have a pending request for Camera,
+CAM-01"
+                    disabled=""
+                    type="button"
+                  >
+                    Request pending
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              3
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  DECLINED
+                </small>
+                <small>
+                  Request
+                  R2
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  CANCELLED
+                </small>
+                <small>
+                  Request
+                  R3
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+ ❯ tests/request-lifecycle.test.tsx:69:28
+     67|     render(<App />)
+     68|     await screen.findByText('Request R1')
+     69|     const buttons = screen.getAllByRole('button', { name: /Cancel requ…
+       |                            ^
+     70|     expect(buttons).toHaveLength(1)
+     71|     expect(within(screen.getByText('Request R1').closest('article')!).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and
+removes the request from the refreshed queue
+TestingLibraryElementError: Unable to find a label with the text of: Decline reason for CAM-01
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89
+C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11
+C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78
+C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone
+(
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89
+C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11
+C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78
+C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone
+(
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ tests/request-lifecycle.test.tsx:86:33
+     84|     role = 'CUSTODIAN'; records = [{ ...pending, borrower: { id: 'B1',…
+     85|     render(<App />)
+     86|     const reason = await screen.findByLabelText('Decline reason for CA…
+       |                                 ^
+     87|     const button = screen.getByRole('button', { name: 'Decline' }) as …
+     88|     expect(button.disabled).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons
+TestingLibraryElementError: Unable to find a label with the text of: Decline reason for CAM-01
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89
+C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11
+C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78
+C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone
+(
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89
+C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11
+C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78
+C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              CUSTODIAN
+               WORKSPACE
+            </span>
+            <h1>
+              Manage the handoff.
+            </h1>
+            <p>
+              Review requests and check out equipment in your assigned inventory.
+            </p>
+          </div>
+          <span
+            class="identity-tag"
+          >
+            Account
+            C1
+          </span>
+        </div>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              1
+
+              asset
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              Pending requests
+            </h2>
+            <span>
+              1
+               records
+            </span>
+          </div>
+          <div
+            class="record-list"
+          >
+            <article
+              class="record"
+            >
+              <div>
+                <strong>
+                  Camera
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  11:02:24
+   Duration  9.82s (environment 45%, tests 39%, setup 7%, transform 6%, import 3%)
+                </strong>
+                <small>
+                  CAM-01
+                   ·
+                  PENDING
+                </small>
+                <small>
+                  Request
+                  R1
+                </small>
+                <small>
+                  Submitted
+                  3/11/2569 7 นาฬิกา 00 นาที 00 วินาที GMT+7 (Asia/Bangkok)
+                </small>
+                <small>
+                  Borrower:
+                  borrower.demo
+                   ·
+                  B1
+                </small>
+              </div>
+              <form
+                aria-label="Checkout request R1"
+                class="checkout-form"
+              >
+                <label
+                  for="checkout-due-R1"
+                >
+                  Due date for
+                  CAM-01
+                </label>
+                <input
+                  aria-describedby="checkout-due-R1-help"
+                  aria-invalid="false"
+                  id="checkout-due-R1"
+                  min="2026-11-21T11:03"
+                  required=""
+                  type="datetime-local"
+                  value=""
+                />
+                <p
+                  class="checkout-help"
+                  id="checkout-due-R1-help"
+                >
+                  Confirm the physical handoff before recording checkout. The due date uses your browser timezone
+(
+                  Asia/Bangkok
+                  ).
+                </p>
+                <button
+                  disabled=""
+                  type="submit"
+                >
+                  Check out
+                </button>
+              </form>
+            </article>
+          </div>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              Active loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ D:/SWE_Project/kitloop/client/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ tests/request-lifecycle.test.tsx:101:33
+     99|     role = 'CUSTODIAN'; records = [{ ...pending, borrower: { id: 'B1',…
+    100|     render(<App />)
+    101|     const reason = await screen.findByLabelText<HTMLSelectElement>('De…
+       |                                 ^
+    102|     const values = [...reason.options].map(option => option.value)
+    103|     expect(values).toEqual(['', 'EQUIPMENT_UNAVAILABLE', 'BORROWER_NOT…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯

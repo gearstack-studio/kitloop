@@ -28,6 +28,110 @@ require_successful_job() {
   note "Verified completed $job execution: $execution_name"
 }
 
+# --- Pre-lifecycle rollback gate (PR #72 re-review P1) ----------------------------------------------------------------
+# Invariant: a pre-lifecycle revision (no REQUEST_LIFECYCLE_WRITES; 8b6e5a9 and earlier) may receive traffic only after a
+# fresh, read-only check of the production database ran successfully in this invocation and found ZERO request rows with
+# lifecycle-only statuses, while nothing that could write such rows is running. The serving revision's flag is never
+# evidence: phase 1 writes nothing new, but rows written earlier by phase 2 remain. Operator confirmation authorises the
+# action; it never replaces the check.
+
+# Refuses unless no lifecycle writer can run between the check and the traffic switch, or after it: no revision that
+# can receive requests (a traffic share or a tag URL, which serves at 0% traffic) has writes enabled, and no
+# reconciliation job exists. Prints the lifecycle-aware app image of a serving revision to run the check with.
+pre_lifecycle_rollback_preflight() {
+  local service="$1" rev tag state image="" source jobs
+  while read -r rev tag; do
+    [[ -n "$rev" ]] || continue
+    state="$(revision_lifecycle "$rev")"
+    if [[ "$state" == enabled && "$tag" == - ]]; then
+      die "Refusing: serving revision $rev has lifecycle writes enabled, so lifecycle rows could be written after any \
+check. Roll back to a phase-1 revision (REQUEST_LIFECYCLE_WRITES=disabled) first, then rerun. Traffic was not changed."
+    elif [[ "$state" == enabled ]]; then
+      die "Refusing: revision $rev has lifecycle writes enabled and is reachable through tag '$tag' at 0% traffic, so \
+lifecycle rows could be written after any check. Remove the tag (gcloud run services update-traffic $SERVICE \
+--project=$PROJECT --region=$REGION --remove-tags=$tag), then rerun. Traffic was not changed."
+    fi
+    if [[ -z "$image" && "$tag" == - && "$state" != absent ]]; then image="$(revision_image "$rev")"; fi
+  done < <(reachable_revisions "$service")
+  jobs="$(gcloud run jobs list --project="$PROJECT" --region="$REGION" --format='value(metadata.name)')" || \
+    die 'Cannot list Cloud Run jobs to rule out a running lifecycle writer. Traffic was not changed.'
+  ! grep -qxF "$RECONCILE_JOB" <<<"$jobs" || die "Refusing: the reconciliation job $RECONCILE_JOB exists and writes \
+lifecycle rows. Delete it after reconciliation (gcloud run jobs delete $RECONCILE_JOB), then rerun. Traffic was not changed."
+  if [[ -z "$image" ]]; then
+    source="${KITLOOP_ROLLBACK_CHECK_REVISION:-}"
+    [[ -n "$source" ]] || die "No lifecycle-aware revision is serving, so the database check has no image to run. Set \
+KITLOOP_ROLLBACK_CHECK_REVISION to a ready revision of the lifecycle release (it only selects the check image). Traffic was not changed."
+    [[ "$source" =~ ^kitloop-[a-z0-9-]+$ ]] || die 'KITLOOP_ROLLBACK_CHECK_REVISION must be a KitLoop revision name. Traffic was not changed.'
+    require_safe_revision "$source" "$(canonical_url)"
+    [[ "$(revision_lifecycle "$source")" != absent ]] || die "$source predates the request lifecycle and cannot run the \
+check. Traffic was not changed."
+    image="$(revision_image "$source")"
+  fi
+  printf '%s' "$image"
+}
+
+# Runs 'lifecycle-cli rollback-check --require-zero' as a Cloud Run job against the service's database and accepts only
+# a NEW execution that succeeded with exactly the expected image, command and arguments. The CLI exits 0 only for zero
+# lifecycle-only rows in database $DB_NAME (READ ONLY transaction); rows present, a different database, an unreachable
+# database or any error make the execution fail. Output is JSON counts only; credentials come from Secret Manager.
+run_pre_lifecycle_rollback_check() {
+  local image="$1" args previous latest execution
+  args="dist/lifecycle-cli.js,rollback-check,--require-zero,--expect-database=$DB_NAME"
+  gcloud run jobs deploy "$ROLLBACK_CHECK_JOB" --project="$PROJECT" --region="$REGION" \
+    --image="$image" --service-account="$RUN_SA" \
+    --network="$NETWORK" --subnet="$SUBNET" --vpc-egress=private-ranges-only \
+    --set-cloudsql-instances="$CONNECTION" --set-secrets=DATABASE_URL=kitloop-database-url:1 \
+    --set-env-vars=NODE_ENV=production --command=node --args="$args" \
+    --tasks=1 --max-retries=0 --task-timeout=120s || die 'Cannot prepare the database check job. Traffic was not changed.'
+  previous="$(gcloud run jobs describe "$ROLLBACK_CHECK_JOB" --project="$PROJECT" --region="$REGION" \
+    --format='value(status.latestCreatedExecution.name)')" || die 'Cannot inspect the database check job. Traffic was not changed.'
+  timeout 900 gcloud run jobs execute "$ROLLBACK_CHECK_JOB" --project="$PROJECT" --region="$REGION" --wait || \
+    die "The database compatibility check did not pass: lifecycle-only rows exist, the database could not be verified, \
+or the check failed or timed out. Inspect the $ROLLBACK_CHECK_JOB execution logs. Traffic was not changed."
+  latest="$(gcloud run jobs describe "$ROLLBACK_CHECK_JOB" --project="$PROJECT" --region="$REGION" \
+    --format='value(status.latestCreatedExecution.name)')" || die 'Cannot inspect the database check job. Traffic was not changed.'
+  [[ -n "$latest" && "$latest" != "$previous" ]] || die 'No new database check execution was recorded. Traffic was not changed.'
+  execution="$(gcloud run jobs executions describe "$latest" --project="$PROJECT" --region="$REGION" --format=json)" || \
+    die "Cannot inspect database check execution $latest. Traffic was not changed."
+  jq -e --arg image "$image" --arg args "$args" '
+    (.status.succeededCount == 1) and ((.status.failedCount // 0) == 0) and ((.status.completionTime // "") != "") and
+    (.spec.template.spec.containers[0].image == $image) and
+    (.spec.template.spec.containers[0].command == ["node"]) and
+    (.spec.template.spec.containers[0].args == ($args | split(",")))
+  ' <<<"$execution" >/dev/null 2>&1 || die "Database check execution $latest could not be verified as a successful \
+zero-row check. Traffic was not changed."
+  note "Verified database check $latest: zero lifecycle-only request rows in database $DB_NAME."
+}
+
+# --- Release source verification (PR #72 re-review of 402eafd, P1) ---------------------------------------------------
+# Usage: sha="$(verified_release_commit INPUT)" -> canonical 40-character SHA, or exits nonzero.
+# deploy, migrate and bootstrap select registry images by commit, and a pre-lifecycle image deployed by this script
+# would be labelled REQUEST_LIFECYCLE_WRITES and then treated as lifecycle-aware. So the commit itself must be proven,
+# fail-closed and before any registry or Cloud Run call: it must be a commit object of the checkout that contains this
+# script, and that commit must contain the lifecycle migration. A registry image or an operator confirmation is never
+# evidence. Each step stops on its own; none is folded into a condition that could skip the check.
+verified_release_commit() {
+  local input="$1" object type
+  [[ "$input" =~ ^[0-9a-f]{12,40}$ ]] || die 'Use a 12-40 character lowercase Git commit SHA. Nothing was changed.'
+  require_command git
+  git -C "$script_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "release.sh is not inside a Git checkout, \
+so release commit $input cannot be verified. Run it from a clone of the KitLoop repository. Nothing was changed."
+  object="$(git -C "$script_dir" rev-parse --verify --quiet "$input^{object}" 2>/dev/null)" || die "Commit $input is \
+not in this checkout (unknown, or an ambiguous abbreviation). Fetch it (git fetch origin) or pass the full SHA of a \
+fetched commit; release.sh releases only commits it can verify locally. Nothing was changed."
+  # A ref whose name looks like a SHA could resolve to a different object; only an object ID prefix is accepted.
+  [[ "$object" =~ ^[0-9a-f]{40}$ && "$object" == "$input"* ]] || die "$input does not name a Git object by its ID. \
+Pass the release commit SHA. Nothing was changed."
+  type="$(git -C "$script_dir" cat-file -t "$object")" || die "Cannot read Git object $object. Nothing was changed."
+  [[ "$type" == commit ]] || die "$input is a Git $type, not a commit. Pass the release commit SHA itself. \
+Nothing was changed."
+  [[ "$(git -C "$script_dir" cat-file -t "$object:$LIFECYCLE_MIGRATION" 2>/dev/null)" == blob ]] || die "Commit \
+$object does not contain $LIFECYCLE_MIGRATION, so it predates the request lifecycle (or removed it). Pre-lifecycle code \
+may only receive traffic through 'release.sh rollback REVISION', which first verifies the database. Nothing was changed."
+  note "Verified release commit $object: present in this checkout and contains the request lifecycle migration."
+  printf '%s' "$object"
+}
+
 # The verified bootstrap is recorded on the Cloud SQL instance it provisioned. Later releases rely on
 # that record instead of the one-time job, its revoked manifest access, or the Cloud Run service.
 recorded_bootstrap() {
@@ -60,12 +164,12 @@ case "$action" in
       --gcs-source-staging-dir="gs://$BUILD_SOURCE_BUCKET/source" --ignore-file=.gcloudignore \
       --service-account="projects/$PROJECT/serviceAccounts/$BUILD_SA" \
       --config=infra/gcp/cloudbuild.yaml \
-      --substitutions="_APP_IMAGE=$app_image,_MIGRATION_IMAGE=$migrate_image"
+      --substitutions="_APP_IMAGE=$app_image,_MIGRATION_IMAGE=$migrate_image,_SOURCE_SHA=$sha"
     printf 'Source SHA: %s\nApp digest: %s\nMigration digest: %s\n' \
       "$sha" "$(digest_for "$app_image")" "$(digest_for "$migrate_image")"
     ;;
   migrate)
-    sha="${2:-}"
+    sha="$(verified_release_commit "${2:-}")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     gcloud sql instances describe "$SQL_INSTANCE" --project="$PROJECT" --format='value(state)' | grep -qx RUNNABLE || \
       die 'Cloud SQL is not RUNNABLE.'
@@ -82,7 +186,7 @@ case "$action" in
     require_successful_job kitloop-migrate "$migrate_image"
     ;;
   bootstrap)
-    sha="${2:-}"
+    sha="$(verified_release_commit "${2:-}")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     app_image="$(digest_for "$(image_for app "$sha")")"
     grep -q '"db:bootstrap"' server/package.json || \
@@ -108,7 +212,9 @@ case "$action" in
     printf 'Bootstrap execution: %s (recorded on %s)\n' "$execution" "$SQL_INSTANCE"
     ;;
   deploy)
-    sha="${2:-}"
+    # Fail-closed source verification first (see verified_release_commit): an unknown, non-commit or pre-lifecycle SHA
+    # never reaches the registry lookup, the migration/bootstrap checks or Cloud Run.
+    sha="$(verified_release_commit "${2:-}")"
     app_image="$(digest_for "$(image_for app "$sha")")"
     migrate_image="$(digest_for "$(image_for migration "$sha")")"
     require_successful_job kitloop-migrate "$migrate_image"
@@ -117,6 +223,19 @@ case "$action" in
       die "No verified production bootstrap is recorded on $SQL_INSTANCE. Run release.sh bootstrap SHA first."
     note "Production bootstrap previously verified: $bootstrap_execution"
     origin="$(canonical_url)"
+    lifecycle="$(lifecycle_writes_setting)"
+    loan_max_days="$(loan_max_days_setting)"
+    note "Maximum loan duration: ${loan_max_days:-none configured (SRS OQ-01 undecided)} (KITLOOP_LOAN_MAX_DAYS)."
+    note "Request lifecycle writes: $lifecycle (KITLOOP_REQUEST_LIFECYCLE_WRITES)."
+    if [[ "$lifecycle" == enabled ]] && service_exists; then
+      # Phase 2 needs a phase-1 (lifecycle-aware) revision serving, so the automatic and manual rollback target can read
+      # lifecycle rows. A pre-lifecycle revision serving here would become the rollback target and return 500.
+      for serving_revision in $(serving_revisions "$(service_json)" | cut -d' ' -f1); do
+        [[ "$(revision_lifecycle "$serving_revision")" != absent ]] || die "Serving revision $serving_revision predates the \
+request lifecycle. Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first (phase 1), verify it, then \
+redeploy with enabled. Traffic was not changed."
+      done
+    fi
     suffix="${sha:0:12}-$(date -u +%Y%m%d%H%M%S)"
     revision="$SERVICE-$suffix"
     # shellcheck disable=SC2054 # Commas are gcloud list syntax inside single arguments.
@@ -125,7 +244,7 @@ case "$action" in
       --network="$NETWORK" --subnet="$SUBNET" --vpc-egress=private-ranges-only
       --set-cloudsql-instances="$CONNECTION"
       --set-secrets=DATABASE_URL=kitloop-database-url:1,SESSION_CSRF_SECRET=kitloop-csrf:1
-      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12"
+      --set-env-vars="NODE_ENV=production,APP_ORIGIN=$origin,SESSION_TTL_HOURS=12,REQUEST_LIFECYCLE_WRITES=$lifecycle${loan_max_days:+,LOAN_MAX_DAYS=$loan_max_days}"
       --port=8080 --cpu=1 --memory=512Mi --concurrency=10 --min-instances=0 --max-instances=2)
     if ! service_exists; then
       note "First deployment: creates a PRIVATE service with APP_ORIGIN=$origin. Cloud Run routes the first revision immediately, but nobody can invoke it until release.sh publish."
@@ -152,7 +271,7 @@ case "$action" in
       [[ "$candidate_url" == https://* ]] || die "Candidate URL for $revision is unavailable; traffic was not changed."
       # Cloud Run tag URLs accept tokens whose audience is the service URL, not the tag URL.
       token="$(identity_token "$origin")"
-      http_checks "$candidate_url" "$token" || die "Candidate $revision failed its checks; traffic was not changed."
+      http_checks "$candidate_url" "$token" "$sha" || die "Candidate $revision failed its checks; traffic was not changed."
       unset token
       gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" \
         --to-revisions="$revision=100"
@@ -161,7 +280,7 @@ case "$action" in
       if service_is_public; then now_public=yes; else now_public=no; fi
       [[ "$now_public" == "$was_public" ]] || die "Invoker access changed during deployment (public: $was_public -> $now_public)."
       if [[ "$was_public" == yes ]]; then
-        http_checks "$origin" || die "Public checks failed after routing; roll back with: release.sh rollback ${previous%% *}"
+        http_checks "$origin" "" "$sha" || die "Public checks failed after routing; roll back with: release.sh rollback ${previous%% *}"
       fi
       printf 'Serving revision: %s (100%%)\nPrevious: %s\nCanonical URL: %s\nApp digest: %s\n' \
         "$revision" "${previous:-none}" "$origin" "$app_image"
@@ -181,12 +300,33 @@ case "$action" in
     origin="$(canonical_url)"
     require_safe_revision "$revision" "$origin"
     service="$(service_json)"
-    note "Currently serving: $(serving_revisions "$service" | tr '\n' ' ')"
-    note "Routes 100% of traffic to $revision. This does not reverse a database migration. A later release.sh deploy moves traffic to its new revision after checks."
-    confirm rollback
-    gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" \
-      --to-revisions="${revision}=100"
-    service="$(service_json)"
+    serving="$(serving_revisions "$service")"
+    traffic_before="$(traffic_snapshot "$service")"
+    note "Currently serving: $(tr '\n' ' ' <<<"$serving")"
+    if [[ "$serving" == "$revision 100" ]]; then
+      note "$revision already serves 100% of traffic; traffic is not changed."
+    else
+      check_image=""
+      if [[ "$(revision_lifecycle "$revision")" == absent ]]; then
+        # PR #72 re-review P1: pre-lifecycle code returns 500 for borrowers with DECLINED/CANCELLED/EXPIRED requests.
+        note "$revision predates the request lifecycle. Traffic moves only after a fresh read-only check of database \
+$DB_NAME finds zero DECLINED/CANCELLED/EXPIRED request rows."
+        check_image="$(pre_lifecycle_rollback_preflight "$service")"
+      fi
+      note "Routes 100% of traffic to $revision. This does not reverse a database migration. A later release.sh deploy moves traffic to its new revision after checks."
+      confirm rollback
+      if [[ -n "$check_image" ]]; then
+        run_pre_lifecycle_rollback_check "$check_image"
+        # Nothing may have changed between the check and the switch: same traffic and tags, still no lifecycle writer.
+        service="$(service_json)"
+        [[ "$(traffic_snapshot "$service")" == "$traffic_before" ]] || \
+          die 'Serving revisions or tags changed during the database check. Traffic was not changed; rerun the rollback.'
+        pre_lifecycle_rollback_preflight "$service" >/dev/null
+      fi
+      gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" \
+        --to-revisions="${revision}=100"
+      service="$(service_json)"
+    fi
     require_serving "$service" "$revision"
     if service_is_public; then
       bash "$script_dir/verify.sh" public

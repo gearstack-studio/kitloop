@@ -8,25 +8,40 @@ const equipment = [
   <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>,
 ]
 
+// Re-rolled at the start of each loop, while the icon is fully transparent above the hero.
 const rollDrop = () => ({
   icon: Math.floor(Math.random() * equipment.length),
   left: 4 + Math.random() * 92,
   size: 44 + Math.random() * 32,
-  duration: 8 + Math.random() * 7,
   spin: (Math.random() - 0.5) * 50,
 })
 
-function Drop({ delay }: { delay: number }) {
+/**
+ * Fixed resting places for the reduced-motion scene (percent of the hero), so it is the same on every device.
+ * The first three are the ones shown on phones, in the lower half below the text.
+ */
+const rest = [[88, 80], [52, 90], [20, 86], [74, 16], [40, 8], [94, 34]]
+const delays = [0, 2.5, 5, 7.5, 10, 12.5]
+
+function Drop({ index }: { index: number }) {
   const [drop, setDrop] = useState(rollDrop)
+  // UAT-E05 (#65): the fall duration is chosen once. Changing animation-duration on a running animation moves its
+  // progress, so the old per-loop re-roll made icons pop in or jump mid-fall.
+  const [duration] = useState(() => 8 + Math.random() * 7)
+  const [restX, restY] = rest[index]
   return <svg className="landing-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-    style={{ left: `${drop.left}%`, width: drop.size, height: drop.size, animationDuration: `${drop.duration}s`, animationDelay: `${delay}s`, '--spin': `${drop.spin}deg` } as React.CSSProperties}
+    style={{ width: drop.size, height: drop.size, animationDuration: `${duration}s`, animationDelay: `${delays[index]}s`,
+      '--spin': `${drop.spin}deg`, '--fall-x': `${drop.left}%`, '--rest-x': `${restX}%`, '--rest-y': `${restY}%` } as React.CSSProperties}
     onAnimationIteration={() => setDrop(rollDrop())}>{equipment[drop.icon]}</svg>
 }
 
-/** Equipment outlines falling through the hero; each loop re-rolls its icon, position, size and speed. */
+/**
+ * Equipment outlines falling through the hero; each loop re-rolls its icon, position, size and tilt (not its speed).
+ * With prefers-reduced-motion they rest at fixed places instead (Landing.css).
+ */
 export function Drops() {
   return <div className="landing-beams" aria-hidden="true">
-    {[0, 2.5, 5, 7.5, 10, 12.5].map(delay => <Drop key={delay} delay={delay} />)}
+    {delays.map((delay, index) => <Drop key={delay} index={index} />)}
   </div>
 }
 

@@ -5,7 +5,9 @@ import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
 import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
-import { checkoutInput, checkoutRequest, loanDto } from "./checkout.js";
+import { borrowerLoanDetails, checkoutInput, checkoutRequest, custodianLoanDetails, loanDto } from "./checkout.js";
+import { requestLifecycleWrites } from "./config.js";
+import { cancelInput, cancelRequest, declineInput, declineRequest } from "./request-lifecycle.js";
 
 export const domainRouter = Router();
 domainRouter.use(requireAuth);
@@ -144,9 +146,32 @@ domainRouter.post("/requests/:id/checkout", requireRole(Role.CUSTODIAN), require
   response.status(201).json(await checkoutRequest(request.principal!.id, id, input));
 });
 
+// UAT-E01 (#61): lifecycle actions. Each maps to one terminal status; clients never send a status.
+// PR #72 P1: in phase 1 (lifecycle writes disabled) the routes behave as on 8b6e5a9, where they did not exist.
+function requireLifecycleWrites() {
+  if (!requestLifecycleWrites(process.env)) {
+    throw new ApiError(404, "LIFECYCLE_ACTIONS_DISABLED", "Request lifecycle actions are not enabled on this deployment");
+  }
+}
+
+domainRouter.post("/requests/:id/cancel", requireRole(Role.BORROWER), requireCsrf, async (request, response) => {
+  requireLifecycleWrites();
+  const id = recordId(request.params.id);
+  cancelInput(request.body);
+  response.json(await cancelRequest(request.principal!.id, id));
+});
+
+domainRouter.post("/requests/:id/decline", requireRole(Role.CUSTODIAN), requireCsrf, async (request, response) => {
+  requireLifecycleWrites();
+  const id = recordId(request.params.id);
+  const reason = declineInput(request.body);
+  response.json(await declineRequest(request.principal!.id, id, reason));
+});
+
 domainRouter.get("/loans/mine", requireRole(Role.BORROWER), async (request, response) => {
   response.json((await prisma.loan.findMany({
     where: { borrowerId: request.principal!.id },
+    include: borrowerLoanDetails,
     orderBy: { checkedOutAt: "desc" },
   })).map(loanDto));
 });
@@ -157,20 +182,19 @@ domainRouter.get("/loans/active", requireRole(Role.CUSTODIAN), async (request, r
       returnedAt: null,
       asset: { custodianAssets: { some: { custodianId: request.principal!.id } } },
     },
+    include: custodianLoanDetails,
     orderBy: { checkedOutAt: "desc" },
   })).map(loanDto));
 });
 
 domainRouter.get("/loans/:id", async (request, response) => {
   const principal = request.principal!;
-  const record = await prisma.loan.findFirst({
-    where: {
-      id: recordId(request.params.id),
-      ...(principal.role === Role.BORROWER
-        ? { borrowerId: principal.id }
-        : { asset: { custodianAssets: { some: { custodianId: principal.id } } } }),
-    },
-  });
+  const id = recordId(request.params.id);
+  // Each role reads its own allowlist (UAT-E03 final privacy audit): borrowers never receive person names.
+  const record = principal.role === Role.BORROWER
+    ? await prisma.loan.findFirst({ include: borrowerLoanDetails, where: { id, borrowerId: principal.id } })
+    : await prisma.loan.findFirst({ include: custodianLoanDetails,
+      where: { id, asset: { custodianAssets: { some: { custodianId: principal.id } } } } });
   if (!record) throw notFound();
   response.json(loanDto(record));
 });

@@ -19,6 +19,18 @@
   align-items: center;
 }
 
+.topbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.topbar-controls .identity-tag {
+  white-space: nowrap;
+}
+
 .kitloop-logo {
   width: 38px;
   height: 38px;
@@ -469,6 +481,19 @@
 }
 
 .checkout-form input { width: 100%; min-width: 0; }
+/* Custodian queue: checkout and decline stacked in the record's action column. */
+.request-actions { display: grid; gap: var(--space-4); flex: 0 1 360px; min-width: 0; }
+.request-actions .checkout-form { flex: none; }
+/* Same control styling as the borrower's equipment select (.request-form select). */
+.request-actions select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  color: var(--kl-text);
+  background: var(--kl-surface);
+  border: 1px solid var(--kl-border);
+  border-radius: var(--radius-control);
+}
 .checkout-help { font-size: 13px; color: var(--color-text-muted); }
 .record small { overflow-wrap: anywhere; }
 
@@ -554,4 +579,24 @@
   .asset-footer button {
     flex: 1 1 100%;
   }
+}
+
+/* UAT-E03 (#63): readable names. Long usernames truncate instead of widening the top bar on small screens. */
+.topbar-controls .identity-tag { max-width: min(40vw, 260px); overflow: hidden; text-overflow: ellipsis; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+/* Secondary record IDs: collapsed by default, still keyboard reachable and available to support and testers. */
+.record-ids { margin-top: var(--space-2); }
+.record-ids summary { cursor: pointer; width: fit-content; font-size: 12px; color: var(--color-text-muted); }
+.record-ids summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* UAT-E04 (#64): persistent borrower navigation. The current page is the filled (primary) link with aria-current;
+   the other is outlined. On narrow screens the two links share the row equally and long labels wrap, never clip. */
+.borrower-nav ul { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.borrower-nav a[aria-current="page"] { cursor: default; }
+@media (max-width: 420px) {
+  .borrower-nav li { flex: 1 1 0; min-width: 0; }
+  .borrower-nav a { width: 100%; padding: var(--space-2) var(--space-3); text-align: center; }
 }

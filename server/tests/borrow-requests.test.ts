@@ -62,6 +62,18 @@ describe("request payload unit validation", () => {
 });
 
 describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
+  it("returns 413 for a borrow request body over 16 KB without creating a request", async () => {
+    const assetId = await asset();
+    const response = await submit(borrower, { assetId, pad: "x".repeat(17_000) });
+
+    expect(await prisma.borrowRequest.count({ where: { assetId } })).toBe(0);
+    expect(response.status).toBe(413);
+    expect(response.headers["content-type"]).toMatch(/application\/json/);
+    expect(response.body).toEqual({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
+  });
+
   it("persists PENDING with server identity/time, exposes asset details, and never reserves", async () => {
     const assetId = await asset();
     const before = Date.now();
@@ -141,7 +153,9 @@ describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("PENDING");
     expect((await checkout(custodian, created.body.id, assetId)).status).toBe(201);
     expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: created.body.id } })).status).toBe("CHECKED_OUT");
-    expect((await prisma.borrowRequest.findUniqueOrThrow({ where: { id: competing.body.id } })).status).toBe("PENDING");
+    // UAT-E01 (#61): checkout closes the competing request instead of leaving it PENDING forever.
+    expect(await prisma.borrowRequest.findUniqueOrThrow({ where: { id: competing.body.id } }))
+      .toMatchObject({ status: "DECLINED", closeReason: "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER" });
     expect((await submit(borrower, { assetId })).body.error.code).toBe("ASSET_UNAVAILABLE");
     expect((await submit(other, { assetId })).status).toBe(409);
     expect((await checkout(custodian, competing.body.id, assetId)).status).toBe(409);

@@ -110,12 +110,14 @@ describe("FEAT-01 authentication API", () => {
       [usernames.custodianA, custodianAId, Role.CUSTODIAN],
     ] as const) {
       const { cookie, csrf, response } = await login(username);
-      expect(response.body.user).toEqual({ id: expectedId, role });
+      // UAT-E03 (#63): the user's own username is returned so the UI can show it instead of an ID.
+      expect(response.body.user).toEqual({ id: expectedId, role, username });
       expect(response.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(csrf).toBeTruthy();
       const current = await request(app).get("/api/auth/me").set("Cookie", cookie);
       expect(current.status).toBe(200);
-      expect(current.body).toEqual({ id: expectedId, role });
+      // PR #72 P1: /auth/me also tells the client which lifecycle actions this deployment offers.
+      expect(current.body).toEqual({ id: expectedId, role, username, features: { requestLifecycleActions: true, loanMaxDays: null } });
     }
   });
 
@@ -202,6 +204,20 @@ describe("FEAT-01 authentication API", () => {
       .set("Content-Type", "application/json").send("{");
     expect(malformed.status).toBe(400);
     expect(malformed.body).toEqual({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } });
+  });
+
+  it("returns 413 for a login body over 16 KB without creating a session", async () => {
+    const sessionCount = await prisma.session.count();
+    const response = await request(app).post("/api/auth/login").set("Origin", origin)
+      .send({ username: "a".repeat(20_000), password });
+
+    expect(await prisma.session.count()).toBe(sessionCount);
+    expect(response.headers["set-cookie"]).toBeUndefined();
+    expect(response.status).toBe(413);
+    expect(response.headers["content-type"]).toMatch(/application\/json/);
+    expect(response.body).toEqual({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body must not exceed 16 KB" },
+    });
   });
 
   it("returns a generic response for an unexpected authentication failure", async () => {

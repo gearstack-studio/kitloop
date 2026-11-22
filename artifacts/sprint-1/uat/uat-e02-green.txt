@@ -1,0 +1,212 @@
+UAT-E02 (#62) checkout due date has no upper limit: BR-11, FEAT-04, SRS OQ-01 (open)
+Branch fix/62-uat-checkout-due-date-limit, base a381de3 (origin/sprint-1-staging incl. merged PR #72).
+Isolated databases only (kitloop_auth_test, kitloop_e2e_pw); offline fake gcloud for release tooling. No production.
+LOAN_MAX_DAYS=21 in tests is a TEST CONFIGURATION ONLY; no loan period has been approved (OQ-01).
+
+GREEN and full regression (working tree):
+  focused server (loan-duration, checkout, checkout-unit, request-lifecycle): 4 files 43/43
+  focused client (loan-duration, checkout, checkout-workflow): 3 files 19/19
+  full server 15 files 122/122; full client 8 files 49/49
+  server typecheck+build, client lint, client build (tsc -b + vite), e2e typecheck: exit 0
+  browser E2E 35/35 incl. 4 new UAT-E02 tests (NODE_OPTIONS=--dns-result-order=ipv4first on this machine)
+  infra: guards.test.sh all pass + 16 deployment guard cases; Python infra tests 28 + 14 + 12 OK
+  NOT RUN locally: CI Docker Compose build/smoke steps (Docker Desktop engine not running on this machine)
+
+===== focused server =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  4 passed (4)
+      Tests  43 passed (43)
+   Start at  22:04:06
+   Duration  3.68s (tests 75%, import 20%, transform 4%, worker 1%)
+
+    Isolate  4 workers spawned · ~140ms startup each (spawn + environment, per file)
+             at least ~419ms faster with isolate: false — reuses workers across files instead of one per file
+
+===== focused client =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  3 passed (3)
+      Tests  19 passed (19)
+   Start at  22:04:10
+   Duration  3.01s (environment 50%, tests 29%, setup 10%, import 6%, transform 5%)
+
+===== full server suite =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  15 passed (15)
+      Tests  122 passed (122)
+   Start at  22:10:14
+   Duration  24.91s (tests 85%, import 12%, transform 2%)
+
+    Isolate  15 workers spawned · ~188ms startup each (spawn + environment, per file)
+             at least ~2.63s faster with isolate: false — reuses workers across files instead of one per file
+
+===== server typecheck + build =====
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+===== full client suite =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  8 passed (8)
+      Tests  49 passed (49)
+   Start at  22:10:48
+   Duration  12.24s (environment 48%, tests 29%, setup 13%, import 8%, transform 2%)
+
+===== client lint =====
+> client@0.0.0 lint
+> eslint .
+
+===== client build =====
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 37 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-BNkzRQp1.css          31.40 kB │ gzip:  6.95 kB
+dist/assets/index-Dl4omx11.js          247.26 kB │ gzip: 76.71 kB
+
+✓ built in 588ms
+
+===== e2e typecheck =====
+> kitloop-e2e@0.0.0 typecheck
+> tsc --noEmit
+
+===== browser E2E =====
+Running 35 tests using 1 worker
+
+
+
+[1/35] [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message
+[2/35] [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog
+[3/35] [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login
+[4/35] [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset
+[5/35] [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001
+[6/35] [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload
+[7/35] [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests
+[8/35] [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears
+[9/35] [chromium] › tests\02-request-checkout-journey.spec.ts:105:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered
+[10/35] [chromium] › tests\02-request-checkout-journey.spec.ts:115:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload
+[11/35] [chromium] › tests\02-request-checkout-journey.spec.ts:129:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason
+[12/35] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login
+[13/35] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login
+[14/35] [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls
+[15/35] [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls
+[16/35] [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session
+[17/35] [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A)
+[18/35] [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING
+[19/35] [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403)
+[20/35] [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created
+[21/35] [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING
+[22/35] [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list
+[23/35] [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan
+[24/35] [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING
+[25/35] [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue
+[26/35] [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason
+[27/35] [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action
+[28/35] [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed
+[29/35] [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first
+[30/35] [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions)
+[31/35] [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first
+[32/35] [chromium] › tests\05-loan-duration.spec.ts:48:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date
+[33/35] [chromium] › tests\05-loan-duration.spec.ts:70:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent
+[34/35] [chromium] › tests\05-loan-duration.spec.ts:82:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING
+[35/35] [chromium] › tests\05-loan-duration.spec.ts:96:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created
+  35 passed (1.8m)
+
+===== infra guard suites (WSL, offline fake gcloud) =====
+M .github/workflows/deploy.yml
+ M infra/gcp/common.sh
+ M infra/gcp/guards.test.sh
+ M infra/gcp/release.sh
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: LOAN_MAX_DAYS is omitted unless KITLOOP_LOAN_MAX_DAYS is set, and invalid values are refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+PASS: BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+PASS: ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)
+PASS: ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check
+PASS: pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image
+PASS: BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+PASS: BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows
+PASS: BLOCKED: the database check cannot run (database unreachable)
+PASS: BLOCKED: the check execution cannot be verified (malformed output)
+PASS: BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed
+PASS: BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)
+PASS: BLOCKED: an operator confirmation never substitutes for a verified zero-row check
+PASS: BLOCKED: deploy of a full SHA absent from the checkout, before any registry or Cloud Run call (re-review regression)
+PASS: BLOCKED: deploy of an unknown abbreviated SHA, a pre-lifecycle commit (full and abbreviated) and a commit missing the migration
+PASS: BLOCKED: deploy of a blob, tree or annotated tag object, a tag name, a SHA-like branch name and malformed SHAs
+PASS: BLOCKED: migrate and bootstrap use the same source verification before any Cloud Run job mutation
+PASS: ALLOWED: a lifecycle-aware commit passes source verification (abbreviated input is canonicalised to the full SHA)
+PASS: all GCP release guard tests
+PASS: 16 offline deployment guard cases
+
+===== Python infra unit tests (WSL) =====
+== infra/gcp/wif
+Ran 28 tests in 0.032s
+
+OK
+== infra/gcp/persistence
+Ran 14 tests in 0.022s
+
+OK
+== infra/gcp/deploy
+Ran 12 tests in 0.004s
+
+OK

@@ -40,3 +40,39 @@ describe("GET /api/ready", () => {
     }
   });
 });
+
+describe("Public release metadata and security headers", () => {
+  it("returns the full build commit without authentication and prevents caching", async () => {
+    const commit = "0123456789abcdef0123456789abcdef01234567";
+    vi.stubEnv("BUILD_COMMIT_SHA", commit);
+    try {
+      const response = await request(app).get("/api/version");
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ commit });
+      expect(response.headers["cache-control"]).toBe("no-store");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("does not disclose invalid build metadata", async () => {
+    vi.stubEnv("BUILD_COMMIT_SHA", "invalid-build-value");
+    try {
+      const response = await request(app).get("/api/version");
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ commit: null });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("sets browser security headers and omits the framework banner", async () => {
+    const { headers } = await request(app).head("/api/health");
+    expect(headers["content-security-policy"]).toContain("script-src 'self'");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["strict-transport-security"]).toBe("max-age=31536000");
+    expect(headers["referrer-policy"]).toBe("no-referrer");
+    expect(headers["x-powered-by"]).toBeUndefined();
+  });
+});

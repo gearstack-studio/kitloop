@@ -1,14 +1,27 @@
-import { Prisma, RequestStatus, type Loan } from "@prisma/client";
+import { Prisma, RequestCloseReason, RequestStatus, type Loan } from "@prisma/client";
 import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
+import { loanMaxDays, requestLifecycleWrites } from "./config.js";
 import { prisma } from "./db.js";
 
+const DAY_MS = 86_400_000;
 const invalidDueDate = () => new ApiError(400, "VALIDATION_ERROR", "Provide a due date later than checkout time", {
   dueAt: "A valid future timestamp with timezone is required",
 });
 
-export function validateDueDate(dueAt: Date, checkedOutAt: Date) {
+/**
+ * BR-11: the due date must be later than the actual checkout instant. UAT-E02 (#62): when a maximum loan duration is
+ * configured (LOAN_MAX_DAYS, see config.ts; SRS OQ-01), it must also be no later than checkout + maxDays x 24 hours
+ * (inclusive). The bound is measured from checkedOutAt, the instant taken inside the checkout transaction, never from
+ * when the form was opened or from the client's clock.
+ */
+export function validateDueDate(dueAt: Date, checkedOutAt: Date, maxDays: number | null = null) {
   if (!Number.isFinite(dueAt.getTime()) || dueAt <= checkedOutAt) throw invalidDueDate();
+  if (maxDays !== null && dueAt.getTime() > checkedOutAt.getTime() + maxDays * DAY_MS) {
+    throw new ApiError(400, "VALIDATION_ERROR", `Choose a due date within ${maxDays} days of checkout`, {
+      dueAt: `The due date must be no later than ${maxDays} days (${maxDays * 24} hours) after checkout`,
+    });
+  }
 }
 
 export function checkoutInput(body: unknown): { assetId: string; dueAt: Date } {
@@ -39,9 +52,25 @@ export function isCheckoutConflict(error: unknown) {
   return error.code === "P2010" && (sqlState === "40001" || sqlState === "40P01");
 }
 
-export function loanDto(loan: Loan) {
+export function loanDto<T extends Loan>(loan: T) {
   return { ...loan, status: loan.returnedAt === null ? "ACTIVE" as const : "RETURNED" as const };
 }
+
+/**
+ * UAT-E03 (#63): readable names for loan views, explicit allowlists per role (least privilege). Every existing FEAT-04
+ * ID field stays; Prisma loads each relation with one batched query per list, so there is no per-loan query.
+ * - Borrower (FR-11: own loans with checkout, due and return information): the equipment name only. No requirement
+ *   grants borrowers custodian identity, and a username is also a login identifier.
+ * - Custodian (FR-08 requester identity, FR-12 return support, scoped by BR-05): equipment name plus { id, username }
+ *   of the borrower and checkout custodian; never credentials, roles or sessions.
+ */
+const loanAssetName = { asset: { select: { assetId: true, name: true } } } satisfies Prisma.LoanInclude;
+export const borrowerLoanDetails = loanAssetName;
+export const custodianLoanDetails = {
+  ...loanAssetName,
+  borrower: { select: { id: true, username: true } },
+  checkoutCustodian: { select: { id: true, username: true } },
+} satisfies Prisma.LoanInclude;
 
 export async function checkoutRequest(custodianId: string, requestId: string, input: { assetId: string; dueAt: Date }, now = () => new Date()) {
   try {
@@ -59,22 +88,38 @@ export async function checkoutRequest(custodianId: string, requestId: string, in
         throw new ApiError(409, "REQUEST_MISMATCH", "Selected equipment does not match this request");
       }
       if (record.status !== RequestStatus.PENDING) {
-        throw new ApiError(409, "REQUEST_NOT_PENDING", "This request has already been checked out");
+        throw new ApiError(409, "REQUEST_NOT_PENDING", record.status === RequestStatus.CHECKED_OUT
+          ? "This request has already been checked out"
+          : "This request is closed and cannot be checked out. Refresh the pending requests.");
       }
       const activeLoanCount = await tx.loan.count({ where: { assetId: record.assetId, ...activeLoanWhere } });
       if (!isBorrowable({ retiredAt: record.asset.retiredAt, activeLoanCount })) {
         throw new ApiError(409, "ASSET_UNAVAILABLE", "Equipment is unavailable. Refresh the pending requests.");
       }
       const checkedOutAt = now();
-      validateDueDate(input.dueAt, checkedOutAt);
+      validateDueDate(input.dueAt, checkedOutAt, loanMaxDays(process.env));
       const updated = await tx.borrowRequest.updateMany({
         where: { id: requestId, status: RequestStatus.PENDING }, data: { status: RequestStatus.CHECKED_OUT },
       });
       if (updated.count !== 1) throw new ApiError(409, "REQUEST_NOT_PENDING", "Request is no longer pending");
-      return tx.loan.create({ data: {
+      const loan = await tx.loan.create({ data: {
         requestId, assetId: record.assetId, borrowerId: record.borrowerId,
         checkoutCustodianId: custodianId, checkedOutAt, dueAt: input.dueAt,
       } });
+      // UAT-E01 (#61): competing requests for the now-loaned asset can never be fulfilled, so close them in
+      // the same transaction (history kept, reason recorded). Any failure rolls back the checkout too.
+      // Phase 1 (lifecycle writes disabled) keeps the pre-lifecycle behaviour so 8b6e5a9 stays a safe rollback target;
+      // requests left PENDING then are closed later by the reviewed reconciliation (reconcile-competing-requests.ts).
+      if (requestLifecycleWrites(process.env)) {
+        await tx.borrowRequest.updateMany({
+          where: { assetId: record.assetId, status: RequestStatus.PENDING, id: { not: requestId } },
+          data: {
+            status: RequestStatus.DECLINED, closeReason: RequestCloseReason.ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER,
+            closedAt: checkedOutAt, closedById: custodianId,
+          },
+        });
+      }
+      return loan;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return loanDto(loan);
   } catch (error) {

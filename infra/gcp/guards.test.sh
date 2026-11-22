@@ -16,12 +16,40 @@ unset KITLOOP_AUTOMATED_RELEASE DEPLOY_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDEN
 PROJECT=lab-5-cloud-deployment-514310
 ORIGIN=https://kitloop-123456789012.asia-southeast1.run.app
 DEPLOY_SA="kitloop-wif-deploy@$PROJECT.iam.gserviceaccount.com"
-SHA1=0123456789ab SHA2=111111111111 SHA3=222222222222 SHA4=333333333333 SHA5=444444444444 SHA6=555555555555
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
 mkdir -p "$work/bin"
 export FAKE_STATE="$work/state" FAKE_LOG="$work/calls.log" FAKE_ORIGIN="$ORIGIN" FAKE_DEPLOY_SA="$DEPLOY_SA"
 export PATH="$work/bin:$PATH" SHELL=/bin/bash
+
+# Isolated source repository (PR #72 deploy source verification). release.sh resolves every release commit in the Git
+# checkout that contains it, so the suite runs a copy of infra/gcp inside a disposable repository of real commits:
+#   PRE_SHA     predates the request lifecycle (no lifecycle migration)
+#   SHA1..SHA6  contain the lifecycle migration (lifecycle-aware releases)
+#   NOMIG_SHA   a later commit from which the lifecycle migration was removed
+# The fake registry and Cloud Run report, for an image tag, the commit it was built from: a commit of this repository,
+# or one listed in $FAKE_BUILT (built elsewhere and absent from this checkout).
+lifecycle_migration=server/prisma/migrations/20261121090000_request_lifecycle/migration.sql
+src="$work/src"
+mkdir -p "$src/infra"
+cp -R "$script_dir" "$src/infra/gcp"
+gitc() { git -C "$src" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
+git init -q -b main "$src"
+gitc add -A && gitc commit -q -m 'pre-lifecycle release'
+PRE_SHA="$(git -C "$src" rev-parse HEAD)"
+mkdir -p "$src/$(dirname "$lifecycle_migration")"
+cp "$script_dir/../../$lifecycle_migration" "$src/$lifecycle_migration"
+gitc add -A && gitc commit -q -m 'request lifecycle migration'
+for n in 1 2 3 4 5 6; do
+  gitc commit -q --allow-empty -m "lifecycle release $n"
+  printf -v "SHA$n" '%s' "$(git -C "$src" rev-parse HEAD)"
+done
+gitc rm -q "$lifecycle_migration" && gitc commit -q -m 'lifecycle migration removed'
+NOMIG_SHA="$(git -C "$src" rev-parse HEAD)"
+gitc reset -q --hard "$SHA6"
+script_dir="$src/infra/gcp"
+export FAKE_SRC="$src" FAKE_BUILT="$work/built-commits"
+: >"$FAKE_BUILT"
 
 # fake-jwt AUDIENCE EMAIL [EXP_OFFSET_SECONDS]: unsigned Google-shaped ID token. The signature segment is a
 # sentinel so the suite can prove tokens never reach output or command-line arguments.
@@ -97,19 +125,33 @@ case "$1 $2" in
   'run jobs')
     job="${4:-}"
     case "$3" in
-      deploy) arg image >"$S/jobs/$job.image" ;;
+      deploy)
+        arg image >"$S/jobs/$job.image"
+        { arg command || true; } >"$S/jobs/$job.command"; { arg args || true; } >"$S/jobs/$job.args" ;;
       delete) rm -f "$S/jobs/$job."* ;;
+      list)
+        [[ ! -f "$S/jobs-list-fail" ]] || fail 'Jobs could not be listed.'
+        for f in "$S"/jobs/*.image; do [[ -e "$f" ]] && basename "$f" .image; done; true ;;
       describe) [[ -f "$S/jobs/$job.image" ]] || fail "Cannot find job [$job]."; cat "$S/jobs/$job.latest" 2>/dev/null || true ;;
       execute)
         [[ -f "$S/jobs/$job.image" ]] || fail "Cannot find job [$job]."
         n=$(( $(cat "$S/jobs/$job.count" 2>/dev/null || echo 0) + 1 )); echo "$n" >"$S/jobs/$job.count"
         name="$job-x$n"; echo "$name" >"$S/jobs/$job.latest"
         outcome="$(cat "$S/jobs/$job.outcome" 2>/dev/null || echo success)"
-        jq -n --arg name "$name" --arg job "$job" --arg image "$(cat "$S/jobs/$job.image")" --arg t "$(stamp)" --arg outcome "$outcome" '
+        if [[ "$job" == kitloop-rollback-check ]]; then
+          # Models lifecycle-cli rollback-check --require-zero against the fake database: exit 0 only for zero rows.
+          [[ ! -f "$S/rollback-check-unavailable" ]] || fail "Execution [$name] could not start: Cloud SQL connection failed."
+          [[ "$(cat "$S/db-lifecycle-rows" 2>/dev/null || echo 0)" == 0 ]] || outcome=failed
+          if [[ -f "$S/rollback-check-malformed" ]]; then printf '{"status": {"succeededCount": 1' >"$S/executions/$name.json"; exit 0; fi
+        fi
+        jq -n --arg name "$name" --arg job "$job" --arg image "$(cat "$S/jobs/$job.image")" --arg t "$(stamp)" --arg outcome "$outcome" \
+          --arg command "$(cat "$S/jobs/$job.command" 2>/dev/null)" --arg args "$(cat "$S/jobs/$job.args" 2>/dev/null)" '
           {apiVersion:"run.googleapis.com/v1", kind:"Execution",
            metadata:{name:$name, namespace:"123456789012", labels:{"run.googleapis.com/job":$job}},
            spec:{parallelism:1, taskCount:1,
-                 template:{spec:{containers:[{image:$image}], maxRetries:0, timeoutSeconds:"600"}}},
+                 template:{spec:{containers:[{image:$image} +
+                   (if $command == "" then {} else {command:($command | split(","))} end) +
+                   (if $args == "" then {} else {args:($args | split(","))} end)], maxRetries:0, timeoutSeconds:"600"}}},
            status:({observedGeneration:1, startTime:$t, completionTime:$t} +
              (if $outcome == "success"
               then {succeededCount:1, conditions:[{type:"Completed", status:"True"}]}
@@ -165,6 +207,9 @@ case "$1 $2" in
       add-iam-policy-binding) [[ "$(arg member)" == allUsers ]] && touch "$S/public" ;;
       remove-iam-policy-binding) rm -f "$S/public" ;;
       update-traffic)
+        if remove="$(arg remove-tags)"; then   # removes a tag URL; percentages are unchanged
+          svc --arg tag "$remove" '.status.traffic |= map(select(.tag != $tag))'; exit 0
+        fi
         target="$(arg to-revisions)"; target="${target%=100}"
         [[ -f "$S/revisions/$target.json" ]] || fail "Revision $target not found."
         svc --arg r "$target" '.status.traffic = ([{revisionName:$r, percent:100}] +
@@ -232,7 +277,22 @@ else
     status=401
   fi
 fi
-printf '%s' "$status"
+if [[ "$url" == */api/version ]]; then
+  [[ "$status" == 200 ]] || http_error "$status"
+  if [[ -f "$FAKE_STATE/version-override" ]]; then
+    commit="$(cat "$FAKE_STATE/version-override")"
+  else
+    revision="$(jq -r --arg base "${url%/api/version}" '
+      .status.traffic[] | select(.url == $base or (.percent > 0 and .url == null)) | .revisionName
+    ' "$FAKE_STATE/service.json" | tail -n1)"
+    prefix="${revision#kitloop-}"
+    commit="$(grep -m1 "^${prefix:0:12}" "$FAKE_BUILT" ||
+      git -C "$FAKE_SRC" rev-parse --verify --quiet "${prefix:0:12}^{commit}" || true)"
+  fi
+  jq -cn --arg commit "$commit" '{commit: $commit}'
+else
+  printf '%s' "$status"
+fi
 FAKE
 chmod +x "$work/bin/gcloud" "$work/bin/curl" "$work/bin/fake-jwt" "$work/bin/fake-jwt-claims"
 
@@ -271,7 +331,7 @@ out_has() { [[ "$OUT" == *"$1"* ]] || fail_test "$2"; }
 log_has() { grep -qF -- "$1" "$FAKE_LOG" || fail_test "$2"; }
 log_lacks() { ! grep -qF -- "$1" "$FAKE_LOG" || fail_test "$2"; }
 serving() { jq -r '[.status.traffic[] | select(.percent > 0) | "\(.revisionName)=\(.percent)"] | join(",")' "$FAKE_STATE/service.json"; }
-revision_for() { jq -r --arg sha "$1" '.status.traffic[] | select(.revisionName | startswith("kitloop-" + $sha)) | .revisionName' \
+revision_for() { local sha="$1"; jq -r --arg prefix "${sha:0:12}" '.status.traffic[] | select(.revisionName | startswith("kitloop-" + $prefix + "-")) | .revisionName' \
   "$FAKE_STATE/service.json" | head -n1; }
 
 # --- Mutation guards ---------------------------------------------------------------------------------
@@ -378,6 +438,16 @@ log_lacks 'update-traffic' 'failed candidate received traffic'
 [[ "$(serving)" == "$second=100" && -f "$FAKE_STATE/public" ]] || fail_test 'failed candidate changed traffic or access'
 rm -f "$FAKE_STATE/curl-fail"
 pass 'failed candidate never receives traffic; previous revision keeps serving'
+
+rm -f "$FAKE_STATE/revisions/kitloop-${SHA3:0:12}-"*.json
+echo "$SHA2" >"$FAKE_STATE/version-override"
+release deploy "$SHA3"
+refused 'candidate reporting a different commit'
+out_has "did not report expected commit $SHA3" 'candidate SHA mismatch was not reported'
+log_lacks 'update-traffic' 'candidate with the wrong SHA received traffic'
+[[ "$(serving)" == "$second=100" ]] || fail_test 'candidate SHA mismatch changed traffic'
+rm -f "$FAKE_STATE/version-override"
+pass 'candidate SHA mismatch leaves the previous revision serving'
 
 # --- Migration gates -------------------------------------------------------------------------------
 echo failed >"$FAKE_STATE/jobs/kitloop-migrate.outcome"
@@ -502,7 +572,7 @@ auto_refused() {
   log_lacks 'curl auth=yes https://candidate---' "$name: candidate was called without a valid token"
   [[ "$(serving)" == "$before" ]] || fail_test "$name: traffic changed to $(serving)"
   no_secrets "$name"
-  rm -f "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json   # a retry within the same second reuses the suffix
+  rm -f "$FAKE_STATE/revisions/kitloop-${SHA6:0:12}-"*.json   # a retry within the same second reuses the suffix
   pass "automated candidate refused, previous revision kept: $name"
 }
 auto_refused 'deployment account variable mismatch' 'Unexpected deployment service account' \
@@ -541,7 +611,7 @@ refused 'automated candidate failing readiness'; out_has 'traffic was not change
 log_lacks 'update-traffic' 'failed automated candidate received traffic'
 [[ "$(serving)" == "$before" ]] || fail_test 'failed automated candidate changed traffic'
 no_secrets 'automated candidate failing readiness'
-rm -f "$FAKE_STATE/curl-fail" "$FAKE_STATE/revisions/kitloop-$SHA6-"*.json
+rm -f "$FAKE_STATE/curl-fail" "$FAKE_STATE/revisions/kitloop-${SHA6:0:12}-"*.json
 pass 'automated candidate with a valid token but failing readiness never receives traffic'
 
 # Private verification and rollback in the deploy job use the same flow against the canonical URL.
@@ -575,5 +645,269 @@ git -C "$repo" checkout -q -b main
 OUT="$(cd "$repo" && bash "$script_dir/release.sh" build </dev/null 2>&1)" && RC=0 || RC=$?
 refused 'build of unpushed commit'; out_has 'is not on origin/main' 'unpushed commit was not refused'
 pass 'build requires an allowed branch and a pushed commit'
+
+# --- Request lifecycle rollout (PR #72 P1) --------------------------------------------------------
+# Revisions deployed by this release.sh declare REQUEST_LIFECYCLE_WRITES; a pre-lifecycle revision (8b6e5a9 and
+# earlier) does not, and cannot read DECLINED/CANCELLED/EXPIRED rows. State here: $fourth serves, SHA6 is migrated.
+[[ "$(serving)" == "$fourth=100" ]] || fail_test "unexpected traffic before lifecycle cases: $(serving)"
+jq -e '.spec.containers[0].env | any(.name == "REQUEST_LIFECYCLE_WRITES" and .value == "disabled")' \
+  "$FAKE_STATE/revisions/$fourth.json" >/dev/null || fail_test 'deploy did not declare REQUEST_LIFECYCLE_WRITES=disabled by default'
+pass 'deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise'
+
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=yes
+release deploy "$SHA6"
+refused 'invalid lifecycle setting'; out_has 'must be enabled or disabled' 'invalid lifecycle setting was not reported'
+log_lacks 'gcloud run deploy' 'invalid lifecycle setting reached Cloud Run'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment'
+
+# UAT-E02 (#62): maximum loan duration. Unset/empty declares nothing (no maximum; SRS OQ-01 undecided). An invalid value
+# is refused before any Cloud Run deployment, so a typo never silently ships without the limit.
+jq -e '.spec.containers[0].env | all(.name != "LOAN_MAX_DAYS")' "$FAKE_STATE/revisions/$fourth.json" >/dev/null || \
+  fail_test 'deploy declared LOAN_MAX_DAYS although KITLOOP_LOAN_MAX_DAYS was unset'
+for KITLOOP_LOAN_MAX_DAYS in 0 -1 1.5 14d 014 3651 abc; do
+  export KITLOOP_LOAN_MAX_DAYS
+  release deploy "$SHA6"
+  refused "invalid loan maximum $KITLOOP_LOAN_MAX_DAYS"; out_has 'KITLOOP_LOAN_MAX_DAYS must be empty' 'invalid loan maximum was not reported'
+  log_lacks 'gcloud run deploy' "invalid loan maximum $KITLOOP_LOAN_MAX_DAYS reached Cloud Run"
+done
+unset KITLOOP_LOAN_MAX_DAYS
+pass 'LOAN_MAX_DAYS is omitted unless KITLOOP_LOAN_MAX_DAYS is set, and invalid values are refused before deployment'
+
+# Pre-lifecycle rollback gate (PR #72 re-review P1). The fake database holds $FAKE_STATE/db-lifecycle-rows lifecycle-only
+# request rows; the fake kitloop-rollback-check job succeeds only when that count is 0, like
+# 'lifecycle-cli rollback-check --require-zero'. Every blocked case must leave traffic untouched.
+pre=kitloop-prelifecycle-1 pre2=kitloop-prelifecycle-2
+for name in "$pre" "$pre2"; do
+  jq --arg name "$name" '.metadata.name = $name | .spec.containers[0].env |= map(select(.name != "REQUEST_LIFECYCLE_WRITES"))' \
+    "$FAKE_STATE/revisions/$fourth.json" >"$FAKE_STATE/revisions/$name.json"
+done
+rows() { echo "$1" >"$FAKE_STATE/db-lifecycle-rows"; }
+blocked() {  # blocked LABEL EXPECTED_MESSAGE SERVING_BEFORE
+  refused "$1"; out_has "$2" "$1: refusal message missing"
+  log_lacks 'update-traffic' "$1: traffic was changed"
+  [[ "$(serving)" == "$3" ]] || fail_test "$1: traffic changed to $(serving)"
+  out_has 'Traffic was not changed' "$1: refusal did not say traffic was unchanged"
+}
+check_args="--args=dist/lifecycle-cli.js,rollback-check,--require-zero,--expect-database=kitloop"
+fourth_image="$(jq -r '.spec.containers[0].image' "$FAKE_STATE/revisions/$fourth.json")"
+
+# The reviewer's sequence first, from a clean state: phase 2 writes lifecycle rows, the service rolls back to phase 1
+# (writes off, rows stay), then a rollback to the pre-lifecycle revision is attempted.
+rows 0
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
+release deploy "$SHA6"
+ok 'phase 2 over a phase-1 revision'
+sixth="$(revision_for "$SHA6")"
+[[ "$(serving)" == "$sixth=100" ]] || fail_test "phase 2 traffic $(serving)"
+jq -e '.spec.containers[0].env | any(.name == "REQUEST_LIFECYCLE_WRITES" and .value == "enabled")' \
+  "$FAKE_STATE/revisions/$sixth.json" >/dev/null || fail_test 'phase 2 revision does not declare REQUEST_LIFECYCLE_WRITES=enabled'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled'
+rows 1   # phase 2 wrote a DECLINED request
+release rollback "$fourth"
+ok 'phase 2 -> phase 1'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
+log_lacks 'kitloop-rollback-check' 'phase 2 -> phase 1 ran the pre-lifecycle check'
+pass 'ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)'
+
+# Final audit regression: after phase 2 -> phase 1 the phase-2 revision still holds the candidate tag at 0% traffic.
+# Cloud Run keeps tags across update-traffic, and a tag URL is invokable like the service, so that revision can still
+# write lifecycle rows after a zero-row check and after the switch. It must count as a lifecycle writer.
+jq -e --arg r "$sixth" 'any(.status.traffic[]; .revisionName == $r and .tag == "candidate" and .percent == 0)' \
+  "$FAKE_STATE/service.json" >/dev/null || fail_test 'precondition: phase-2 revision should still hold the candidate tag'
+for n in 1 0; do
+  rows "$n"
+  release rollback "$pre"
+  blocked "phase 2 -> phase 1 -> pre-lifecycle ($n rows) while phase 2 keeps a tag URL" \
+    "reachable through tag 'candidate'" "$fourth=100"
+  log_lacks 'run jobs execute' 'a check ran while a tagged phase-2 revision could still write lifecycle rows'
+done
+pass 'BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)'
+"$work/bin/gcloud" run services update-traffic kitloop --project="$PROJECT" --region=asia-southeast1 --remove-tags=candidate
+jq -e '[.status.traffic[] | select(.tag == "candidate")] | length == 0' "$FAKE_STATE/service.json" >/dev/null || \
+  fail_test 'operator tag removal did not take effect in the fake'
+
+rows 1   # the rows written by phase 2 remain
+release rollback "$pre"
+blocked 'phase 2 -> phase 1 -> pre-lifecycle with lifecycle rows' 'database compatibility check did not pass' "$fourth=100"
+log_has 'run jobs execute kitloop-rollback-check' 'the check did not run'
+pass 'BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)'
+
+rows 0
+release rollback "$pre"
+ok 'phase 1 -> pre-lifecycle with verified zero rows'; [[ "$(serving)" == "$pre=100" ]] || fail_test "traffic $(serving)"
+log_has "run jobs deploy kitloop-rollback-check" 'the database check job was not deployed'
+log_has "$check_args" 'the check did not run rollback-check --require-zero against the kitloop database'
+log_has "--image=$fourth_image" 'the check did not use the serving lifecycle-aware image'
+log_has "--service-account=kitloop-run@$PROJECT.iam.gserviceaccount.com" 'the check did not use the runtime identity'
+log_has '--set-secrets=DATABASE_URL=kitloop-database-url:1' 'the check did not use the service database secret'
+check_line="$(grep -n 'run jobs execute kitloop-rollback-check' "$FAKE_LOG" | head -n1 | cut -d: -f1 || true)"
+route_line="$(grep -n 'update-traffic' "$FAKE_LOG" | head -n1 | cut -d: -f1 || true)"
+[[ -n "$check_line" && -n "$route_line" && "$check_line" -lt "$route_line" ]] || fail_test 'traffic moved before the database check'
+pass 'ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)'
+
+release rollback "$pre"
+ok 'no-op rollback'; log_lacks 'update-traffic' 'no-op rollback changed traffic'; log_lacks 'kitloop-rollback-check' 'no-op ran a check'
+pass 'ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check'
+
+release rollback "$pre2"
+blocked 'pre-lifecycle -> pre-lifecycle without a lifecycle-aware image' 'No lifecycle-aware revision is serving' "$pre=100"
+log_lacks 'run jobs execute' 'a check ran without a lifecycle-aware image'
+export KITLOOP_ROLLBACK_CHECK_REVISION="$fourth"
+release rollback "$pre2"
+ok 'pre-lifecycle -> pre-lifecycle with an explicit check image'; [[ "$(serving)" == "$pre2=100" ]] || fail_test "traffic $(serving)"
+log_has "--image=$fourth_image" 'KITLOOP_ROLLBACK_CHECK_REVISION image was not used for the check'
+unset KITLOOP_ROLLBACK_CHECK_REVISION
+pass 'pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image'
+
+export KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled
+release deploy "$SHA6"
+refused 'phase 2 over a pre-lifecycle revision'; out_has 'Deploy this commit with KITLOOP_REQUEST_LIFECYCLE_WRITES=disabled first' \
+  'phase 2 over a pre-lifecycle revision was not explained'
+log_lacks 'gcloud run deploy' 'phase 2 over a pre-lifecycle revision reached Cloud Run'
+[[ "$(serving)" == "$pre2=100" ]] || fail_test 'refused phase 2 changed traffic'
+unset KITLOOP_REQUEST_LIFECYCLE_WRITES
+pass 'BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves'
+
+release rollback "$fourth"
+ok 'pre-lifecycle -> phase 1'; log_lacks 'kitloop-rollback-check' 'a lifecycle-aware target ran the pre-lifecycle check'
+
+rows 2
+release rollback "$pre"
+blocked 'phase 1 -> pre-lifecycle with lifecycle rows' 'database compatibility check did not pass' "$fourth=100"
+log_has 'run jobs execute kitloop-rollback-check' 'the check did not run'
+pass 'BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows'
+
+rows 0; touch "$FAKE_STATE/rollback-check-unavailable"
+release rollback "$pre"
+blocked 'check unavailable' 'database compatibility check did not pass' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-unavailable"
+pass 'BLOCKED: the database check cannot run (database unreachable)'
+
+touch "$FAKE_STATE/rollback-check-malformed"
+release rollback "$pre"
+blocked 'malformed check execution' 'could not be verified as a successful zero-row check' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-malformed"
+pass 'BLOCKED: the check execution cannot be verified (malformed output)'
+
+touch "$FAKE_STATE/jobs-list-fail"
+release rollback "$pre"
+blocked 'jobs cannot be listed' 'Cannot list Cloud Run jobs' "$fourth=100"
+rm -f "$FAKE_STATE/jobs-list-fail"
+echo "$fourth_image" >"$FAKE_STATE/jobs/kitloop-reconcile.image"
+release rollback "$pre"
+blocked 'reconciliation job present' 'reconciliation job kitloop-reconcile exists' "$fourth=100"
+log_lacks 'run jobs execute' 'a check ran while a lifecycle writer existed'
+rm -f "$FAKE_STATE/jobs/kitloop-reconcile."*
+pass 'BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed'
+
+release rollback "$sixth"
+ok 'phase 1 -> phase 2 revision'; [[ "$(serving)" == "$sixth=100" ]] || fail_test "traffic $(serving)"
+rows 1   # phase 2 wrote a DECLINED request
+release rollback "$pre"
+blocked 'phase 2 -> pre-lifecycle with lifecycle rows' 'has lifecycle writes enabled' "$sixth=100"
+log_lacks 'run jobs execute' 'phase 2 -> pre-lifecycle ran a check that writes could invalidate'
+rows 0
+release rollback "$pre"
+blocked 'phase 2 -> pre-lifecycle even with zero rows' 'has lifecycle writes enabled' "$sixth=100"
+pass 'BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)'
+
+rows 1
+release rollback "$fourth"
+ok 'phase 2 -> phase 1 again'; [[ "$(serving)" == "$fourth=100" ]] || fail_test "traffic $(serving)"
+
+for confirmation in no-lifecycle-rows yes; do
+  export KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK="$confirmation"
+  release rollback "$pre"
+  blocked "operator confirmation $confirmation with lifecycle rows" 'database compatibility check did not pass' "$fourth=100"
+done
+touch "$FAKE_STATE/rollback-check-unavailable"
+release rollback "$pre"
+blocked 'operator confirmation without a database check' 'database compatibility check did not pass' "$fourth=100"
+rm -f "$FAKE_STATE/rollback-check-unavailable"
+unset KITLOOP_CONFIRM_PRE_LIFECYCLE_ROLLBACK
+pass 'BLOCKED: an operator confirmation never substitutes for a verified zero-row check'
+
+# --- Release source verification (PR #72 re-review of 402eafd, P1) -------------------------------------------------
+# deploy, migrate and bootstrap must resolve the supplied SHA to a commit of this checkout that contains the lifecycle
+# migration BEFORE any registry lookup or Cloud Run call. A registry image or an operator confirmation is never
+# evidence. Every refusal below must leave the fake cloud untouched.
+seed_migrated() {  # seed_migrated SHA: kitloop-migrate last completed with SHA's migration image (an earlier release.sh)
+  local image
+  image="$(bash -c 'source "$1"; digest_for "$(image_for migration "$2")"' _ "$script_dir/common.sh" "$1")"
+  gcloud run jobs deploy kitloop-migrate --project="$PROJECT" --region=asia-southeast1 --image="$image" >/dev/null
+  gcloud run jobs execute kitloop-migrate --project="$PROJECT" --region=asia-southeast1 --wait >/dev/null
+}
+source_refused() {  # source_refused LABEL EXPECTED_MESSAGE
+  refused "$1"; out_has "$2" "$1: refusal message missing"
+  out_has 'Nothing was changed' "$1: refusal did not say nothing was changed"
+  local call
+  for call in 'artifacts docker' 'run jobs' 'run deploy' 'run services' 'run revisions' 'update-traffic' 'sql instances' 'builds'; do
+    log_lacks "gcloud $call" "$1: reached 'gcloud $call' before source verification"
+  done
+  [[ "$(serving)" == "$source_serving" ]] || fail_test "$1: traffic changed to $(serving)"
+}
+source_serving="$(serving)"
+unknown="$(printf 'release commit built outside this checkout\n' | git hash-object --stdin)"   # not written: absent
+git -C "$src" cat-file -e "$unknown" 2>/dev/null && fail_test 'precondition: the unknown commit must be absent'
+echo "$unknown" >>"$FAKE_BUILT"   # its images exist in the registry and report that commit
+seed_migrated "$unknown"
+
+# The reviewer's path first: a full SHA absent from the checkout whose registry images and migration job both exist.
+release deploy "$unknown"
+source_refused 'deploy of an unknown full SHA with registry images and a migration execution' 'is not in this checkout'
+pass 'BLOCKED: deploy of a full SHA absent from the checkout, before any registry or Cloud Run call (re-review regression)'
+
+release deploy "${unknown:0:12}"
+source_refused 'deploy of an unknown abbreviated SHA' 'is not in this checkout'
+release deploy "$PRE_SHA"
+source_refused 'deploy of a known pre-lifecycle full SHA' 'predates the request lifecycle'
+release deploy "${PRE_SHA:0:12}"
+source_refused 'deploy of a known pre-lifecycle abbreviated SHA' 'predates the request lifecycle'
+release deploy "$NOMIG_SHA"
+source_refused 'deploy of a commit without the lifecycle migration' "does not contain $lifecycle_migration"
+pass 'BLOCKED: deploy of an unknown abbreviated SHA, a pre-lifecycle commit (full and abbreviated) and a commit missing the migration'
+
+blob="$(printf 'not a commit\n' | git -C "$src" hash-object -w --stdin)"
+tree="$(git -C "$src" rev-parse "$SHA6^{tree}")"
+gitc tag -a release-tag -m 'annotated tag' "$SHA6"
+tag_object="$(git -C "$src" rev-parse release-tag)"
+for object in "$blob" "$tree" "$tag_object" "${tag_object:0:12}"; do
+  release deploy "$object"
+  source_refused "deploy of non-commit object $object" ', not a commit'
+done
+for malformed in release-tag HEAD "${SHA6^^}" "${SHA6:0:11}" "${SHA6}0" "-$SHA6"; do
+  release deploy "$malformed"
+  source_refused "deploy of malformed input $malformed" 'Use a 12-40 character lowercase Git commit SHA'
+done
+hexref=abcabcabcabc   # a branch whose name looks like an abbreviated SHA
+git -C "$src" rev-parse --verify --quiet "$hexref^{object}" >/dev/null && fail_test 'precondition: hex ref name must be unused'
+gitc branch "$hexref" "$SHA6"
+release deploy "$hexref"
+source_refused 'deploy of a SHA-like branch name' 'does not name a Git object by its ID'
+gitc branch -q -D "$hexref"
+pass 'BLOCKED: deploy of a blob, tree or annotated tag object, a tag name, a SHA-like branch name and malformed SHAs'
+
+for action in migrate bootstrap; do
+  release "$action" "$unknown"
+  source_refused "$action of an unknown full SHA" 'is not in this checkout'
+  release "$action" "$PRE_SHA"
+  source_refused "$action of a pre-lifecycle commit" 'predates the request lifecycle'
+done
+pass 'BLOCKED: migrate and bootstrap use the same source verification before any Cloud Run job mutation'
+
+release migrate "$SHA6"
+ok 'migrate of a verified lifecycle-aware commit'
+log_has "kitloop-migration:${SHA6:0:12}" 'verified migrate did not look up the migration image of the resolved commit'
+export KITLOOP_LOAN_MAX_DAYS=21   # UAT-E02: a configured maximum reaches the revision (test value, not a policy)
+release deploy "${SHA6:0:12}"
+unset KITLOOP_LOAN_MAX_DAYS
+ok 'deploy of a verified lifecycle-aware abbreviated SHA'
+jq -e '.spec.containers[0].env | any(.name == "LOAN_MAX_DAYS" and .value == "21")' \
+  "$FAKE_STATE/revisions/$(serving | cut -d= -f1).json" >/dev/null || fail_test 'KITLOOP_LOAN_MAX_DAYS=21 did not reach the revision'
+log_has "--revision-suffix=${SHA6:0:12}-" 'verified deploy did not use the resolved commit'
+out_has "$SHA6" 'deploy did not report the canonical 40-character commit'
+[[ "$(serving)" == "$(revision_for "$SHA6")=100" ]] || fail_test "verified deploy traffic $(serving)"
+pass 'ALLOWED: a lifecycle-aware commit passes source verification (abbreviated input is canonicalised to the full SHA)'
 
 printf 'PASS: all GCP release guard tests\n'

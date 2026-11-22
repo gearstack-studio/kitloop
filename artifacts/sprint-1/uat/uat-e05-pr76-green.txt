@@ -1,0 +1,250 @@
+PR #76 review (P2) GREEN: routine runs write only to Playwright output; export is opt-in and overwrite-protected
+Branch fix/65-uat-landing-animation on 5b12506 plus the uncommitted correction. No export flags unless stated.
+
+  e2e 00-evidence-export (helper regression): 28/28
+  spec 08 routine under the guard: 12 passed, 2 skipped (evidence-only recordings), guard PASS (0 added/modified/removed)
+  spec 08 with CI=1 under the guard: 12 passed, 2 skipped, guard PASS
+  full suite under the guard (npm run test:e2e:guarded): 93 passed, 2 skipped (95), guard PASS
+  main checkout: sha256 of all 85 files in artifacts/sprint-1/uat identical before and after the focused, routine and full runs
+  export, isolated worktree: invalid value stops the run before any test, hashes unchanged; export without
+    authorisation refuses all 4 existing PNGs (hashes unchanged) and creates only the 2 missing recordings;
+    UAT_EVIDENCE_OVERWRITE=1 replaces all 6 files (14/14 passed)
+  sampler (frame-aware limits): fails on the original #65 animation (4376248), passes on the fix
+  full client 80/80; full server 129/129; client lint, client build, server typecheck+build, e2e typecheck: exit 0
+
+===== export: invalid value (worktree) =====
+Error: UAT evidence export: UAT_EVIDENCE_EXPORT has unknown value(s) ["yes"]; accepted: e01, e02, e03, e04, e05 (comma-separated), or 0/off to disable (see e2e/README.md, "UAT evidence export")
+
+===== export without overwrite authorisation (worktree) =====
+    Error: UAT evidence export: refusing to overwrite existing evidence artifacts\sprint-1\uat\uat-e05-after-01-desktop-normal-motion.png; set UAT_EVIDENCE_OVERWRITE=1 to replace reviewed evidence deliberately (see e2e/README.md, "UAT evide
+    Error: UAT evidence export: refusing to overwrite existing evidence artifacts\sprint-1\uat\uat-e05-after-02-mobile-normal-motion.png; set UAT_EVIDENCE_OVERWRITE=1 to replace reviewed evidence deliberately (see e2e/README.md, "UAT eviden
+    Error: UAT evidence export: refusing to overwrite existing evidence artifacts\sprint-1\uat\uat-e05-after-03-desktop-reduced-motion.png; set UAT_EVIDENCE_OVERWRITE=1 to replace reviewed evidence deliberately (see e2e/README.md, "UAT evid
+    Error: UAT evidence export: refusing to overwrite existing evidence artifacts\sprint-1\uat\uat-e05-after-04-mobile-reduced-motion.png; set UAT_EVIDENCE_OVERWRITE=1 to replace reviewed evidence deliberately (see e2e/README.md, "UAT evide
+    test-results\artifacts\08-landing-animation-UAT-E-43b51-overed-no-horizontal-scroll-chromium\test-failed-1.png
+    test-results\artifacts\08-landing-animation-UAT-E-724b4-ll-with-no-filter-animation-chromium\test-failed-1.png
+    test-results\artifacts\08-landing-animation-UAT-E-bcb71-overed-no-horizontal-scroll-chromium\test-failed-1.png
+    test-results\artifacts\08-landing-animation-UAT-E-faa88-cons-are-visible-and-moving-chromium\test-failed-1.png
+  10 passed (2.5m)
+  4 failed
+  ok  2 [chromium] › tests\08-landing-animation.spec.ts:149:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (1.5s)
+  ok  3 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.7s)
+  ok  4 [chromium] › tests\08-landing-animation.spec.ts:167:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (3.5s)
+  ok  6 [chromium] › tests\08-landing-animation.spec.ts:191:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (1.7s)
+  ok  8 [chromium] › tests\08-landing-animation.spec.ts:206:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (16.6s)
+  ok  9 [chromium] › tests\08-landing-animation.spec.ts:219:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (598ms)
+  ok 11 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (759ms)
+  ok 12 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (894ms)
+  ok 13 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference) (13.0s)
+  ok 14 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce) (13.6s)
+  x   1 [chromium] › tests\08-landing-animation.spec.ts:140:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (8.4s)
+  x   5 [chromium] › tests\08-landing-animation.spec.ts:178:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (4.2s)
+  x   7 [chromium] › tests\08-landing-animation.spec.ts:198:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (1.9s)
+  x  10 [chromium] › tests\08-landing-animation.spec.ts:229:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.5s)
+hash diff of the evidence folder (> = new file; no existing file changed):
+  > *uat-e05-after-recording-normal-motion.webm
+  > *uat-e05-after-recording-reduced-motion.webm
+
+===== export with UAT_EVIDENCE_OVERWRITE=1 (worktree) =====
+  ok  1 [chromium] › tests\08-landing-animation.spec.ts:140:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (4.5s)
+  ok  2 [chromium] › tests\08-landing-animation.spec.ts:149:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (806ms)
+  ok  3 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.2s)
+  ok  4 [chromium] › tests\08-landing-animation.spec.ts:167:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (3.3s)
+  ok  5 [chromium] › tests\08-landing-animation.spec.ts:178:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (3.7s)
+  ok  6 [chromium] › tests\08-landing-animation.spec.ts:191:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (1.7s)
+  ok  7 [chromium] › tests\08-landing-animation.spec.ts:198:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (1.8s)
+  ok  8 [chromium] › tests\08-landing-animation.spec.ts:206:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (16.6s)
+  ok  9 [chromium] › tests\08-landing-animation.spec.ts:219:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (577ms)
+  ok 10 [chromium] › tests\08-landing-animation.spec.ts:229:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.5s)
+  ok 11 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (795ms)
+  ok 12 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (575ms)
+  ok 13 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference) (13.1s)
+  ok 14 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce) (13.6s)
+  14 passed (1.5m)
+
+===== sampler recheck: original #65 animation (4376248) vs fix (worktree) =====
+  x  1 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (22.6s)
+    +     "at": 11433,
+    +     "at": 15083,
+    +     "at": 16966,
+    test-results\artifacts\08-landing-animation-UAT-E-bf5d5-e-smoothly-layout-is-stable-chromium\test-failed-1.png
+  1 failed
+  ok 1 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (24.2s)
+  1 passed (1.6m)
+
+===== helper regression (main checkout) =====
+  ok  1 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is undefined: nothing is written (9ms)
+  ok  2 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "": nothing is written (2ms)
+  ok  3 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "0": nothing is written (3ms)
+  ok  4 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "off": nothing is written (2ms)
+  ok  5 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "false": nothing is written (2ms)
+  ok  6 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "no": nothing is written (2ms)
+  ok  7 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is " OFF ": nothing is written (2ms)
+  ok  8 [chromium] › tests\00-evidence-export.spec.ts:26:7 › UAT evidence export settings › routine settings point at the real UAT folder but export nothing (2ms)
+  ok  9 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an unknown finding with a clear message (4ms)
+  ok 10 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a bare 1 (findings must be named) with a clear message (1ms)
+  ok 11 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects e05 without a phase with a clear message (1ms)
+  ok 12 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an invalid phase with a clear message (1ms)
+  ok 13 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a phase for a finding without phases with a clear message (1ms)
+  ok 14 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an invalid overwrite value with a clear message (1ms)
+  ok 15 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects overwrite without export with a clear message (1ms)
+  ok 16 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a phase without export with a clear message (1ms)
+  ok 17 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects the retired UAT_E05_PHASE with a clear message (1ms)
+  ok 18 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects export under CI with a clear message (1ms)
+  ok 19 [chromium] › tests\00-evidence-export.spec.ts:51:7 › UAT evidence export settings › a CI run without export is a normal routine run (1ms)
+  ok 20 [chromium] › tests\00-evidence-export.spec.ts:59:7 › UAT evidence export writes › enabled: writes the e05 file for the selected phase into the evidence folder (6ms)
+  ok 21 [chromium] › tests\00-evidence-export.spec.ts:69:7 › UAT evidence export writes › existing evidence is preserved without overwrite authorisation (hash unchanged) (4ms)
+  ok 22 [chromium] › tests\00-evidence-export.spec.ts:79:7 › UAT evidence export writes › explicit overwrite authorisation replaces the existing file (3ms)
+  ok 23 [chromium] › tests\00-evidence-export.spec.ts:88:7 › UAT evidence export writes › the same name twice in one export is a collision, not a silent overwrite (4ms)
+  ok 24 [chromium] › tests\00-evidence-export.spec.ts:96:7 › UAT evidence export writes › exporting one finding cannot write another finding's evidence or an unexpected file name (3ms)
+  ok 25 [chromium] › tests\00-evidence-export.spec.ts:105:7 › UAT evidence export writes › evidence names keep the existing conventions (1ms)
+  ok 26 [chromium] › tests\00-evidence-export.spec.ts:118:9 › UAT evidence: routine screenshots stay in Playwright output › no-preference: the screenshot is saved in this test's output folder and attached, not in the UAT folder (647ms)
+  ok 27 [chromium] › tests\00-evidence-export.spec.ts:118:9 › UAT evidence: routine screenshots stay in Playwright output › reduce: the screenshot is saved in this test's output folder and attached, not in the UAT folder (247ms)
+  ok 28 [chromium] › tests\00-evidence-export.spec.ts:136:7 › UAT evidence: routine screenshots stay in Playwright output › the same screenshot name in two tests lands in two distinct test-scoped files (2ms)
+  28 passed (9.8s)
+
+===== spec 08 routine, guarded (main checkout) =====
+evidence guard: 85 files under artifacts/sprint-1/uat hashed before the run
+  ok  1 [chromium] › tests\08-landing-animation.spec.ts:140:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (4.8s)
+  ok  2 [chromium] › tests\08-landing-animation.spec.ts:149:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (1.1s)
+  ok  3 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.3s)
+  ok  4 [chromium] › tests\08-landing-animation.spec.ts:167:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (7.8s)
+  ok  5 [chromium] › tests\08-landing-animation.spec.ts:178:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (3.8s)
+  ok  6 [chromium] › tests\08-landing-animation.spec.ts:191:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (1.9s)
+  ok  7 [chromium] › tests\08-landing-animation.spec.ts:198:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (2.3s)
+  ok  8 [chromium] › tests\08-landing-animation.spec.ts:206:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (17.1s)
+  ok  9 [chromium] › tests\08-landing-animation.spec.ts:219:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (1.1s)
+  ok 10 [chromium] › tests\08-landing-animation.spec.ts:229:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.9s)
+  ok 11 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (1.7s)
+  ok 12 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (1.1s)
+  -  13 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference)
+  -  14 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce)
+  2 skipped
+  12 passed (1.3m)
+evidence guard: 85 files after the run; added 0, modified 0, removed 0
+evidence guard: PASS, UAT evidence unchanged (hashes and git status identical)
+routine screenshots written to test-scoped Playwright output:
+  test-results/artifacts/08-landing-animation-UAT-E-43b51-overed-no-horizontal-scroll-chromium/uat-e05-02-mobile-normal-motion.png
+  test-results/artifacts/08-landing-animation-UAT-E-724b4-ll-with-no-filter-animation-chromium/uat-e05-03-desktop-reduced-motion.png
+  test-results/artifacts/08-landing-animation-UAT-E-bcb71-overed-no-horizontal-scroll-chromium/uat-e05-04-mobile-reduced-motion.png
+  test-results/artifacts/08-landing-animation-UAT-E-faa88-cons-are-visible-and-moving-chromium/uat-e05-01-desktop-normal-motion.png
+
+===== spec 08 with CI=1, guarded (main checkout) =====
+evidence guard: 85 files under artifacts/sprint-1/uat hashed before the run
+  2 skipped
+  12 passed (1.1m)
+evidence guard: 85 files after the run; added 0, modified 0, removed 0
+evidence guard: PASS, UAT evidence unchanged (hashes and git status identical)
+
+===== full suite, guarded (main checkout) =====
+evidence guard: 85 files under artifacts/sprint-1/uat hashed before the run
+  ok  1 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is undefined: nothing is written (15ms)
+  ok  2 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "": nothing is written (4ms)
+  ok  3 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "0": nothing is written (4ms)
+  ok  4 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "off": nothing is written (3ms)
+  ok  5 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "false": nothing is written (3ms)
+  ok  6 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is "no": nothing is written (3ms)
+  ok  7 [chromium] › tests\00-evidence-export.spec.ts:17:9 › UAT evidence export settings › export disabled when UAT_EVIDENCE_EXPORT is " OFF ": nothing is written (2ms)
+  ok  8 [chromium] › tests\00-evidence-export.spec.ts:26:7 › UAT evidence export settings › routine settings point at the real UAT folder but export nothing (2ms)
+  ok  9 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an unknown finding with a clear message (5ms)
+  ok 10 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a bare 1 (findings must be named) with a clear message (2ms)
+  ok 11 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects e05 without a phase with a clear message (2ms)
+  ok 12 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an invalid phase with a clear message (2ms)
+  ok 13 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a phase for a finding without phases with a clear message (2ms)
+  ok 14 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects an invalid overwrite value with a clear message (2ms)
+  ok 15 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects overwrite without export with a clear message (2ms)
+  ok 16 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects a phase without export with a clear message (2ms)
+  ok 17 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects the retired UAT_E05_PHASE with a clear message (3ms)
+  ok 18 [chromium] › tests\00-evidence-export.spec.ts:46:9 › UAT evidence export settings › rejects export under CI with a clear message (2ms)
+  ok 19 [chromium] › tests\00-evidence-export.spec.ts:51:7 › UAT evidence export settings › a CI run without export is a normal routine run (1ms)
+  ok 20 [chromium] › tests\00-evidence-export.spec.ts:59:7 › UAT evidence export writes › enabled: writes the e05 file for the selected phase into the evidence folder (7ms)
+  ok 21 [chromium] › tests\00-evidence-export.spec.ts:69:7 › UAT evidence export writes › existing evidence is preserved without overwrite authorisation (hash unchanged) (5ms)
+  ok 22 [chromium] › tests\00-evidence-export.spec.ts:79:7 › UAT evidence export writes › explicit overwrite authorisation replaces the existing file (7ms)
+  ok 23 [chromium] › tests\00-evidence-export.spec.ts:88:7 › UAT evidence export writes › the same name twice in one export is a collision, not a silent overwrite (4ms)
+  ok 24 [chromium] › tests\00-evidence-export.spec.ts:96:7 › UAT evidence export writes › exporting one finding cannot write another finding's evidence or an unexpected file name (3ms)
+  ok 25 [chromium] › tests\00-evidence-export.spec.ts:105:7 › UAT evidence export writes › evidence names keep the existing conventions (2ms)
+  ok 26 [chromium] › tests\00-evidence-export.spec.ts:118:9 › UAT evidence: routine screenshots stay in Playwright output › no-preference: the screenshot is saved in this test's output folder and attached, not in the UAT folder (691ms)
+  ok 27 [chromium] › tests\00-evidence-export.spec.ts:118:9 › UAT evidence: routine screenshots stay in Playwright output › reduce: the screenshot is saved in this test's output folder and attached, not in the UAT folder (274ms)
+  ok 28 [chromium] › tests\00-evidence-export.spec.ts:136:7 › UAT evidence: routine screenshots stay in Playwright output › the same screenshot name in two tests lands in two distinct test-scoped files (3ms)
+  ok 29 [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message (3.0s)
+  ok 30 [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog (1.7s)
+  ok 31 [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login (2.6s)
+  ok 32 [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset (2.8s)
+  ok 33 [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001 (3.5s)
+  ok 34 [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload (2.2s)
+  ok 35 [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests (1.8s)
+  ok 36 [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears (2.8s)
+  ok 37 [chromium] › tests\02-request-checkout-journey.spec.ts:107:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered (1.7s)
+  ok 38 [chromium] › tests\02-request-checkout-journey.spec.ts:117:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload (2.6s)
+  ok 39 [chromium] › tests\02-request-checkout-journey.spec.ts:132:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason (1.7s)
+  ok 40 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login (1.0s)
+  ok 41 [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login (1.1s)
+  ok 42 [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls (1.8s)
+  ok 43 [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls (1.5s)
+  ok 44 [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session (99ms)
+  ok 45 [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A) (1.6s)
+  ok 46 [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING (1.5s)
+  ok 47 [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403) (1.6s)
+  ok 48 [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created (1.4s)
+  ok 49 [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING (1.8s)
+  ok 50 [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list (1.4s)
+  ok 51 [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan (1.4s)
+  ok 52 [chromium] › tests\04-request-lifecycle.spec.ts:75:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING (3.1s)
+  ok 53 [chromium] › tests\04-request-lifecycle.spec.ts:88:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue (2.7s)
+  ok 54 [chromium] › tests\04-request-lifecycle.spec.ts:113:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason (1.8s)
+  ok 55 [chromium] › tests\04-request-lifecycle.spec.ts:121:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action (2.0s)
+  ok 56 [chromium] › tests\04-request-lifecycle.spec.ts:138:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed (4.7s)
+  ok 57 [chromium] › tests\04-request-lifecycle.spec.ts:169:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first (4.4s)
+  ok 58 [chromium] › tests\04-request-lifecycle.spec.ts:199:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions) (5.5s)
+  ok 59 [chromium] › tests\04-request-lifecycle.spec.ts:232:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first (4.1s)
+  ok 60 [chromium] › tests\05-loan-duration.spec.ts:48:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date (3.3s)
+  ok 61 [chromium] › tests\05-loan-duration.spec.ts:70:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent (2.0s)
+  ok 62 [chromium] › tests\05-loan-duration.spec.ts:82:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING (2.1s)
+  ok 63 [chromium] › tests\05-loan-duration.spec.ts:96:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created (2.0s)
+  ok 64 [chromium] › tests\05-loan-duration.spec.ts:111:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum) (3.3s)
+  ok 65 [chromium] › tests\06-readable-names.spec.ts:56:7 › UAT-E03 (#63) readable user and equipment names in the browser › setup: Borrower A's request is checked out by Custodian A; Borrower B's request is pending (4.6s)
+  ok 66 [chromium] › tests\06-readable-names.spec.ts:70:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID (2.1s)
+  ok 67 [chromium] › tests\06-readable-names.spec.ts:77:7 › UAT-E03 (#63) readable user and equipment names in the browser › 2. Borrower My requests shows equipment names; request IDs are secondary (1.8s)
+  ok 68 [chromium] › tests\06-readable-names.spec.ts:87:7 › UAT-E03 (#63) readable user and equipment names in the browser › 3. Borrower My loans shows the equipment by name and no custodian identity (1.9s)
+  ok 69 [chromium] › tests\06-readable-names.spec.ts:102:7 › UAT-E03 (#63) readable user and equipment names in the browser › 4. Custodian Pending requests shows borrower and equipment names; actions remain (1.8s)
+  ok 70 [chromium] › tests\06-readable-names.spec.ts:114:7 › UAT-E03 (#63) readable user and equipment names in the browser › 5. Custodian Active loans shows equipment, borrower and checkout custodian names (2.4s)
+  ok 71 [chromium] › tests\06-readable-names.spec.ts:127:7 › UAT-E03 (#63) readable user and equipment names in the browser › 6. Mobile layout keeps names readable without horizontal scrolling (3.0s)
+  ok 72 [chromium] › tests\07-borrower-navigation.spec.ts:35:7 › UAT-E04 (#64) persistent borrower navigation › both links are visible on each page; only the current page is marked (2.9s)
+  ok 73 [chromium] › tests\07-borrower-navigation.spec.ts:49:7 › UAT-E04 (#64) persistent borrower navigation › direct URL access marks the requested page (2.4s)
+  ok 74 [chromium] › tests\07-borrower-navigation.spec.ts:57:7 › UAT-E04 (#64) persistent borrower navigation › keyboard: Tab reaches both links with a visible focus indicator and Enter navigates (2.1s)
+  ok 75 [chromium] › tests\07-borrower-navigation.spec.ts:76:7 › UAT-E04 (#64) persistent borrower navigation › browser Back and Forward restore the route and its current marker (2.1s)
+  ok 76 [chromium] › tests\07-borrower-navigation.spec.ts:87:9 › UAT-E04 (#64) persistent borrower navigation › usable at 360px: both links fully visible, tappable, no horizontal scroll (2.1s)
+  ok 77 [chromium] › tests\07-borrower-navigation.spec.ts:87:9 › UAT-E04 (#64) persistent borrower navigation › usable at 375px: both links fully visible, tappable, no horizontal scroll (1.9s)
+  ok 78 [chromium] › tests\07-borrower-navigation.spec.ts:87:9 › UAT-E04 (#64) persistent borrower navigation › usable at 390px: both links fully visible, tappable, no horizontal scroll (2.0s)
+  ok 79 [chromium] › tests\07-borrower-navigation.spec.ts:113:7 › UAT-E04 (#64) persistent borrower navigation › custodians do not get the borrower navigation (1.5s)
+  ok 80 [chromium] › tests\07-borrower-navigation.spec.ts:122:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /dashboard still redirects to sign in, with no borrower navigation (890ms)
+  ok 81 [chromium] › tests\07-borrower-navigation.spec.ts:122:9 › UAT-E04 (#64) persistent borrower navigation › signed out: /requests still redirects to sign in, with no borrower navigation (1.3s)
+  ok 82 [chromium] › tests\08-landing-animation.spec.ts:140:7 › UAT-E05 (#65) landing animation: normal motion › falling equipment icons are visible and moving (4.6s)
+  ok 83 [chromium] › tests\08-landing-animation.spec.ts:149:7 › UAT-E05 (#65) landing animation: normal motion › no full-screen brightness or other filter animation is running (1.2s)
+  ok 84 [chromium] › tests\08-landing-animation.spec.ts:155:7 › UAT-E05 (#65) landing animation: normal motion › 20 s observation: icons never pop in or teleport, light washes change smoothly, layout is stable (21.6s)
+  ok 85 [chromium] › tests\08-landing-animation.spec.ts:167:7 › UAT-E05 (#65) landing animation: normal motion › decoration never covers or blocks text and controls; sign-in navigation works (3.5s)
+  ok 86 [chromium] › tests\08-landing-animation.spec.ts:178:7 › UAT-E05 (#65) landing animation: normal motion › mobile 375px: icons visible, nothing covered, no horizontal scroll (3.9s)
+  ok 87 [chromium] › tests\08-landing-animation.spec.ts:191:7 › UAT-E05 (#65) landing animation: reduced motion › nothing loops: no running infinite animation remains (2.1s)
+  ok 88 [chromium] › tests\08-landing-animation.spec.ts:198:7 › UAT-E05 (#65) landing animation: reduced motion › a deliberate static scene: equipment icons are shown still, with no filter animation (2.2s)
+  ok 89 [chromium] › tests\08-landing-animation.spec.ts:206:7 › UAT-E05 (#65) landing animation: reduced motion › 15 s observation: every decorative layer is completely still (17.2s)
+  ok 90 [chromium] › tests\08-landing-animation.spec.ts:219:7 › UAT-E05 (#65) landing animation: reduced motion › decoration never covers text or controls; sign-in navigation works (917ms)
+  ok 91 [chromium] › tests\08-landing-animation.spec.ts:229:7 › UAT-E05 (#65) landing animation: reduced motion › mobile 375px: static icons visible, nothing covered, no horizontal scroll (1.9s)
+  ok 92 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › no-preference: Tab reaches the Login link with a visible focus ring (1.5s)
+  ok 93 [chromium] › tests\08-landing-animation.spec.ts:243:9 › UAT-E05 (#65) keyboard access › reduce: Tab reaches the Login link with a visible focus ring (1.2s)
+  -  94 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (no-preference)
+  -  95 [chromium] › tests\08-landing-animation.spec.ts:262:9 › UAT-E05 (#65) recordings › record 12 s of the landing page (reduce)
+  2 skipped
+  93 passed (3.3m)
+evidence guard: 85 files after the run; added 0, modified 0, removed 0
+evidence guard: PASS, UAT evidence unchanged (hashes and git status identical)
+
+===== client / server =====
+ Test Files  11 passed (11)
+      Tests  80 passed (80)
+ Test Files  16 passed (16)
+      Tests  129 passed (129)
+eslint: 0 lines of output (no findings); e2e tsc: 0 bytes (no errors)
+dist/assets/index-CRfDxlJI.js          248.30 kB │ gzip: 77.05 kB
+
+✓ built in 617ms
+> tsc --noEmit
+

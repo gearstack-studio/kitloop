@@ -1,0 +1,139 @@
+UAT-E03 (#63) pages show internal IDs instead of user and equipment names
+Branch fix/63-uat-readable-names, base 13df7d4 (origin/sprint-1-staging incl. merged PR #72 and #73).
+Isolated databases only (kitloop_auth_test, kitloop_e2e_pw); synthetic users and assets. No production.
+
+GREEN and regression (working tree):
+  focused server readable-names 6/6; focused client readable-names 10/10
+  full server 16 files 128/128; full client 9 files 67/67
+  server typecheck+build, client lint, client build, e2e typecheck: exit 0
+  full browser E2E 43/43 incl. 7 UAT-E03 tests (NODE_OPTIONS=--dns-result-order=ipv4first on this machine)
+  Existing tests updated only where they asserted the old ID-as-label text or exact auth bodies:
+    server/tests/auth.test.ts (login/me now include the user's own username)
+    client/tests/checkout.test.tsx (Borrower ID / Custodian ID labels; "Name unavailable" fallback)
+    e2e/tests/02-request-checkout-journey.spec.ts (loan label "Mirrorless camera · ACTIVE" + "KL-CAM-001")
+
+===== focused server =====
+node.exe : ◇ injected env (4) from .env.test
+
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  23:09:54
+   Duration  995ms (tests 69%, import 21%, transform 9%)
+
+===== focused client =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  23:11:57
+   Duration  1.94s (tests 46%, environment 39%, setup 6%, transform 4%, import 4%)
+
+===== full server suite =====
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop/server
+
+
+ Test Files  16 passed (16)
+      Tests  128 passed (128)
+   Start at  23:13:31
+   Duration  18.17s (tests 86%, import 13%, transform 1%)
+
+    Isolate  16 workers spawned · ~144ms startup each (spawn + environment, per file)
+             at least ~2.15s faster with isolate: false — reuses workers across files instead of one per file
+
+===== server typecheck + build =====
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+===== full client suite =====
+RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  9 passed (9)
+      Tests  67 passed (67)
+   Start at  23:12:00
+   Duration  3.67s (environment 51%, tests 34%, setup 8%, import 5%, transform 2%)
+
+===== client lint =====
+> client@0.0.0 lint
+> eslint .
+
+===== client build =====
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 40 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-98BTmO8y.css          31.84 kB │ gzip:  7.07 kB
+dist/assets/index-u1qD_7NT.js          247.90 kB │ gzip: 76.89 kB
+
+✓ built in 516ms
+
+===== e2e typecheck =====
+> kitloop-e2e@0.0.0 typecheck
+> tsc --noEmit
+
+===== full browser E2E =====
+Running 43 tests using 1 worker
+
+
+
+[1/43] [chromium] › tests\01-auth-catalog.spec.ts:6:7 › Borrower login and equipment catalog › rejects invalid credentials with one generic message
+[2/43] [chromium] › tests\01-auth-catalog.spec.ts:23:7 › Borrower login and equipment catalog › borrower signs in and sees the equipment catalog
+[3/43] [chromium] › tests\01-auth-catalog.spec.ts:40:7 › Borrower login and equipment catalog › session survives a reload and sign out returns to login
+[4/43] [chromium] › tests\02-request-checkout-journey.spec.ts:18:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests KL-CAM-001; it is PENDING and does not reserve the asset
+[5/43] [chromium] › tests\02-request-checkout-journey.spec.ts:38:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Borrower A requests the other custodian's laptop; Borrower B competes for KL-CAM-001
+[6/43] [chromium] › tests\02-request-checkout-journey.spec.ts:52:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the assigned custodian sees the pending requests for their assets, and they persist after reload
+[7/43] [chromium] › tests\02-request-checkout-journey.spec.ts:67:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › BR-05: the unassigned custodian does not see another custodian's requests
+[8/43] [chromium] › tests\02-request-checkout-journey.spec.ts:77:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Custodian A checks out Borrower A's request and an ACTIVE loan appears
+[9/43] [chromium] › tests\02-request-checkout-journey.spec.ts:107:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (custodian view): KL-CAM-001 is Checked out, KL-CAM-002 is still Available, no competing checkout is offered
+[10/43] [chromium] › tests\02-request-checkout-journey.spec.ts:117:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower A view): asset unavailable, request CHECKED_OUT, loan ACTIVE, persisted after reload
+[11/43] [chromium] › tests\02-request-checkout-journey.spec.ts:132:7 › FEAT-03 request -> BR-05 custodian queue -> FEAT-04 checkout -> availability › Availability (Borrower B view): the checked-out asset can no longer be requested; own request was DECLINED with a reason
+[12/43] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /dashboard to /login
+[13/43] [chromium] › tests\03-access-control.spec.ts:7:9 › Unauthorized access and role restrictions (UI) › anonymous visitor is redirected from /requests to /login
+[14/43] [chromium] › tests\03-access-control.spec.ts:15:7 › Unauthorized access and role restrictions (UI) › a custodian is redirected away from the borrower page and has no borrower controls
+[15/43] [chromium] › tests\03-access-control.spec.ts:26:7 › Unauthorized access and role restrictions (UI) › a borrower has no checkout or custodian queue controls
+[16/43] [chromium] › tests\03-access-control.spec.ts:37:7 › Unauthorized access (API, no session) › protected endpoints answer 401 without a session
+[17/43] [chromium] › tests\03-access-control.spec.ts:53:7 › Role and scope restrictions (API, signed-in sessions) › setup: Borrower A requests KL-ACC-001 (assigned to Custodian A)
+[18/43] [chromium] › tests\03-access-control.spec.ts:61:7 › Role and scope restrictions (API, signed-in sessions) › a borrower cannot check out a request (403) and the request stays PENDING
+[19/43] [chromium] › tests\03-access-control.spec.ts:68:7 › Role and scope restrictions (API, signed-in sessions) › a custodian cannot submit a borrow request (403)
+[20/43] [chromium] › tests\03-access-control.spec.ts:73:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: an unassigned custodian cannot read or check out the request, and no loan is created
+[21/43] [chromium] › tests\03-access-control.spec.ts:83:7 › Role and scope restrictions (API, signed-in sessions) › BR-05: the assigned custodian sees it in the queue (UI) and the request is still PENDING
+[22/43] [chromium] › tests\03-access-control.spec.ts:90:7 › Role and scope restrictions (API, signed-in sessions) › another borrower cannot read the request by direct ID (404) or see it in their list
+[23/43] [chromium] › tests\03-access-control.spec.ts:97:7 › Role and scope restrictions (API, signed-in sessions) › a past due date is rejected by the server (400) without creating a loan
+[24/43] [chromium] › tests\04-request-lifecycle.spec.ts:78:7 › UAT-E01 (#61) request lifecycle in the browser › 1. Borrower A and Borrower B both request the same available asset; both are PENDING
+[25/43] [chromium] › tests\04-request-lifecycle.spec.ts:91:7 › UAT-E01 (#61) request lifecycle in the browser › 2-5. Custodian checks out Borrower A's request; B's request is auto-declined and leaves the queue
+[26/43] [chromium] › tests\04-request-lifecycle.spec.ts:116:7 › UAT-E01 (#61) request lifecycle in the browser › 3. Borrower A's request is CHECKED_OUT, with no closure reason
+[27/43] [chromium] › tests\04-request-lifecycle.spec.ts:124:7 › UAT-E01 (#61) request lifecycle in the browser › 4 + 6. Borrower B sees DECLINED with the reason and closure time in My Requests, and no Cancel action
+[28/43] [chromium] › tests\04-request-lifecycle.spec.ts:141:7 › UAT-E01 (#61) request lifecycle in the browser › 7. Borrower B cancels their own PENDING request; it becomes CANCELLED and a new request is allowed
+[29/43] [chromium] › tests\04-request-lifecycle.spec.ts:172:7 › UAT-E01 (#61) request lifecycle in the browser › 8. Custodian declines an assigned PENDING request; a reason is required first
+[30/43] [chromium] › tests\04-request-lifecycle.spec.ts:202:7 › UAT-E01 (#61) request lifecycle in the browser › 9. Unauthorized users cannot cancel or decline other users' requests (real API, real sessions)
+[31/43] [chromium] › tests\04-request-lifecycle.spec.ts:235:7 › UAT-E01 (#61) request lifecycle in the browser › 10. A stale custodian queue shows the conflict message and refreshes when the borrower cancelled first
+[32/43] [chromium] › tests\05-loan-duration.spec.ts:51:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 1. The custodian's picker shows the maximum loan period and bounds the date
+[33/43] [chromium] › tests\05-loan-duration.spec.ts:73:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 2. A due date beyond the maximum is refused in the browser and no checkout is sent
+[34/43] [chromium] › tests\05-loan-duration.spec.ts:85:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 3. The API refuses Team 7's year-9999 probe and a 100-year date; the request stays PENDING
+[35/43] [chromium] › tests\05-loan-duration.spec.ts:99:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 4. The latest allowed due date is accepted and an ACTIVE loan is created
+[36/43] [chromium] › tests\05-loan-duration.spec.ts:114:7 › UAT-E02 (#62) checkout due-date maximum in the browser › 5. A due date that becomes valid while the form stays open checks out (stale picker maximum)
+[37/43] [chromium] › tests\06-readable-names.spec.ts:59:7 › UAT-E03 (#63) readable user and equipment names in the browser › setup: Borrower A's request is checked out by Custodian A; Borrower B's request is pending
+[38/43] [chromium] › tests\06-readable-names.spec.ts:73:7 › UAT-E03 (#63) readable user and equipment names in the browser › 1. Borrower header and dashboard show the username, not an account UUID
+[39/43] [chromium] › tests\06-readable-names.spec.ts:80:7 › UAT-E03 (#63) readable user and equipment names in the browser › 2. Borrower My requests shows equipment names; request IDs are secondary
+[40/43] [chromium] › tests\06-readable-names.spec.ts:90:7 › UAT-E03 (#63) readable user and equipment names in the browser › 3. Borrower My loans shows the equipment and checkout custodian by name
+[41/43] [chromium] › tests\06-readable-names.spec.ts:101:7 › UAT-E03 (#63) readable user and equipment names in the browser › 4. Custodian Pending requests shows borrower and equipment names; actions remain
+[42/43] [chromium] › tests\06-readable-names.spec.ts:113:7 › UAT-E03 (#63) readable user and equipment names in the browser › 5. Custodian Active loans shows equipment, borrower and checkout custodian names
+[43/43] [chromium] › tests\06-readable-names.spec.ts:126:7 › UAT-E03 (#63) readable user and equipment names in the browser › 6. Mobile layout keeps names readable without horizontal scrolling
+  43 passed (1.4m)

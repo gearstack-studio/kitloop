@@ -23,6 +23,12 @@ CONNECTION="${PROJECT}:${REGION}:${SQL_INSTANCE}"
 BOOTSTRAP_LABEL=kitloop_bootstrap
 # Traffic tag used to health-check a new revision before it receives traffic.
 CANDIDATE_TAG=candidate
+# Request lifecycle rollout (PR #72). Application database created by prepare.sh, the migration that introduces the
+# lifecycle statuses, the read-only job that gates pre-lifecycle rollbacks, and the reconciliation job (a lifecycle writer).
+DB_NAME=kitloop
+LIFECYCLE_MIGRATION=server/prisma/migrations/20261121090000_request_lifecycle/migration.sql
+ROLLBACK_CHECK_JOB=kitloop-rollback-check
+RECONCILE_JOB=kitloop-reconcile
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 note() { printf '%s\n' "$*" >&2; }
@@ -90,6 +96,15 @@ require_service_url() {
 serving_revisions() {
   jq -r '.status.traffic[]? | select((.percent // 0) > 0) | "\(.revisionName) \(.percent)"' <<<"$1"
 }
+# Usage: reachable_revisions SERVICE_JSON -> "REVISION TAG" per traffic entry that can receive requests: a traffic share
+# (TAG "-") or a tag URL. A tag URL reaches its revision at 0% traffic, with the service's invoker policy.
+reachable_revisions() {
+  jq -r '.status.traffic[]? | select((.percent // 0) > 0 or ((.tag // "") != "")) | "\(.revisionName) \(.tag // "-")"' <<<"$1"
+}
+# Usage: traffic_snapshot SERVICE_JSON -> canonical JSON of every traffic entry (revision, percent, tag)
+traffic_snapshot() {
+  jq -c '[.status.traffic[]? | {revisionName, percent: (.percent // 0), tag: (.tag // null)}] | sort_by(.revisionName, .tag)' <<<"$1"
+}
 # Usage: require_serving SERVICE_JSON REVISION
 require_serving() {
   jq -e --arg revision "$2" '
@@ -111,6 +126,39 @@ require_safe_revision() {
     ([.spec.containers[0].env[]? | select(.name == "APP_ORIGIN") | .value] == [$origin])
   ' <<<"$json" >/dev/null || \
     die "Revision $revision is not a ready $SERVICE revision with a registry digest and APP_ORIGIN=$origin."
+}
+# Request lifecycle rollout (PR #72 P1). Every revision deployed from the lifecycle release onward declares
+# REQUEST_LIFECYCLE_WRITES. Older revisions (8b6e5a9 and earlier) lack it and cannot read DECLINED/CANCELLED/EXPIRED
+# request rows (Prisma enum error, HTTP 500), so they are safe rollback targets only while no such row exists.
+# The operator chooses the setting with KITLOOP_REQUEST_LIFECYCLE_WRITES (default disabled = phase 1).
+# Usage: loan_max_days_setting -> "" (no maximum; SRS OQ-01 undecided) or a whole number of days 1-3650 (UAT-E02 #62).
+# Mirrors the server's LOAN_MAX_DAYS validation so an invalid value is refused before any Cloud Run call.
+loan_max_days_setting() {
+  local value="${KITLOOP_LOAN_MAX_DAYS:-}"
+  [[ -z "$value" ]] || { [[ "$value" =~ ^[1-9][0-9]{0,3}$ ]] && (( value <= 3650 )); } || \
+    die 'KITLOOP_LOAN_MAX_DAYS must be empty (no maximum) or a whole number of days from 1 to 3650. Nothing was changed.'
+  printf '%s' "$value"
+}
+lifecycle_writes_setting() {
+  local value="${KITLOOP_REQUEST_LIFECYCLE_WRITES:-disabled}"
+  [[ "$value" == enabled || "$value" == disabled ]] || die 'KITLOOP_REQUEST_LIFECYCLE_WRITES must be enabled or disabled.'
+  printf '%s' "$value"
+}
+# Usage: revision_lifecycle REVISION -> enabled | disabled | absent (absent = pre-lifecycle revision)
+revision_lifecycle() {
+  local json
+  json="$(gcloud run revisions describe "$1" --project="$PROJECT" --region="$REGION" --format=json)" || \
+    die "Cannot describe revision $1."
+  jq -r '[.spec.containers[0].env[]? | select(.name == "REQUEST_LIFECYCLE_WRITES") | .value][0] // "absent"' <<<"$json"
+}
+# Usage: revision_image REVISION -> the revision's Artifact Registry app image digest
+revision_image() {
+  local json image
+  json="$(gcloud run revisions describe "$1" --project="$PROJECT" --region="$REGION" --format=json)" || \
+    die "Cannot describe revision $1."
+  image="$(jq -r '.spec.containers[0].image // ""' <<<"$json")"
+  [[ "$image" == "$REGISTRY/kitloop-app@sha256:"* ]] || die "Revision $1 does not run a registry app image digest."
+  printf '%s' "$image"
 }
 service_is_public() {
   local policy
@@ -183,7 +231,7 @@ identity_token() {
 }
 # Usage: http_checks BASE_URL [IDENTITY_TOKEN]. The token is passed on stdin, never as an argument.
 http_checks() {
-  local base="$1" token="${2:-}" path status
+  local base="$1" token="${2:-}" expected_commit="${3:-}" path status version
   for path in / /api/health /api/ready; do
     if [[ -n "$token" ]]; then
       status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 20 \
@@ -198,4 +246,13 @@ http_checks() {
     fi
     printf 'PASS %s%s HTTP %s\n' "$base" "$path" "$status"
   done
+  if [[ -n "$expected_commit" ]]; then
+    if ! version="$(curl --fail --silent --show-error --max-time 20 --header @- \
+      "$base/api/version" <<<"${token:+Authorization: Bearer $token}")" ||
+      ! jq -e --arg commit "$expected_commit" '.commit == $commit' <<<"$version" >/dev/null; then
+      note "FAIL $base/api/version did not report expected commit $expected_commit"
+      return 1
+    fi
+    printf 'PASS %s/api/version commit %s\n' "$base" "$expected_commit"
+  fi
 }
