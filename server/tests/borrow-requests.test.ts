@@ -1,7 +1,7 @@
 import request from "supertest";
 import { Role } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import app from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { hashPassword } from "../src/password.js";
@@ -38,7 +38,6 @@ function checkout(who: Session, id: string, assetId: string) {
     .send({ assetId, dueAt: new Date(Date.now() + 86_400_000).toISOString() });
 }
 beforeAll(async () => {
-  borrower = await session(Role.BORROWER); other = await session(Role.BORROWER);
   custodian = await session(Role.CUSTODIAN); foreignCustodian = await session(Role.CUSTODIAN);
 });
 afterAll(async () => {
@@ -62,6 +61,11 @@ describe("request payload unit validation", () => {
 });
 
 describe("FEAT-03 borrowing workflow against PostgreSQL", () => {
+  beforeEach(async () => {
+    borrower = await session(Role.BORROWER);
+    other = await session(Role.BORROWER);
+  });
+
   it("returns 413 for a borrow request body over 16 KB without creating a request", async () => {
     const assetId = await asset();
     const response = await submit(borrower, { assetId, pad: "x".repeat(17_000) });

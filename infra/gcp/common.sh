@@ -144,6 +144,14 @@ lifecycle_writes_setting() {
   [[ "$value" == enabled || "$value" == disabled ]] || die 'KITLOOP_REQUEST_LIFECYCLE_WRITES must be enabled or disabled.'
   printf '%s' "$value"
 }
+borrowing_quota_setting() {
+  local lifecycle="$1" value="${KITLOOP_BORROWING_QUOTA-disabled}"
+  [[ "$value" == enabled || "$value" == disabled ]] || die 'KITLOOP_BORROWING_QUOTA must be enabled or disabled.'
+  [[ "$value" == disabled || "$lifecycle" == enabled ]] || \
+    die 'KITLOOP_BORROWING_QUOTA requires KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled.'
+  printf '%s' "$value"
+}
+
 # Usage: revision_lifecycle REVISION -> enabled | disabled | absent (absent = pre-lifecycle revision)
 revision_lifecycle() {
   local json

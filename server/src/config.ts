@@ -43,8 +43,21 @@ export function loanMaxDays(env: NodeJS.ProcessEnv): number | null {
   return Number(value);
 }
 
+export function borrowingQuota(env: NodeJS.ProcessEnv): boolean {
+  const value = env.BORROWING_QUOTA;
+  if (value === undefined || value === "disabled") return false;
+  if (value !== "enabled") {
+    throw new ConfigurationError("BORROWING_QUOTA must be 'enabled' or 'disabled'");
+  }
+  if (!requestLifecycleWrites(env)) {
+    throw new ConfigurationError("BORROWING_QUOTA requires REQUEST_LIFECYCLE_WRITES=enabled");
+  }
+  return true;
+}
+
 export function runtimeConfig(env: NodeJS.ProcessEnv) {
   requestLifecycleWrites(env);
+  borrowingQuota(env);
   loanMaxDays(env);
   const port = env.PORT ?? "3000";
   if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
