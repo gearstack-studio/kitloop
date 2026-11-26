@@ -4,6 +4,8 @@ Status: Implementation candidate; teammate review and PR merge pending.
 
 Baseline: `sprint-1-staging` at `1e6717b`, 2026-11-03. Branch: `feature/custodian-checkout-workflow`.
 
+CR-01 proposed revision (Lab 7, contract r1, draft): the checkout contract below is unchanged. The [CR-01 section](#cr-01-preserved-checkout-behavior-proposed) at the end records how checkout interacts with the proposed borrowing quota (BR-14). Its status is **PENDING** team agreement and DEV4952 review.
+
 ## Scope and requirement alignment
 
 F-04 implements the checkout portion of FEAT-04: FR-08 (scoped queue, owned by FEAT-03), FR-09, FR-10, and the shared FR-05 availability contract. BR-01, BR-02, BR-03, BR-05, BR-06, BR-08, BR-09, and BR-11 govern checkout. NFR-01, NFR-03–NFR-06 govern security, validation, safe errors, persistence, and atomicity. Existing borrower ownership boundaries remain in force.
@@ -79,3 +81,31 @@ This is a coordinated API/client change: old Prisma code and clients expecting `
 Run `npm test` and `npm run build` from `server/` against an isolated PostgreSQL test database configured in ignored `.env.test` after migration/Prisma generation. Run `npm test`, `npm run build`, and `npm run lint` from `client/`. Client tests use jsdom and mocked HTTP, not a live browser. See [verification record](../../../artifacts/sprint-1/custodian-checkout/evidence.md) for actual results and limitations.
 
 Teammate review, live-browser borrower-request → custodian-checkout → borrower `CHECKED_OUT` history verification, PR approval, and merge remain pending. Both team members should review enum compatibility, authority boundaries, concurrent custody transitions, rollback, and the open due-date policy before acceptance.
+
+## CR-01: preserved checkout behavior (proposed)
+
+| Item | Value |
+| --- | --- |
+| Revision | CR-01 contract r2 (draft); base `e5ed70d` |
+| Change request | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); [impact analysis](../../labs/lab-07/CR-01-impact-analysis.md) |
+| Requirements | BR-14 (e) (proposed); BR-06, BR-09, FR-09, FR-10 (unchanged) |
+| Code impact | **None.** `server/src/checkout.ts` and `client/src/components/Checkout.tsx` are not changed by CR-01. |
+| Status | **Proposed. DEV4952 review PENDING.** |
+
+Checkout is deliberately **not** subject to the borrowing quota.
+
+1. **No quota check.** `POST /api/requests/:id/checkout` never evaluates P or L and never returns `BORROWING_QUOTA_EXCEEDED`. Every response in the failure table above keeps its code and meaning, as do `LOAN_MAX_DAYS` validation and the transaction steps.
+2. **Quota-neutral transition.** A successful checkout changes exactly one `PENDING` request to `CHECKED_OUT` and inserts exactly one loan with `returnedAt = null` and the request's own `borrowerId`, in one Serializable transaction. For that borrower P decreases by 1 and L increases by 1, so P + L is unchanged. Example: (P = 2, L = 1) becomes (P = 1, L = 2).
+3. **Over-limit borrowers.** A borrower whose existing records exceed BR-14, for example P = 3 and L = 2, can still have an otherwise-valid request checked out, giving (2, 3). Their new submissions stay blocked until BR-14 permits them.
+4. **Failure.** Any rollback (400 due date, 409 mismatch, not pending, unavailable, conflict, injected failure) leaves both P and L unchanged.
+5. **Phase 2 only.** With `REQUEST_LIFECYCLE_WRITES=enabled`, the same transaction declines competing PENDING requests for the asset. That only lowers other borrowers' P and cannot exceed any quota. Production runs phase 1 (`disabled`), and CR-01 does not change that setting.
+6. **UI.** After a successful checkout, the borrower's quota is re-read on their next load or refresh. The custodian UI shows no quota.
+7. **Concurrency (r2).** A checkout that runs concurrently with the same borrower's submission keeps its existing outcomes: 201, or 409 `CHECKOUT_CONFLICT` on a serialization abort, with no retry (BR-09). The submission may succeed only in a serial order where capacity exists. For example, with the borrower at (P = 2, L = 0), a concurrent submission can succeed only if the checkout succeeded.
+8. **Return is a separate dependency (r2).** FR-12 return, the FEAT-04 Sprint 2 scope, is the only way to lower L, and it does not exist at `e5ed70d`. CR-01 does not implement it. Production activation of the quota waits for return to be released and verified (BR-14 g; [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-dependencies-and-controlled-activation-l7a-ev11)). Return must lower L in one transaction (SDS §5.5) and must never evaluate the quota.
+
+| Obligation | Verified by |
+| --- | --- |
+| Checkout at P = 2, L = 1 gives P = 1, L = 2, one loan, and the next submission rejected | CR01-TC05 ([STS](../../labs/lab-07/CR-01-STS.md)) |
+| Over-limit checkout allowed | CR01-TC07 |
+| Checkout concurrent with the same borrower's submission; auto-decline frees another borrower's capacity | CR01-TC20, CR01-TC14 |
+| Existing checkout behavior | TC-09, TC-10, TC-19, TC-20; `server/tests/checkout.test.ts`, `checkout-unit.test.ts`, `loan-duration.test.ts`, `lifecycle-rollout.test.ts` must stay green with assertions unchanged |
