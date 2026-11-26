@@ -4,7 +4,7 @@ Status: Planned verification; teammate review pending.
 Baseline: [SRS](srs.md), repository revision `c9c8895`, 2026-11-02.  
 Feature definitions and review gates: [Feature Inventory](feature-inventory.md).
 
-**CR-01 proposed revision (Lab 7, contract r3, draft; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** BR-14 and CR01-TC01–TC20 are added in the [CR-01 section](#cr-01-revision-borrowing-quota-management). Existing TC-01–TC-28 keep their IDs and acceptance checks. Rows that gain CR-01 regression obligations are marked **[CR-01 r1]**. Review status: **PENDING** (DEV4952).
+**CR-01 proposed revision (Lab 7, contract r4, draft; DC-1 option K2a, pending-request quota; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** BR-14 (r4) and the CR01 cases are traced in the [CR-01 section](#cr-01-revision-borrowing-quota-management). Existing TC-01–TC-28 keep their IDs and checks. Rows with CR-01 regression obligations are marked **[CR-01 r4]**. Review: **PENDING** (DEV4952, PR #79).
 
 ## Reading the matrix
 
@@ -21,8 +21,8 @@ Each row defines the named TC's acceptance checks. API checks include persisted 
 | FR-03 | FEAT-01 | 1 | BR-03 | TC-03: Current-user response exposes the correct identifier and role; unauthenticated access exposes no identity. |
 | FR-04 | FEAT-02 | 1 | — | TC-04: Synthetic catalog lists Asset ID, name, category, description, and availability; separate copies have distinct IDs. |
 | FR-05 | FEAT-02 | 1 | BR-08 (2), BR-13 (3) | TC-05: Catalog availability matches the borrowable state of seeded assets in Sprint 1. Extend with checkout/return readback in Sprint 2 and retired assets in Sprint 3. |
-| FR-06 | FEAT-03 | 1 | BR-03, BR-10; BR-13 (3) | TC-06: Valid existing borrowable asset produces a returned and saved pending request with requester, asset, and submission time; missing, unknown, or non-borrowable asset is rejected without writes. **[CR-01 r1]** Related BR adds BR-14. TC-06 is unchanged and must stay green; quota acceptance and rejection are CR01-TC01–TC04 and TC06–TC09. |
-| FR-07 | FEAT-03 | 1 | BR-03, BR-04 | TC-07: Borrower sees their newly submitted request with asset/status; another borrower's list and direct record ID cannot expose it. **[CR-01 r1]** The own-quota view is CR01-TC10–TC12; TC-07 is unchanged. |
+| FR-06 | FEAT-03 | 1 | BR-03, BR-10; BR-13 (3) | TC-06: Valid existing borrowable asset produces a returned and saved pending request with requester, asset, and submission time; missing, unknown, or non-borrowable asset is rejected without writes. **[CR-01 r4]** Related BR adds BR-14. TC-06 is unchanged and must stay green; quota acceptance and rejection are CR01-TC01–TC03, TC06–TC09 and TC21. |
+| FR-07 | FEAT-03 | 1 | BR-03, BR-04 | TC-07: Borrower sees their newly submitted request with asset/status; another borrower's list and direct record ID cannot expose it. **[CR-01 r4]** The own pending-quota view is CR01-TC10–TC12; TC-07 is unchanged. |
 | FR-08 | FEAT-03 | 2 | BR-03, BR-05 | TC-08: Custodian queue includes pending requests with requester and Asset ID for authorized assets; out-of-scope requests are inaccessible. |
 | FR-09 | FEAT-04 | 2 | BR-01, BR-02, BR-03, BR-05, BR-06, BR-08, BR-09, BR-11; BR-13 (3) | TC-09: Authorized checkout of an available asset with its pending request and future due date identifies a loan and checks out the request. Invalid role, scope, asset state, request state/asset match, or due date produces no transition. |
 | FR-10 | FEAT-04 | 2 | BR-02, BR-06, BR-08, BR-09, BR-11 | TC-10: Checkout persists exactly one active loan with asset, borrower, request, checkout time, due date, and custodian; reload and restart preserve the record. |
@@ -49,11 +49,11 @@ Dedicated rule cases supplement the FR cases; all rejected operations must prese
 | BR-07 | FEAT-04 | 2 | TC-12 checks active-only return, one timestamp, and unchanged state on repeat; TC-20 checks atomic return rollback. |
 | BR-08 | FEAT-02, FEAT-04, FEAT-06 | 2 | TC-05, TC-09, TC-12 verify availability agrees with active-loan state after checkout/return; TC-17 later checks counts. |
 | BR-09 | FEAT-04 | 2 | TC-19: Send concurrent checkouts of two pending requests for one Asset ID against PostgreSQL; exactly one succeeds, one active loan exists, and the loser receives conflict with its request still pending. |
-| BR-10 | FEAT-03 | 1 | TC-21: Requests from two different borrowers for the same borrowable asset coexist as pending; submission creates no loan, reservation, or availability change. Duplicate pending submissions by the same borrower return 409, including concurrent submissions, and leave only one pending record. See the FEAT-03 implementation contract and automated tests. **[CR-01 r1]** Unchanged. Duplicate precedence over the quota is CR01-TC09. |
+| BR-10 | FEAT-03 | 1 | TC-21: Requests from two different borrowers for the same borrowable asset coexist as pending; submission creates no loan, reservation, or availability change. Duplicate pending submissions by the same borrower return 409, including concurrent submissions, and leave only one pending record. See the FEAT-03 implementation contract and automated tests. **[CR-01 r4]** Unchanged. Duplicate precedence over the quota is CR01-TC09; different borrowers requesting one asset is CR01-TC10. |
 | BR-11 | FEAT-04 | 2 | TC-09 rejects missing, invalid, past, and exactly-current due dates; accepts a future due date using controlled checkout time. |
 | BR-12 | FEAT-05 | 3 | TC-13 verifies the strict time boundary and exclusion of returned loans. |
 | BR-13 | FEAT-02, FEAT-03, FEAT-04, FEAT-06, FEAT-07 | 3 | TC-05, TC-06, TC-09, TC-15, TC-16, TC-17 verify retired assets are non-borrowable, reject requests/checkout, and appear correctly in summary counts. |
-| BR-14 **[CR-01 r1, proposed]** | FEAT-03 (owner); FEAT-04 (neutrality) | 1 (CR-01, Lab 7) | CR01-TC01–TC20 ([CR-01 STS](labs/lab-07/CR-01-STS.md)): boundaries, no-write rejection, checkout neutrality, terminal and returned exclusion, historical over-limit records, concurrent submissions, precedence, isolation, UI, persistence. r2 adds recovery, controlled activation, and concurrency with checkout and recovery. Return-dependent parts are BLOCKED until FR-12. |
+| BR-14 **[CR-01 r4, proposed]** | FEAT-03 (owner); FEAT-04 (checkout lowers P) | 1 (CR-01, Lab 7) | The 19 active CR01 cases ([CR-01 STS](labs/lab-07/CR-01-STS.md)): pending-limit boundaries, no-write rejection, active-loan independence, recovery by checkout, cancel, decline and auto-decline, historical records, concurrency, precedence, isolation, UI, persistence, controlled activation. TC04 is superseded and TC15 is deferred. |
 
 ## Cross-cutting quality requirements
 
@@ -79,43 +79,48 @@ Coverage here means planned traceability, not implemented behavior. TC-01–TC-2
 
 ## CR-01 revision: Borrowing Quota Management
 
-**Revision:** CR-01 contract r3 (draft), base `e5ed70d`. r3 adds release-evidence traceability (RG-02, RG-05); test IDs are unchanged. **Status:** planned verification. No CR01 case is implemented or executed, and DEV4952 review is PENDING. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
+**Revision:** CR-01 contract r4 (draft), DC-1 option K2a (pending-request quota only), base `e5ed70d`. **Status:** planned verification; no CR01 case is implemented or executed; PR #79 approval PENDING. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
 
-### Requirement → acceptance → test → module
+### Requirement → acceptance → test → module (active r4)
 
-| Requirement | Acceptance criteria | CR-01 tests | Affected source modules (candidate Part B change) | Existing tests kept as regression |
-| --- | --- | --- | --- | --- |
-| BR-14 limits (P < 2, P + L < 3) | CR01-AC01–AC04 | CR01-TC01–TC04 | `server/src/borrow-requests.ts`; new `server/src/borrowing-quota.ts` | TC-06, TC-21, TC-23 |
-| BR-14 (e), BR-06: checkout neutrality | CR01-AC05 | CR01-TC05 | none (`server/src/checkout.ts` unchanged) | TC-09, TC-10, TC-19, TC-20 |
-| BR-14 (c): terminal and returned excluded | CR01-AC06 | CR01-TC06 | `server/src/borrowing-quota.ts` (predicates) | lifecycle and reconcile suites |
-| BR-14 (d): historical over-limit | CR01-AC07 | CR01-TC07 | `server/src/borrow-requests.ts` | TC-09, TC-10 |
-| BR-14 (b): concurrency | CR01-AC08 | CR01-TC08 | `server/src/borrow-requests.ts` (Serializable transaction plus retry) | TC-19, TC-21 |
-| BR-03, BR-10, BR-13, NFR-01, NFR-03: preserved errors and precedence | CR01-AC09 | CR01-TC09 | `server/src/domain.ts` (new route guard order) | TC-06, TC-18, TC-21, TC-23, TC-24 |
-| BR-04, FR-07 (CR-01), NFR-01: isolation and privacy | CR01-AC10 | CR01-TC10 | `server/src/domain.ts` (`GET /borrowing-quota`) | TC-07, TC-08, TC-11 |
-| FR-07 (CR-01): quota UI | CR01-AC11 | CR01-TC11 | `client/src/App.tsx`, `client/src/borrowEligibility.ts`, `client/src/components/Requests.tsx`, `client/src/components/Catalog.tsx` | client `requests`, `borrow-workflow`, `navigation`, `borrower-navigation` tests; E2E `02`, `04`–`07` |
-| BR-14, NFR-05: persisted derivation | CR01-AC12 | CR01-TC12 | `server/src/borrowing-quota.ts` | TC-10, TC-25 |
-| BR-14 (c), (d): recovery after cancel or decline (proposed) | CR01-AC13, AC14, AC16 | CR01-TC13, TC14, TC16 | none (`server/src/request-lifecycle.ts` unchanged) | lifecycle suites |
-| BR-14 (c): recovery after return (proposed; depends on FR-12) | CR01-AC15, AC16 | CR01-TC15, TC16 (API parts BLOCKED) | none in CR-01; return belongs to FR-12 | TC-12 (when FR-12 exists) |
-| BR-03, BR-04, BR-05: unauthorized recovery leaves the quota unchanged (proposed) | CR01-AC17 | CR01-TC17 | none | lifecycle authorization tests |
-| FR-07 (CR-01): UI after recovery (proposed) | CR01-AC18 | CR01-TC18 | `client/src/App.tsx`, `client/src/components/Requests.tsx` | client lifecycle tests |
-| BR-14 (g): controlled activation (proposed) | CR01-AC19 | CR01-TC19 | `server/src/config.ts`, `server/src/auth.ts`, `server/src/domain.ts`, `client/src/App.tsx` | `runtime-config.test.ts`, `lifecycle-rollout.test.ts` |
-| BR-14 (b), (e), BR-09: concurrency with checkout and recovery (proposed) | CR01-AC20 | CR01-TC20 | `server/src/borrow-requests.ts` | TC-19, TC-21 |
-| Dependencies (not CR-01) | — | DEP-LC-01–04, DEP-RT-01–03 ([STS §6](labs/lab-07/CR-01-STS.md#6-dependency-verification-and-release-gates-not-cr-01-tests)) | lifecycle rollout; future FR-12 return | — |
-| Release evidence (not test cases) | AC19-S6 | RG-02.E1–E10 (FR-12 return in production); RG-05.E1–E10 (quota activation and recovery) ([impact analysis §20.10–§20.11](labs/lab-07/CR-01-impact-analysis.md#2010-rg-02-evidence-specification-fr-12-return-dependency-l7a-ev14)) | deployment configuration (`lab5-production`) | — |
+| Requirement | AC | Active tests | Affected modules (candidate Part B) | Issue | Existing regression |
+| --- | --- | --- | --- | --- | --- |
+| BR-14 limit P < 2; no writes | AC01–AC03 | TC01–TC03 | `server/src/borrow-requests.ts`; new `server/src/borrowing-quota.ts` | #80, #81 | TC-06, TC-21, TC-23 |
+| BR-14 (c): active loans irrelevant | AC21 | TC21 | same | #80, #81 | TC-11 |
+| BR-14 (c): terminal requests excluded | AC06 | TC06 | same | #81 | lifecycle suites |
+| BR-14 (d): historical P ≥ 3 | AC07, AC16 | TC07, TC16 | same | #81 | TC-09 |
+| BR-14 (e), BR-06: checkout lowers P | AC05 | TC05 | none (`server/src/checkout.ts` unchanged) | #81 | TC-09, TC-10, TC-19, TC-20 |
+| BR-14 (e): cancel, decline, auto-decline restore capacity | AC13, AC14 | TC13, TC14 | none (`server/src/request-lifecycle.ts` unchanged) | #81, #83 | lifecycle suites |
+| BR-14 (b): concurrency | AC08, AC20 | TC08, TC20 | `server/src/borrow-requests.ts` | #81 | TC-19, TC-21 |
+| BR-03, BR-10, BR-13, NFR-01, NFR-03: preserved errors | AC09, AC17 | TC09, TC17 | `server/src/domain.ts` | #81 | TC-06, TC-18, TC-21, TC-23, TC-24 |
+| BR-04, FR-07, NFR-01: isolation, privacy | AC10 | TC10 | `server/src/domain.ts` (`GET /borrowing-quota`) | #81 | TC-07, TC-08, TC-11 |
+| FR-07: quota UI, UI after recovery | AC11, AC18 | TC11, TC18 | `client/src/App.tsx`, `borrowEligibility.ts`, `components/Requests.tsx`, `components/Catalog.tsx` | #82 | client `requests`, `borrow-workflow`, `navigation`, `borrower-navigation`, `request-lifecycle`; E2E `02`, `04`–`07` |
+| BR-14, NFR-05: persistence | AC12 | TC12 | `server/src/borrowing-quota.ts` | #81, #85 | TC-10, TC-25 |
+| BR-14 (g): controlled activation | AC19 | TC19 | `server/src/config.ts`, `server/src/auth.ts`, `server/src/domain.ts`, `client/src/App.tsx`; deploy plumbing | #81, #85 | `runtime-config.test.ts`, `lifecycle-rollout.test.ts` |
+| Release dependency DEP-LC | AC19-S6 | RG-01 (release evidence, not a test) | production configuration | #83 | — |
+| Release evidence | — | RG-03, RG-04, RG-05.E1–E11 ([impact analysis §20.3–§20.4](labs/lab-07/CR-01-impact-analysis.md#203-release-gates-r4)) | `lab5-production` | #85 | — |
+
+### Inactive (superseded or deferred)
+
+| Item | Disposition |
+| --- | --- |
+| CR01-AC04 / TC04 (combined limit rejection) | **Superseded** by DC-1; replaced by AC21 / TC21 |
+| CR01-AC15 / TC15 (recovery by return) | **Deferred** with the combined limit; FR-12 is #84 |
+| RG-02 (FR-12 production evidence) | **N/A to r4**; recommended to #84 |
 
 ### Regression obligations on existing cases
 
 | Existing TC | Why CR-01 affects it | Obligation |
 | --- | --- | --- |
-| TC-06, TC-07 | Same endpoints (`POST /requests`, own views) | Unchanged checks pass; fixture-only isolation if a shared borrower reaches quota |
-| TC-08 | Custodian queue reads the same requests | Unchanged |
-| TC-09, TC-10, TC-19, TC-20 | Checkout must stay quota-free and atomic | Unchanged; plus CR01-TC05 and TC07 |
-| TC-11 | L uses the same `borrowerId` loan predicate as `/loans/mine` | Unchanged; agreement checked in CR01-TC12 |
+| TC-06, TC-07 | Same endpoints | Unchanged checks pass; fixture-only isolation |
+| TC-08 | The queue reads the same requests | Unchanged |
+| TC-09, TC-10, TC-19, TC-20 | Checkout must stay quota-free and atomic; it now lowers P | Unchanged; plus CR01-TC05 and TC07 |
+| TC-11 | Loan views; loans must not affect the quota | Unchanged; CR01-TC21 |
 | TC-18 | New protected route | Extend: 401 and 403 for `GET /borrowing-quota` (CR01-TC09) |
-| TC-21 | Concurrency and duplicate rules share the submission transaction | Unchanged; duplicate precedence in CR01-TC09 |
-| TC-23 | New rule violation | Extend: quota rejection leaves no writes (CR01-TC03, TC04) |
+| TC-21 | Concurrency and duplicates share the submission transaction | Unchanged; CR01-TC09 and TC10 |
+| TC-23 | New rule violation | Extend: no writes on rejection (CR01-TC03) |
 | TC-24, TC-25 | Safe errors, persistence | Unchanged; CR01-TC12 |
 
 ### CR-01 coverage disposition
 
-When accepted, the baseline becomes 17/17 FR, **14/14 BR** and 9/9 NFR mapped to planned cases. All 12 Issue #78 acceptance criteria map to CR01-TC01–TC12, and the 8 proposed criteria AC13–AC20 map to CR01-TC13–TC20. All 20 CR01 cases map to at least one requirement. Existing tests that need fixture-only changes are listed in [impact analysis §14](labs/lab-07/CR-01-impact-analysis.md#14-regression-protection-strategy-l7a-ev12). No existing TC ID is removed, renumbered or redefined. Coverage here is planned traceability, not passing evidence.
+When accepted, the baseline becomes 17/17 FR, **14/14 BR** and 9/9 NFR mapped to planned cases. 19 active acceptance criteria (AC01–AC03, AC05–AC14, AC16–AC21) map one-to-one to 19 active cases. AC04 and TC04 are superseded; AC15 and TC15 are deferred. No existing TC ID is removed or redefined. Fixture-only changes are listed in [impact analysis §14](labs/lab-07/CR-01-impact-analysis.md#14-regression-protection-strategy-l7a-ev12).

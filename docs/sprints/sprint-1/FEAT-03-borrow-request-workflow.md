@@ -6,7 +6,7 @@ Baseline: `sprint-1-staging` commit `6524ef8`, 2026-11-03. Branch: `feature/borr
 
 F-04 compatibility update: the checkout result now uses request status `CHECKED_OUT` (formerly `FULFILLED`). Apply all current migrations and regenerate Prisma before starting the API; see [FEAT-04](FEAT-04-custodian-checkout.md). Historical F-03 evidence describes the earlier label.
 
-CR-01 proposed revision (Lab 7, contract r1, draft): the sections below up to "CR-01 revision" are the historical Sprint 1 contract and are unchanged. The proposed borrowing-quota contract is the [CR-01 revision](#cr-01-revision-borrowing-quota-proposed) at the end of this document. Its status is **PENDING** team agreement and DEV4952 review.
+CR-01 proposed revision (Lab 7, contract r4, draft): the sections above "CR-01 revision" are the historical Sprint 1 contract and are unchanged. The proposed pending-request quota contract is the [CR-01 revision](#cr-01-revision-pending-request-quota-proposed-r4) at the end of this document. Scope was agreed at DC-1; PR #79 approval is PENDING.
 
 ## Scope and duplicate policy
 
@@ -69,104 +69,89 @@ Client: `npm ci`, `npm test`, `npm run build`, and `npm run lint` from `client/`
 
 Reviewers must verify this duplicate interpretation and migration preflight, run the documented commands, and exercise the borrower submit → custodian queue/checkout → borrower `CHECKED_OUT` history path in a live browser. Human review, live-browser evidence, and reviewed PR merge remain pending; automated results do not complete these gates.
 
-## CR-01 revision: borrowing quota (proposed)
+## CR-01 revision: pending-request quota (proposed, r4)
 
 | Item | Value |
 | --- | --- |
-| Revision | CR-01 contract r2 (draft); base `e5ed70d` (accepted Sprint 1, PR #77). r2 adds controlled activation, a strict query rule, refresh triggers and recovery dependencies. |
-| Change request | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78) |
-| Requirements | FR-06 and FR-07 (CR-01 amendments), BR-10 (unchanged, cross-referenced), **BR-14** (proposed) |
+| Revision | CR-01 contract r4 (draft), DC-1 option K2a; base `e5ed70d` (PR #77). Supersedes the r1–r3 combined quota ([impact analysis §21](../../labs/lab-07/CR-01-impact-analysis.md#21-superseded-and-deferred-record-r1r3)). |
+| Change request / issues | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); #80 RED, #81 backend, #82 frontend, #83 lifecycle activation, #85 release |
+| Requirements | FR-06 and FR-07 (CR-01 amendments), BR-10 (cross-referenced), **BR-14 r4** |
 | Companion documents | [Impact analysis](../../labs/lab-07/CR-01-impact-analysis.md) · [Acceptance criteria](../../labs/lab-07/CR-01-acceptance-criteria.md) · [STS](../../labs/lab-07/CR-01-STS.md) |
-| Status | **Proposed. Not implemented. Team agreement and DEV4952 review PENDING.** |
+| Status | **Proposed. Not implemented.** Scope agreed 2026-11-26 (DC-1); PR #79 approval PENDING. |
 
 ### Policy
 
-P is the borrower's `PENDING` requests and L is the borrower's loans with `returnedAt IS NULL`. A new otherwise-valid request is accepted only when **P < 2 and P + L < 3**. Remaining capacity is `max(0, min(2 − P, 3 − P − L))`. Terminal requests (`CHECKED_OUT`, `DECLINED`, `CANCELLED`, `EXPIRED`) and returned loans do not count. Existing records over a limit are kept unchanged, and that borrower's new submissions are rejected until both conditions hold. The duplicate policy above (one PENDING request per borrower and Asset ID) and non-reservation are unchanged.
+P is the borrower's `PENDING` requests. A new otherwise-valid request is accepted only when **P < 2**; remaining capacity is `max(0, 2 − P)`.
+
+- **Active loans do not affect eligibility.**
+- Terminal requests do not count.
+- Existing over-limit records are preserved, and that borrower's submissions are rejected until P < 2.
+- Checkout, borrower cancel, custodian decline and checkout auto-decline each lower P by one and restore capacity. None of them is quota-checked.
+- The duplicate policy above and non-reservation are unchanged: different borrowers may still request the same available asset.
 
 ### API changes
 
-| Endpoint | Baseline | CR-01 r2 |
+| Endpoint | Baseline | CR-01 r4 |
 | --- | --- | --- |
-| POST `/api/requests` | 201, or the errors listed above | Same, plus **409 `BORROWING_QUOTA_EXCEEDED`** when BR-14 fails. Same envelope `{ error: { code, message } }` without `fields`, and no writes. The 201 DTO is unchanged. |
-| GET `/api/borrowing-quota` | *(none)* | **New.** Borrower only. Evaluation order: 401 without a session; 403 `FORBIDDEN` for a Custodian; 404 `BORROWING_QUOTA_DISABLED` while activation is off; **400 `VALIDATION_ERROR` with `fields.query` for any query parameter** (OD-05); otherwise 200 with `Cache-Control: no-store` and `Content-Type: application/json`, body below. Identity always comes from the session. |
-| GET `/api/requests/mine`, `/api/requests/pending`, `/api/requests/:id`, checkout | — | Unchanged |
+| POST `/api/requests` | 201 or the errors above | Same, plus **409 `BORROWING_QUOTA_EXCEEDED`** when activation is on and P ≥ 2 (envelope without `fields`, no writes). 201 DTO unchanged. |
+| GET `/api/borrowing-quota` | — | **New.** Borrower only. Order: 401 → 403 (Custodian) → 404 `BORROWING_QUOTA_DISABLED` (activation off) → **400 `VALIDATION_ERROR` with `fields.query` for any query parameter** → 200 with `Cache-Control: no-store`. Identity comes from the session. One `COUNT(*)` statement; no explicit transaction (OD-12). |
+| Others | — | Unchanged |
 
 ```json
-{
-  "pendingRequests": 1,
-  "activeLoans": 2,
-  "combinedUsage": 3,
-  "maxPendingRequests": 2,
-  "maxCombinedUsage": 3,
-  "remainingRequestCapacity": 0,
-  "canSubmitRequest": false
-}
+{ "pendingRequests": 1, "maxPendingRequests": 2, "remainingRequestCapacity": 1, "canSubmitRequest": true }
 ```
 
-The quota body contains no identifiers. Fields are always integers and a boolean. `combinedUsage` and the counts are reported as stored and are **not** clamped, so an over-limit borrower may see `combinedUsage: 5`. `remainingRequestCapacity` is clamped at 0.
+`pendingRequests` is not clamped (historical values above 2 appear). There are no identifiers and no loan fields. The r3 fields `activeLoans`, `combinedUsage` and `maxCombinedUsage` are removed.
 
 ### Error precedence for POST `/api/requests`
 
-1. 400 `INVALID_JSON` or 413 `PAYLOAD_TOO_LARGE` (app-wide body parser)
-2. 401 `UNAUTHENTICATED`
-3. 403 `FORBIDDEN` (role)
-4. 403 `FORBIDDEN_ORIGIN` or `INVALID_CSRF`
-5. 400 `VALIDATION_ERROR` (`fields.assetId`)
-6. 404 `NOT_FOUND`
+1. 400 `INVALID_JSON` / 413
+2. 401
+3. 403 role
+4. 403 Origin / CSRF
+5. 400 `VALIDATION_ERROR`
+6. 404
 7. 409 `ASSET_UNAVAILABLE`
 8. 409 `DUPLICATE_REQUEST`
-9. **409 `BORROWING_QUOTA_EXCEEDED`**
+9. **409 `BORROWING_QUOTA_EXCEEDED`** (activation on)
 10. 201
 
-Retry exhaustion stays 409 `CONFLICT`. Steps 1–8 and their codes are unchanged from the baseline. Step 9 runs only while activation is on. A loser that observed the committed winner receives `BORROWING_QUOTA_EXCEEDED`. `CONFLICT` means all three attempts aborted and nothing was decided or written.
+Retry exhaustion stays 409 `CONFLICT`. A loser whose retry sees the committed winner gets `BORROWING_QUOTA_EXCEEDED`.
 
 ### Transaction
 
-The quota counts run inside the existing Serializable submission transaction, after the duplicate read and before the insert. The existing three-attempt retry on serialization failure rechecks availability, duplicates **and** quota. PostgreSQL SSI aborts one of two concurrent same-borrower submissions that would together exceed a limit (write skew). The retried attempt then sees the committed row and is rejected. No migration, counter column, trigger or extra lock is added (see [impact analysis §10](../../labs/lab-07/CR-01-impact-analysis.md#10-concurrency-analysis-l7a-ev05)). Checkout (FEAT-04) is unchanged and quota-neutral.
+P is counted inside the existing Serializable submission transaction, after the duplicate read and before the insert. SSI aborts one of two concurrent same-borrower submissions that together would exceed P = 2; the retry then rejects. No migration, counter, trigger or extra lock is added ([impact analysis §10](../../labs/lab-07/CR-01-impact-analysis.md#10-concurrency-analysis-l7a-ev05)).
 
 ### Borrower UI
 
-- **Quota panel** on `/requests` (proposed component in `client/src/components/Requests.tsx`). It shows "N of 2 pending requests", "N of 3 pending requests and active loans" and the remaining capacity, using the server's `max*` values. At or above a limit it states which limit is reached and how capacity returns. For the pending limit alone (P = 2, L = 0), a custodian checking out one of the requests frees a slot. For the combined limit, a loan must be returned or a pending request closed (cancel or decline, only where lifecycle actions are enabled).
-- **Eligibility** (`client/src/borrowEligibility.ts`) gains a `quota` state with precedence `unavailable` → `pending` → `quota` → `eligible`. The request form and the catalog "Request to borrow" buttons are disabled in the `quota` state with an accessible reason.
-- **Loading and error.** Submission is disabled while the quota is loading or failed, matching the existing rule for catalog and history reads. A failed read shows an alert with Retry.
-- **Refresh.** The quota is re-read, with the catalog, requests and loans, at these points:
-  1. After sign-in or session restore, only for a borrower with `features.borrowingQuota: true`.
-  2. Each time `/requests` is entered.
-  3. After every successful mutation: submit, cancel, and any action shown on the borrower page.
-  4. After **any** 409, including `BORROWING_QUOTA_EXCEEDED`. The server message is shown and no success notice appears.
-  5. When the panel's **Refresh** button is pressed.
+- **Quota panel** on `/requests`: "N of 2 pending requests" and "You can submit K more request(s)", rendered from the server's `maxPendingRequests`. At the limit it explains that a checkout, a cancel or a custodian decline frees a slot. Active loans are not shown as quota usage.
+- **Eligibility** (`borrowEligibility`): precedence `unavailable` → `pending` → `quota` → `eligible`. The form and catalog "Request to borrow" buttons are disabled in the `quota` state with an accessible reason.
+- **Loading and error:** submission is disabled while the quota is loading or failed; a failed read shows an alert with Retry.
+- **Refresh triggers:** after sign-in or restore (borrower with `features.borrowingQuota: true`); on entering `/requests`; after each successful submit or cancel; after **any** 409; and on the panel's Refresh button. There is no polling. Responses from an older session epoch or read are discarded. If the re-read after a successful mutation fails, the UI says the action succeeded but the limits could not be refreshed, and keeps Submit disabled until Retry succeeds.
+- **Session:** a 401 ends the session and clears quota state. Custodians never load a quota. With `features.borrowingQuota: false` there is no call, no panel and pre-CR-01 eligibility.
 
-  There is no polling. Recovery done by another user (custodian decline, or return once it exists) appears at the next trigger. Each read carries a session epoch and a read sequence number, as `loadRequests` does, so a response from an earlier session or an older read is discarded. If the quota re-read fails after a successful mutation, the UI says the action succeeded but the limits could not be refreshed, and keeps Submit disabled until Retry succeeds.
-- **Session.** A 401 on the quota read or the submission ends the session through the existing `endSession` path, which also clears quota state. Responses from an earlier session epoch are ignored. Custodians never load or see a quota. With `features.borrowingQuota: false` (or the flag absent) the client makes no quota call, shows no panel, and applies only the pre-CR-01 eligibility rules.
+### Controlled activation and dependency
+
+- `BORROWING_QUOTA` is off by default.
+- Startup refuses `enabled` unless `REQUEST_LIFECYCLE_WRITES=enabled`, so a borrower can always cancel their own request and lockout is impossible.
+- Production activation requires verified lifecycle actions (**#83**, RG-01), then RG-03, RG-04 and RG-05.
+- **FR-12 return (#84) is not a dependency.**
+- A production deployment with the quota disabled does not verify this contract's changed behavior.
+
+Gates, deployment procedure (PENDING) and rollback: [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-activation-and-release-l7a-ev11-l7a-ev13-l7a-ev14).
 
 ### Verification mapping
 
-| Coverage | CR-01 case | Candidate location |
+| Coverage | CR-01 cases (active) | Location |
 | --- | --- | --- |
-| Boundaries, acceptance and rejection, no writes | CR01-TC01–TC04 | `server/tests/borrowing-quota.test.ts`, `borrowing-quota-unit.test.ts` |
-| Checkout neutrality and over-limit checkout | CR01-TC05, TC07 | `server/tests/borrowing-quota.test.ts` |
-| Terminal and returned exclusion | CR01-TC06 | same |
-| Concurrent same-borrower submissions | CR01-TC08 | same |
-| Error precedence, isolation, privacy | CR01-TC09, TC10 | same |
-| UI states | CR01-TC11 | `client/tests/borrowing-quota.test.tsx`; `e2e/tests/09-borrowing-quota.spec.ts` |
-| Persisted readback | CR01-TC12 | server and E2E |
-| Recovery after cancel, decline and return (return parts BLOCKED until DEP-RT) | CR01-TC13–TC16 | `server/tests/borrowing-quota.test.ts` |
-| Unauthorized recovery leaves the quota unchanged | CR01-TC17 | same |
-| UI after recovery | CR01-TC18 | client and E2E |
-| Activation off and misconfiguration | CR01-TC19 | server unit and API; client |
-| Submission concurrent with checkout or recovery | CR01-TC20 | `server/tests/borrowing-quota.test.ts` |
+| Boundaries P = 0, 1, 2; no writes; loans irrelevant | TC01–TC03, TC21 | `server/tests/borrowing-quota.test.ts`, `borrowing-quota-unit.test.ts` |
+| Checkout reduces P; over-limit history | TC05, TC07, TC16 | same |
+| Terminal exclusion | TC06 | same |
+| Concurrency (normal versus exhaustion); concurrency with lifecycle | TC08, TC20 | same |
+| Precedence, isolation, privacy; unauthorized recovery | TC09, TC10, TC17 | same |
+| Recovery by cancel, decline, auto-decline | TC13, TC14 | same |
+| UI states; UI after recovery | TC11, TC18 | `client/tests/borrowing-quota.test.tsx`; `e2e/tests/09-borrowing-quota.spec.ts` |
+| Persistence | TC12 | server and E2E |
+| Activation off and coupling | TC19 | server unit and API; client |
 
-The existing coverage table above remains a regression obligation. Existing suites that reuse one borrower across many submissions need fixture-only isolation changes; their assertions must not change ([impact analysis §14](../../labs/lab-07/CR-01-impact-analysis.md#14-regression-protection-strategy-l7a-ev12)).
-
-### Controlled activation and recovery dependencies (r2, pending OD-01 and OD-08)
-
-r1 recorded that, in the deployed configuration (`REQUEST_LIFECYCLE_WRITES=disabled`, and no return endpoint at `e5ed70d`), nothing lowers a borrower's P + L, so an active quota would lock borrowers out permanently. r2 does not accept that as a limitation. It proposes:
-
-- **Activation setting** `BORROWING_QUOTA` (`disabled` by default). With it off, submission is exactly the pre-CR-01 contract, the read endpoint answers 404 `BORROWING_QUOTA_DISABLED`, and `features.borrowingQuota` is `false`.
-- **Coupling.** The server refuses to start with the quota `enabled` unless lifecycle writes are `enabled`. Borrower cancel and custodian decline, the existing #61 actions, are then available as recovery paths.
-- **Return gate.** Production activation also requires authorized return (FR-12) to be released and verified. Without it, borrowers with three active loans can never recover. Return is a **separate Sprint 2 dependency (DEP-RT)**, not part of this change.
-- **Recovery is never quota-checked.** Cancel, decline, auto-decline, reconcile and return only lower P or L.
-
-**r3.** The proposed ownership, exact activation sequence (`KITLOOP_BORROWING_QUOTA` and `KITLOOP_REQUEST_LIFECYCLE_WRITES` in the `lab5-production` environment; `LAB5_DEPLOY_ENABLED` is currently `false`), rollback, the RG-02 and RG-05 evidence, and the Lab 7 contingency are in impact analysis §20.7–§20.12. A production deployment with the quota disabled is **not** verification of this contract's changed behavior.
-
-Dependency table, options, effort estimates and release gates: [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-dependencies-and-controlled-activation-l7a-ev11). Recovery criteria: CR01-AC13–AC20 (proposed).
+TC04 (combined limit) is superseded and TC15 (return recovery) is deferred; neither is in the active suite. The existing coverage table above remains a regression obligation. Required fixture-only changes: [impact analysis §14](../../labs/lab-07/CR-01-impact-analysis.md#14-regression-protection-strategy-l7a-ev12).
