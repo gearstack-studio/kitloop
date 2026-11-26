@@ -6,7 +6,7 @@
 
 **Requirements:** [SRS](srs.md), [Feature Inventory](feature-inventory.md), and [Requirements Traceability Matrix (RTM)](traceability-matrix.md).
 
-**CR-01 proposed revision (Lab 7, contract r2, draft; r2 adds controlled activation and recovery interactions to §5.3.1; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** This revision adds borrowing-quota design to §3 (contract row), §4 (invariant), §5.3 (submission transaction), §5.4 (checkout neutrality), §6 (access matrix) and §8 (alignment). Every addition is marked **[CR-01 r1, proposed]**, and the original text is retained as the historical contract. The transaction and concurrency analysis is in [CR-01 impact analysis §10](labs/lab-07/CR-01-impact-analysis.md#10-concurrency-analysis-l7a-ev05). Review status: **PENDING** (DEV4952).
+**CR-01 proposed revision (Lab 7, contract r3, draft; r2 added controlled activation and recovery interactions to §5.3.1; r3 adds no design change and points to the activation sequence and rollback in impact analysis §20.8–§20.9; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** This revision adds borrowing-quota design to §3 (contract row), §4 (invariant), §5.3 (submission transaction), §5.4 (checkout neutrality), §6 (access matrix) and §8 (alignment). Every addition is marked **[CR-01 r1, proposed]**, and the original text is retained as the historical contract. The transaction and concurrency analysis is in [CR-01 impact analysis §10](labs/lab-07/CR-01-impact-analysis.md#10-concurrency-analysis-l7a-ev05). Review status: **PENDING** (DEV4952).
 
 ## 1. Purpose, scope, and implementation status
 
@@ -338,6 +338,6 @@ In particular, test simultaneous checkout of different pending requests for one 
 | Team member 1 review | Pending | Name, date, PR review URL, and resolved comments |
 | Team member 2 review | Pending | Name, date, PR review URL, and resolved comments |
 | Reviewed PR | Pending | PR URL, approvals/review records, and merge commit |
-| CR-01 r2 design review (§3, §4, §5.3.1, §5.4, §6, §8) | **PENDING** (DEV4952) | PR review comments on the quota transaction, concurrency analysis and endpoint contract; decisions OD-01–OD-07 recorded |
+| CR-01 r3 design review (§3, §4, §5.3.1, §5.4, §6, §8) | **PENDING** (DEV4952). The r2 review feedback on [PR #79](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7193331525) is addressed in impact analysis §22. | PR review comments on the quota transaction, concurrency analysis and endpoint contract; decisions OD-01–OD-07 recorded |
 
 Both team members should review component boundaries, SRS/feature coverage, scope/ownership enforcement, transaction failure and concurrency behavior, proposed HTTP/session contracts, and provisional policy decisions. Record actual reviews in the PR before marking these gates complete. This draft does not substitute an automated check for teammate review. If a decision changes, update this SDS and the affected SRS, feature inventory, RTM, and implementation plan together.

@@ -3,7 +3,7 @@
 | Document control | Value |
 | --- | --- |
 | Document ID | L7A-CR01-STS (evidence L7A-EV07) |
-| Version | CR-01 contract r2 (draft). r2 revises TC05, TC08 and TC10, adds TC13–TC20, and adds separate dependency checks (§6). |
+| Version | CR-01 contract r3 (draft). r2 revised TC05, TC08 and TC10, added TC13–TC20 and added separate dependency checks (§6). r3 links the gates to the RG-02 and RG-05 evidence specifications and adds proposed owners. Test cases are unchanged. |
 | Status | **Specified only. No case has been implemented or executed. DEV4952 review PENDING.** TC13–TC20 trace to *proposed* AC13–AC20, which are not in Issue #78 (pending agreement). |
 | Relationship to existing test catalog | Supplements the canonical [RTM](../../traceability-matrix.md) (TC-01–TC-28), which remains the Sprint 1 test catalog. The repository had no standalone STS before CR-01, so this versioned supplement adds CR01-TC01–TC12 without renumbering or replacing any existing TC. |
 | Change request | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78) |
@@ -503,4 +503,8 @@ These checks belong to other changes. CR-01 depends on their results but does no
 | DEP-RT-01 | New FR-12 return issue (to be created) | Return contract and STS exist (FR-12, BR-07, BR-08, NFR-06) | — | NOT STARTED |
 | DEP-RT-02 | same | Authorized return closes one active loan once; a repeat gives 409; wrong role or scope gives 403/404; rollback | RTM TC-12, TC-20 | NOT STARTED |
 | DEP-RT-03 | same | Return released and verified in production | — | NOT STARTED |
+| RG-02.E1–E10 | DEP-RT verification record (independent verifier: yiiipunn, proposed) | Measurable return evidence | [Impact analysis §20.10](CR-01-impact-analysis.md#2010-rg-02-evidence-specification-fr-12-return-dependency-l7a-ev14) | PENDING |
+| RG-05.E1–E10 | CR-01 activation verification (both; deploy DEV4952, verify yiiipunn, proposed) | Quota enforcement and recovery by cancel **and** return in production | [Impact analysis §20.11](CR-01-impact-analysis.md#2011-rg-05-evidence-specification-quota-activation-and-recovery) | PENDING |
 | RG-01–RG-05 | CR-01 release (activation) | Impact analysis §20.6 | — | PENDING |
+
+RG-02 and RG-05 evidence items are **release evidence, not CR01 test cases**. They are recorded in dated records and never counted in CR01 pass, fail or skip totals. Only RG-05 fully met counts as deployed verification of changed behavior. A deployment with the quota disabled does not.

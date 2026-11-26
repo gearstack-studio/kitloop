@@ -167,4 +167,6 @@ r1 recorded that, in the deployed configuration (`REQUEST_LIFECYCLE_WRITES=disab
 - **Return gate.** Production activation also requires authorized return (FR-12) to be released and verified. Without it, borrowers with three active loans can never recover. Return is a **separate Sprint 2 dependency (DEP-RT)**, not part of this change.
 - **Recovery is never quota-checked.** Cancel, decline, auto-decline, reconcile and return only lower P or L.
 
+**r3.** The proposed ownership, exact activation sequence (`KITLOOP_BORROWING_QUOTA` and `KITLOOP_REQUEST_LIFECYCLE_WRITES` in the `lab5-production` environment; `LAB5_DEPLOY_ENABLED` is currently `false`), rollback, the RG-02 and RG-05 evidence, and the Lab 7 contingency are in impact analysis §20.7–§20.12. A production deployment with the quota disabled is **not** verification of this contract's changed behavior.
+
 Dependency table, options, effort estimates and release gates: [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-dependencies-and-controlled-activation-l7a-ev11). Recovery criteria: CR01-AC13–AC20 (proposed).

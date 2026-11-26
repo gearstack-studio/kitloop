@@ -3,7 +3,7 @@
 | Document control | Value |
 | --- | --- |
 | Document ID | L7A-CR01-AC (evidence L7A-EV06) |
-| Version | CR-01 contract r2 (draft); r1 added the AC01–AC12 expansion, r2 adds AC13–AC20 (§4) |
+| Version | CR-01 contract r3 (draft); r1 added the AC01–AC12 expansion, r2 added AC13–AC20 (§4), r3 records their decision status |
 | Status | **Proposed. Team agreement and DEV4952 review PENDING.** |
 | Source | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78) §7: twelve criteria CR01-AC01–AC12, preserved verbatim below. **CR01-AC13–AC20 are proposed additions that are not in Issue #78.** Adopting them needs team agreement and, with permission, an Issue #78 amendment. |
 | Baseline | `e5ed70d` (accepted Sprint 1); analysed tree `8ac350a` (identical) |
@@ -192,6 +192,8 @@ These are client-level scenarios in jsdom with mocked HTTP. S8 is also covered b
 **CR01-AC12-S4 (direct DB change).** *Given* a fixture sets one of B1's active loans `returnedAt` (simulating a later return). *When* B1 reads the quota. *Then* L decreases by 1 on the next read with no cache invalidation.
 
 ## 4. Proposed recovery and activation criteria (r2; not in Issue #78)
+
+**Decision status (r3).** AC13–AC20 are **PROPOSED, awaiting DEV4952 confirmation**. None is agreed. See the dated register in [impact analysis §16.2](CR-01-impact-analysis.md#162-proposed-acceptance-criteria-ac13ac20-not-in-issue-78). If checkpoint DC-1 selects contingency K2a (pending-limit only; [impact analysis §20.12](CR-01-impact-analysis.md#2012-lab-7-deadline-contingency-and-decision-checkpoint-dc-1-l7a-ev15)), AC02, AC04, AC05-S2, AC15, AC16 and AC20-S4 must be revised, and the Issue #78 criteria amended with permission.
 
 These criteria come from risk R-01 ([impact analysis §20](CR-01-impact-analysis.md#20-recovery-dependencies-and-controlled-activation-l7a-ev11)). They test **quota recalculation** after recovery operations. They do **not** re-specify how cancel, decline or return work. Those operations belong to their own contracts: the #61 lifecycle contract, and the future FR-12 return issue (DEP-RT). Criteria marked **[DEP-RT]** can be fully exercised only after return exists. Until then, the parts that use a persisted return set by a fixture are executable, and the parts that use the API are BLOCKED.
 

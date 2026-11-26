@@ -4,7 +4,7 @@ Status: Planned verification; teammate review pending.
 Baseline: [SRS](srs.md), repository revision `c9c8895`, 2026-11-02.  
 Feature definitions and review gates: [Feature Inventory](feature-inventory.md).
 
-**CR-01 proposed revision (Lab 7, contract r2, draft; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** BR-14 and CR01-TC01–TC20 are added in the [CR-01 section](#cr-01-revision-borrowing-quota-management). Existing TC-01–TC-28 keep their IDs and acceptance checks. Rows that gain CR-01 regression obligations are marked **[CR-01 r1]**. Review status: **PENDING** (DEV4952).
+**CR-01 proposed revision (Lab 7, contract r3, draft; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** BR-14 and CR01-TC01–TC20 are added in the [CR-01 section](#cr-01-revision-borrowing-quota-management). Existing TC-01–TC-28 keep their IDs and acceptance checks. Rows that gain CR-01 regression obligations are marked **[CR-01 r1]**. Review status: **PENDING** (DEV4952).
 
 ## Reading the matrix
 
@@ -79,7 +79,7 @@ Coverage here means planned traceability, not implemented behavior. TC-01–TC-2
 
 ## CR-01 revision: Borrowing Quota Management
 
-**Revision:** CR-01 contract r2 (draft), base `e5ed70d`. **Status:** planned verification. No CR01 case is implemented or executed, and DEV4952 review is PENDING. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
+**Revision:** CR-01 contract r3 (draft), base `e5ed70d`. r3 adds release-evidence traceability (RG-02, RG-05); test IDs are unchanged. **Status:** planned verification. No CR01 case is implemented or executed, and DEV4952 review is PENDING. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
 
 ### Requirement → acceptance → test → module
 
@@ -101,6 +101,7 @@ Coverage here means planned traceability, not implemented behavior. TC-01–TC-2
 | BR-14 (g): controlled activation (proposed) | CR01-AC19 | CR01-TC19 | `server/src/config.ts`, `server/src/auth.ts`, `server/src/domain.ts`, `client/src/App.tsx` | `runtime-config.test.ts`, `lifecycle-rollout.test.ts` |
 | BR-14 (b), (e), BR-09: concurrency with checkout and recovery (proposed) | CR01-AC20 | CR01-TC20 | `server/src/borrow-requests.ts` | TC-19, TC-21 |
 | Dependencies (not CR-01) | — | DEP-LC-01–04, DEP-RT-01–03 ([STS §6](labs/lab-07/CR-01-STS.md#6-dependency-verification-and-release-gates-not-cr-01-tests)) | lifecycle rollout; future FR-12 return | — |
+| Release evidence (not test cases) | AC19-S6 | RG-02.E1–E10 (FR-12 return in production); RG-05.E1–E10 (quota activation and recovery) ([impact analysis §20.10–§20.11](labs/lab-07/CR-01-impact-analysis.md#2010-rg-02-evidence-specification-fr-12-return-dependency-l7a-ev14)) | deployment configuration (`lab5-production`) | — |
 
 ### Regression obligations on existing cases
 
