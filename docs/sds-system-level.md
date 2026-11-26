@@ -338,6 +338,6 @@ In particular, test simultaneous checkout of different pending requests for one 
 | Team member 1 review | Pending | Name, date, PR review URL, and resolved comments |
 | Team member 2 review | Pending | Name, date, PR review URL, and resolved comments |
 | Reviewed PR | Pending | PR URL, approvals/review records, and merge commit |
-| CR-01 r4 design review (§3, §4, §5.3.1, §5.4, §6, §8) | **PENDING** (DEV4952, PR #79). DC-1 scope (K2a) agreed on 2026-11-26 ([impact analysis §16](labs/lab-07/CR-01-impact-analysis.md#16-team-decision-register-l7a-ev10)). | PR approval |
+| CR-01 r4 design review (§3, §4, §5.3.1, §5.4, §6, §8) | **Done.** DEV4952 approved PR #79 (2026-11-26 21:22 ICT; merge `7519274`); remaining decisions confirmed at 21:48 ICT (impact analysis §16). | PR #79 review; Issue #78 comment 7195363924 |
 
 Both team members should review component boundaries, SRS/feature coverage, scope/ownership enforcement, transaction failure and concurrency behavior, proposed HTTP/session contracts, and provisional policy decisions. Record actual reviews in the PR before marking these gates complete. This draft does not substitute an automated check for teammate review. If a decision changes, update this SDS and the affected SRS, feature inventory, RTM, and implementation plan together.

@@ -4,7 +4,7 @@
 | --- | --- |
 | Document ID | L7A-CR01-AC (evidence L7A-EV06) |
 | Version | **CR-01 contract r4 (draft): pending-request quota (DC-1 K2a).** Supersedes r1–r3. |
-| Status | **Proposed.** K2a scope agreed at DC-1 ([impact analysis §16](CR-01-impact-analysis.md#16-team-decision-register-l7a-ev10)). The r4 criteria themselves await DEV4952's approval of PR #79. |
+| Status | **AGREED.** The r4 criteria were approved and merged in PR #79 (`7519274`) and confirmed by DEV4952 on 2026-11-26 at 21:48 ICT ([comment 7195363924](https://github.com/gearstack-studio/kitloop/issues/78#issuecomment-7195363924)), including AC13, AC14 and AC16–AC21. AC04 is superseded and AC15 is deferred. Not yet executed. |
 | Source | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78) §7: AC01–AC12, written for the r1 combined quota (§1, historical). Proposed r2 additions AC13–AC20. New r4 AC21. |
 | Related | [Impact analysis](CR-01-impact-analysis.md) · [STS](CR-01-STS.md) |
 

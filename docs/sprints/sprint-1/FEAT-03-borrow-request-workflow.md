@@ -77,7 +77,7 @@ Reviewers must verify this duplicate interpretation and migration preflight, run
 | Change request / issues | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); #80 RED, #81 backend, #82 frontend, #83 lifecycle activation, #85 release |
 | Requirements | FR-06 and FR-07 (CR-01 amendments), BR-10 (cross-referenced), **BR-14 r4** |
 | Companion documents | [Impact analysis](../../labs/lab-07/CR-01-impact-analysis.md) · [Acceptance criteria](../../labs/lab-07/CR-01-acceptance-criteria.md) · [STS](../../labs/lab-07/CR-01-STS.md) |
-| Status | **Proposed. Not implemented.** Scope agreed 2026-11-26 (DC-1); PR #79 approval PENDING. |
+| Status | **Agreed contract; not implemented.** Approved and merged in PR #79 (`7519274`); decisions confirmed on 2026-11-26 at 21:48 ICT (impact analysis §16). |
 
 ### Policy
 
@@ -138,7 +138,7 @@ P is counted inside the existing Serializable submission transaction, after the 
 - **FR-12 return (#84) is not a dependency.**
 - A production deployment with the quota disabled does not verify this contract's changed behavior.
 
-Gates, deployment procedure (PENDING) and rollback: [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-activation-and-release-l7a-ev11-l7a-ev13-l7a-ev14).
+Gates, deployment procedure (agreed OD-13; `LAB5_DEPLOY_ENABLED` authorization pending) and rollback: [impact analysis §20](../../labs/lab-07/CR-01-impact-analysis.md#20-recovery-activation-and-release-l7a-ev11-l7a-ev13-l7a-ev14).
 
 ### Verification mapping
 

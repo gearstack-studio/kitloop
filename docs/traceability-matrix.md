@@ -79,7 +79,7 @@ Coverage here means planned traceability, not implemented behavior. TC-01–TC-2
 
 ## CR-01 revision: Borrowing Quota Management
 
-**Revision:** CR-01 contract r4 (draft), DC-1 option K2a (pending-request quota only), base `e5ed70d`. **Status:** planned verification; no CR01 case is implemented or executed; PR #79 approval PENDING. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
+**Revision:** CR-01 contract r4 (draft), DC-1 option K2a (pending-request quota only), base `e5ed70d`. **Status:** contract approved (PR #79, `7519274`) and decisions agreed (2026-11-26 21:48 ICT); planned verification; no CR01 case is implemented or executed yet. Sources: [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78), [impact analysis](labs/lab-07/CR-01-impact-analysis.md), [acceptance criteria](labs/lab-07/CR-01-acceptance-criteria.md), [STS](labs/lab-07/CR-01-STS.md).
 
 ### Requirement → acceptance → test → module (active r4)
 
