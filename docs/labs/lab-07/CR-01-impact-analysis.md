@@ -4,7 +4,7 @@
 | --- | --- |
 | Document ID | L7A-CR01-IA |
 | Version | **CR-01 contract r4 (draft): pending-request quota (DC-1 option K2a).** Supersedes r3 (`03bb7c7`), r2 (`e1def2a`) and r1 (never committed). Superseded content is summarized in §21 and preserved in Git history. |
-| Status | **Proposed for final review on PR [#79](https://github.com/gearstack-studio/kitloop/pull/79).** Scope (K2a) and core ownership are agreed (§16). Technical decisions, the deployment procedure and the PR approval are PENDING. |
+| Status | **r4 approved and merged** (PR [#79](https://github.com/gearstack-studio/kitloop/pull/79), merge `7519274`). **Decision record r4.1:** the remaining technical decisions, the RED/GREEN ownership and the deployment procedure were agreed on 2026-11-26 at 21:48 ICT (§16). Still pending: authorization to enable `LAB5_DEPLOY_ENABLED`, lifecycle verification (#83) before activation, and the announcement source. |
 | Change request | [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78). Its body still describes the r1 combined quota, and a revision is prepared but not yet applied (§18). |
 | Accepted Sprint 1 baseline | `e5ed70dbd65ac03d633fc7b8e0b73a72aa262490` (PR [#77](https://github.com/gearstack-studio/kitloop/pull/77)) |
 | Analysed pre-change revision | `8ac350a` (tree-identical to the baseline, §1) |
@@ -291,11 +291,7 @@ A CR-01 build rolls back to `e5ed70d` with no database action.
 
 ### 14.2 Client suites
 
-Unmocked paths throw `Unexpected API call`, so a quota call would break borrower App tests. Add a `/borrowing-quota` mock with an allowing four-field DTO and `features.borrowingQuota` to:
-- `borrow-workflow`, `request-lifecycle`, `borrower-navigation`, `loans-workflow` and `readable-names` (`.test.tsx`).
-- `navigation.test.tsx`, after verifying it renders a borrower.
-
-`requests.test.tsx` needs an allowing prop if `BorrowRequestForm` gains one. Custodian suites need nothing.
+**Corrected in r4.1.** r4 said five existing borrower suites need a `/borrowing-quota` mock. That is unnecessary under r4's own activation rule: the client makes **no** quota call unless `features.borrowingQuota` is `true` (FEAT-03 "Borrower UI"). None of the existing client mocks return that feature, so their behavior is unchanged and they need **no** modification. The frontend baseline on 2026-11-26 was 80/80 passing (`artifacts/lab-07/cr-01/frontend-baseline.txt`). `requests.test.tsx` also needs no change provided any new `BorrowRequestForm` quota prop is optional. Quota-enabled client behavior is covered only by the new `client/tests/borrowing-quota.test.tsx`.
 
 ### 14.3 Expectation changes
 
@@ -327,48 +323,50 @@ Borrower A reaches P = 2 after spec `02` (laptop pending) and spec `03` (`KL-ACC
 
 **Rule.** An item is **AGREED** only when both developers have confirmed it in linked, dated GitHub comments. Times are ICT; UTC is in brackets.
 
-**DC-1 discussion on PR #79.**
-- **D1:** DEV4952, [comment 7194003912](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7194003912), 2026-11-26 20:54 (13:54:31Z): "My preference at DC-1 is K2a, provided we can enable and verify cancel and decline in production within the Lab 7 timeline. I can own the quota backend, lifecycle activation in #83, and deployment. I propose that you own the quota UI and verify the production behavior, with both of us reviewing the regression and release evidence. FR-12 can continue separately in #84." The comment also says: "At DC-1, let's also confirm the deployment procedure…" and "I'll approve once the contract reflects the agreed scope and release checks."
-- **D2:** yiiipunn, [comment 7194104131](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7194104131), 2026-11-26 20:58 (13:58:49Z): "I agree with K2a and the proposed division of responsibilities." It lists the agreed scope and an ownership table, and *proposes* the deployment procedure.
+**Discussion record.**
+- **D1:** DEV4952, PR #79 [comment 7194003912](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7194003912), 2026-11-26 20:54 (13:54:31Z). DC-1 preference for K2a, provided cancel and decline can be enabled and verified in production within the Lab 7 timeline. Proposes the ownership split.
+- **D2:** yiiipunn, PR #79 [comment 7194104131](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7194104131), 20:58 (13:58:49Z). "I agree with K2a and the proposed division of responsibilities." Proposes the deployment procedure.
+- **D3:** yiiipunn, Issue #78 [comment 7195306742](https://github.com/gearstack-studio/kitloop/issues/78#issuecomment-7195306742), 21:46 (14:46:27Z). Proposes the final resolutions for OD-02–OD-08 and OD-11b, asks for confirmation of OD-12 and the revised acceptance criteria, and proposes OD-13.
+- **D4:** DEV4952, Issue #78 [comment 7195363924](https://github.com/gearstack-studio/kitloop/issues/78#issuecomment-7195363924), **21:48 (14:48:42Z)**: "I agree with OD-02 through OD-08, OD-11b, OD-12, and the revised acceptance criteria in the merged r4 contract … I'll own backend RED/GREEN in #80 and #81 … For OD-13, I agree with using the existing GitHub Actions pipeline, with you merging the release PR and me approving the production deployment. Let's record explicit team authorization before enabling LAB5_DEPLOY_ENABLED and verify lifecycle recovery in #83 before activating the quota."
+- **Contract approval:** DEV4952 APPROVED PR #79 at 21:22 (14:22:56Z) and merged it at 21:25 (`7519274`).
 
-### 16.1 Confirmed (both developers)
+### 16.1 Agreed (both developers)
 
-| ID | Decision | Condition / note | Date (ICT) | Participants | Reference | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| OD-10 / DC-1 | **K2a**: pending-request quota (max 2); active loans not counted; combined limit deferred | **Conditional:** cancel and decline must be enabled and verified in production within the Lab 7 timeline (#83). Otherwise §20.7 applies. | 2026-11-26 20:54 / 20:58 | DEV4952, yiiipunn | D1, D2 | **AGREED (conditional)** |
-| OD-09 (r4) | FR-12 return stays separate in #84 and is **not** a CR-01 release prerequisite; lifecycle activation is tracked in #83 | — | same | both | D1, D2 | **AGREED** |
-| OD-11a | DEV4952: quota backend, lifecycle activation (#83), deployment. yiiipunn: quota UI, production behavior verification. Both: regression and release evidence review. | — | same | both | D1, D2 | **AGREED** |
-
-### 16.2 Proposed, not yet confirmed by both
-
-| ID | Item | Proposed resolution | Rationale | Proposed by | Status |
+| ID | Decision | Date (ICT) | Participants | Reference | Status |
 | --- | --- | --- | --- | --- | --- |
-| OD-11b | Additional ownership rows: contract r4 → yiiipunn; backend RED/GREEN → DEV4952; frontend tests → yiiipunn | As stated | D2 table. Differs from Issue #78 §12 (RED tests led by yiiipunn) and the #80 assignees (both). | yiiipunn (D2) | **PROPOSED, awaiting DEV4952** |
-| OD-13 | Deployment procedure | §20.5: the existing pipeline after authorization to set `LAB5_DEPLOY_ENABLED=true` | D1 asked to confirm it at DC-1; D2 proposed it; no confirmation since | yiiipunn (D2) | **PENDING** |
-| OD-02 (r4) | Limit as a constant | Constant 2 (the combined limit 3 is removed) | Fixed policy | yiiipunn | **PROPOSED** |
-| OD-03 | Code on retry exhaustion | Keep `CONFLICT` | Existing behavior (§10) | yiiipunn | **PROPOSED** |
-| OD-04 | Quota figures in the 409 body | No | Keeps the error envelope | yiiipunn | **PROPOSED** |
-| OD-05 | Query parameters on the GET | 400 `VALIDATION_ERROR` | Strict-input convention | yiiipunn | **PROPOSED** |
-| OD-06 (r4) | Dedicated endpoint | Yes, with the four-field DTO (§7.3) | One definition | yiiipunn | **PROPOSED** |
-| OD-07 | UI placement | `/requests` panel plus catalog eligibility | — | yiiipunn | **PROPOSED** |
-| OD-08 (r4) | Activation | `BORROWING_QUOTA` off by default; startup coupling to `REQUEST_LIFECYCLE_WRITES=enabled`; gates RG-01, RG-03, RG-04, RG-05; **no FR-12 gate** | D1 makes activation conditional on verified cancel and decline | yiiipunn | **PROPOSED** (consistent with D1, not explicitly confirmed) |
-| OD-12 (new) | Read strategy | One-statement count, no `RepeatableRead` transaction (§9) | One aggregate | yiiipunn | **PROPOSED** |
-| AC13, AC14, AC16–AC21 | r4 recovery, isolation, activation, concurrency and loan-independence criteria | As in the AC document | D1: "update … the acceptance criteria" | yiiipunn | **PROPOSED**; approval expected through the r4 review |
-| Issue edits | Revise #78, #80–#85 per §18 | Prepared text (not applied) | D1 requests the #78 and #80 updates | — | **PENDING authorization to edit** |
-| Announcement | Source URL and date | — | — | — | **PENDING SOURCE EVIDENCE** |
-| Deployment authorization | Set `LAB5_DEPLOY_ENABLED=true`; approve production deploys | §20.5 | — | — | **PENDING** |
+| OD-10 / DC-1 | **K2a**: at most 2 pending requests per borrower; active loans not counted; combined limit deferred. **Condition:** cancel and decline enabled and verified in production (#83) before activation. | 2026-11-26 20:54 / 20:58 | DEV4952, yiiipunn | D1, D2 | **AGREED (conditional)** |
+| OD-09 (r4) | FR-12 stays in #84 and is not a CR-01 prerequisite; lifecycle activation is tracked in #83 | 20:54 / 20:58 | both | D1, D2 | **AGREED** |
+| OD-11a | DEV4952: quota backend, lifecycle activation (#83), deployment. yiiipunn: quota UI, production behavior verification. Both: regression and release evidence review. | 20:54 / 20:58 | both | D1, D2 | **AGREED** |
+| OD-11b | **RED/GREEN ownership:** DEV4952 owns backend RED/GREEN (#80, #81); yiiipunn owns frontend RED/GREEN (#80, #82); evidence reviewed together. yiiipunn owns the engineering contract. This supersedes the "RED tests: yiiipunn" row in the original Issue #78 §12 plan. | 21:46 / **21:48** | both | D3, D4 | **AGREED** |
+| OD-02 | Fixed maximum of 2 pending requests (constant) | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-03 | Preserve `CONFLICT` on serialization retry exhaustion | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-04 | No quota figures in the 409 body | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-05 | Reject any query parameter on the quota GET with 400 `VALIDATION_ERROR` | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-06 | Dedicated borrower-only `GET /api/borrowing-quota` with the four-field r4 response (§7.3) | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-07 | "Borrowing limit" panel on `/requests`, plus quota-aware catalog eligibility | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-08 | `BORROWING_QUOTA` off by default; startup coupling to `REQUEST_LIFECYCLE_WRITES=enabled`; activation only after verified lifecycle recovery | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-12 | A single aggregate count of the authenticated borrower's pending requests for the quota read (§9); no `RepeatableRead` transaction | 21:48 | both (D4 confirms D3's request) | D3, D4 | **AGREED** |
+| Acceptance criteria | The revised r4 criteria as merged, AC01–AC03, AC05–AC14 and AC16–AC21 (including AC13, AC14 and AC16–AC21, which r4 listed as proposed) | 21:46 / 21:48 | both | D3, D4 | **AGREED** |
+| OD-13 | **Deployment procedure:** the existing reviewed GitHub Actions pipeline (§20.5). yiiipunn merges the release PR; DEV4952 approves the `lab5-production` deployment. | 21:46 / 21:48 | both | D3, D4 | **AGREED (procedure only)** |
 
-### 16.3 Superseded or deferred
+### 16.2 Still pending
 
-| ID | Old status | r4 disposition |
+| Item | Required before | Status |
 | --- | --- | --- |
-| OD-01 (option B: activation after both dependencies) | Proposed | **SUPERSEDED** by OD-10 (K2a) |
-| OD-02 (limits 2 and 3) | Proposed | **REVISED** to OD-02 (r4) |
-| OD-06 (seven-field DTO) | Proposed | **REVISED** to four fields |
-| OD-08 (gate RG-02 on FR-12) | Proposed | **REVISED**: no FR-12 gate |
-| OD-09 (separate DEP-LC and DEP-RT issues, not created) | Proposed | **REVISED / AGREED**: #83 and #84 exist; #84 is not a dependency |
-| AC15 (recovery by return) | Proposed | **DEFERRED** with the combined limit (§21) |
-| AC04 (combined-limit rejection) | Issue #78 | **SUPERSEDED**; replaced by AC21 |
+| **Explicit team authorization to set `LAB5_DEPLOY_ENABLED=true`** (D4: "Let's record explicit team authorization before enabling") | Any production deployment (§20.5 D0) | **PENDING** |
+| Lifecycle recovery verified in production (#83, RG-01) | Quota activation (RG-05) | **PENDING** |
+| Activation decision (RG-05.E1) | Setting `KITLOOP_BORROWING_QUOTA=enabled` | **PENDING** |
+| Instructor announcement URL and publication date | Part A evidence completeness | **PENDING SOURCE EVIDENCE** |
+
+### 16.3 Done, superseded or deferred
+
+| ID | Disposition |
+| --- | --- |
+| Issue edits (#78, #80–#85) | **DONE**: applied on 2026-11-26 at 21:21 ICT under yiiipunn's authorization |
+| OD-01 (activation after both dependencies) | **SUPERSEDED** by OD-10 |
+| OD-02 (limits 2 and 3), OD-06 (seven-field DTO), OD-08 (FR-12 gate), OD-09 (DEP-RT issue) | **REVISED** into the agreed r4 rows above |
+| AC04 (combined-limit rejection) | **SUPERSEDED**; replaced by AC21 |
+| AC15 (recovery by return) | **DEFERRED** with the combined limit (§21) |
 
 ## 17. Documentation inconsistencies found (not corrected by CR-01)
 
@@ -414,7 +412,12 @@ New in r4:
 | DC-1 preference K2a (conditional) and ownership proposal | DEV4952 | 20:54 | D1 |
 | DC-1 agreement and deployment procedure proposal | yiiipunn | 20:58 | D2 |
 | r4 revision | yiiipunn | uncommitted | this document |
-| **PR #79 approval** | DEV4952 | **PENDING** ("I'll approve once the contract reflects the agreed scope and release checks") | — |
+| r4 committed and published; issues realigned; final review requested | yiiipunn | 21:20–21:22 | `37a4420`; [comment 7194726604](https://github.com/gearstack-studio/kitloop/pull/79#issuecomment-7194726604) |
+| **PR #79 approved** | DEV4952 | 21:22 (14:22:56Z) | Review on `37a4420`. It asked for the remaining decisions and OD-13 to be recorded. |
+| PR #79 merged | DEV4952 | 21:25 | merge `7519274` |
+| Final decisions proposed | yiiipunn | 21:46 | D3 |
+| **Final decisions confirmed** | DEV4952 | **21:48** | D4 |
+| Decision record r4.1 (this update) | yiiipunn | uncommitted at preparation | follow-up PR |
 
 ## 20. Recovery, activation and release (L7A-EV11, L7A-EV13, L7A-EV14)
 
@@ -458,7 +461,7 @@ The dated record goes in `artifacts/lab-07/cr-01/rg-05-activation-verification.m
 
 | Item | Pass condition |
 | --- | --- |
-| E1 | Dated activation decision by **both** developers, citing the RG-01, RG-03 and RG-04 records, plus the deployment authorization (OD-13) |
+| E1 | Dated activation decision by **both** developers, citing the RG-01, RG-03 and RG-04 records, plus the dated `LAB5_DEPLOY_ENABLED` authorization (§16.2) |
 | E2 | `GET /api/version` equals the release SHA. The Cloud Run revision name and deploy run ID are recorded. The serving revision env shows `BORROWING_QUOTA=enabled` and `REQUEST_LIFECYCLE_WRITES=enabled`. |
 | E3 | Quota GET: borrower → 200 with the four-field DTO and `no-store`; custodian → 403; any query parameter → 400; values match the borrower's PENDING records |
 | E4 | Enforcement: a synthetic borrower at P = 2 gets 409 `BORROWING_QUOTA_EXCEEDED`, with no new row |
@@ -470,13 +473,13 @@ The dated record goes in `artifacts/lab-07/cr-01/rg-05-activation-verification.m
 | E10 | UI: the panel shows pending count, limit and remaining capacity matching the GET; Submit and catalog controls are disabled at the limit and re-enabled after recovery (dated screenshots of synthetic accounts) |
 | E11 | Dated record: ICT times, revision, operator, verifier, record IDs, a result per item; deviations recorded |
 
-### 20.5 Deployment procedure (proposed, PENDING OD-13)
+### 20.5 Deployment procedure (OD-13 agreed 2026-11-26 21:48 ICT; flag authorization pending)
 
 These are the existing reviewed controls, verified on 2026-11-26 (§1). This document changes none of them.
 
 | Step | Action | Who (proposed) | Verification |
 | ---: | --- | --- | --- |
-| D0 | Both developers agree this procedure and authorize setting the repository variable `LAB5_DEPLOY_ENABLED=true` for the release window | Both | Dated PR #79 comments |
+| D0 | Procedure **agreed** (OD-13, D4). **Still required:** an explicit, dated team authorization to set the repository variable `LAB5_DEPLOY_ENABLED=true` for the release window, recorded before the change | Both | Dated GitHub comment (**PENDING**) |
 | D1 | Verify the configuration before each release: `gh variable list` (repository) and `gh variable list --env lab5-production`. Expect `LAB5_DEPLOY_ENABLED`, `KITLOOP_REQUEST_LIFECYCLE_WRITES`, `KITLOOP_BORROWING_QUOTA` (absent = disabled) and `KITLOOP_LOAN_MAX_DAYS` (unset) at their intended values. | DEV4952 | Output in the release record |
 | D2 | Release PR `sprint-1-staging` → `main`: one approving review and the required check "Build, test and Docker smoke" | Both | PR link |
 | D3 | **yiiipunn merges** the release PR. `lab5-production` requires DEV4952's approval with `prevent_self_review`, so a run triggered by DEV4952's own merge could not be approved. | yiiipunn | Merge commit |
@@ -538,7 +541,8 @@ These items were active proposals in r1–r3 and are **not active requirements i
 | F2 (20:25). Part B contingency if FR-12 is late | Record how Part B is addressed | r3 §20.12 → **DC-1 chose K2a**; fallback §20.7 | **Decided (conditional)** | D1, D2 |
 | F3 (20:25). Instructor announcement link | Add URL and date | "Approval basis" | **PENDING SOURCE EVIDENCE** | — |
 | F4 (20:25). Dated decisions OD-01–OD-09, AC13–AC20 | Dated register | §16 (confirmed, proposed, superseded); AC classification | Partly agreed (OD-10, OD-09, OD-11a); the rest PROPOSED | D1, D2 |
-| F5 (DC-1, 20:54). Record the dated decision; update #78, BR-14, AC, STS, #80 RED scope and the release checks to the pending-only policy; confirm the deployment procedure | r4 | §16, SRS BR-14, AC, STS, RTM, §20.3–§20.5; issue texts prepared (§18) | **Contract updated.** Issue edits await authorization; deployment procedure PENDING (OD-13). | This revision |
+| F5 (DC-1, 20:54). Record the dated decision; update #78, BR-14, AC, STS, #80 RED scope and the release checks to the pending-only policy; confirm the deployment procedure | r4 | §16, SRS BR-14, AC, STS, RTM, §20.3–§20.5; issue texts prepared (§18) | **Contract updated (r4).** Issue edits applied at 21:21 ICT; OD-13 agreed at 21:48 (§16). | `37a4420` |
+| F6 (PR #79 approval, 21:22). Record the outcome of the remaining technical decisions; close OD-13 by confirming who authorizes the deployment flag change and who runs the workflow | Dated register | §16 (r4.1) | **Resolved.** All agreed at 21:48. The `LAB5_DEPLOY_ENABLED` authorization itself remains a separate pending record, as D4 requires. | D3, D4 |
 
 ## 23. Revision history
 
@@ -547,4 +551,5 @@ These items were active proposals in r1–r3 and are **not active requirements i
 | r1 | Initial combined-quota contract (uncommitted) | Superseded |
 | r2 (`e1def2a`) | Recovery dependencies, controlled activation, AC13–AC20, TC13–TC20, fixture analysis | Superseded |
 | r3 (`03bb7c7`) | Activation plan, RG-02 and RG-05 evidence, contingency K1–K3, decision register | Superseded |
-| **r4 (draft)** | **DC-1 K2a:** pending-only BR-14, four-field DTO, one-statement read, checkout reduces P, lifecycle-only dependency, recomputed fixtures, revised gates (RG-02 N/A), deployment procedure, decision register with the actual DC-1 record, AC and TC classification, prepared issue revisions | **Proposed; final review PENDING** |
+| **r4 (draft)** | **DC-1 K2a:** pending-only BR-14, four-field DTO, one-statement read, checkout reduces P, lifecycle-only dependency, recomputed fixtures, revised gates (RG-02 N/A), deployment procedure, decision register with the actual DC-1 record, AC and TC classification, prepared issue revisions | Approved and merged (`7519274`) |
+| **r4.1 (decision record)** | Records the 21:48 ICT agreements (OD-02–OD-08, OD-11b, OD-12, OD-13, revised AC). Corrects the client-mock assumption (§14.2) and the TC19 client classification. No scope or requirement change. | **Proposed; review PENDING** |

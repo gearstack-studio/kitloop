@@ -8,7 +8,7 @@
 | Relationship | Supplements the canonical [RTM](../../traceability-matrix.md) (TC-01–TC-28, unchanged) |
 | Criteria | [CR-01 acceptance criteria r4](CR-01-acceptance-criteria.md) |
 | RED baseline | `8ac350a` (= `e5ed70d`); re-verify before RED (#80) |
-| Owners (agreed at DC-1, OD-11a) | Backend cases: DEV4952. UI cases: yiiipunn. Production verification (RG-05): yiiipunn. Review: both. Who authors RED (OD-11b) is still PENDING. |
+| Owners (AGREED; OD-11a, OD-11b, 21:48 ICT) | **Backend RED/GREEN (U, I cases): DEV4952** (#80, #81). **Frontend RED/GREEN (K cases; client parts of TC10, TC11, TC12, TC18, TC19): yiiipunn** (#80, #82). Production verification (RG-05): yiiipunn. Evidence is reviewed by both. |
 
 ## 1. Strategy
 
@@ -69,7 +69,7 @@ Each case uses **fresh** synthetic borrowers (`randomUUID` names) and assets, cl
 | TC16 | Grandfathered recovery (cancel and return) | **Revised** | Cancel, decline, checkout | AC16 | **RED** |
 | TC17 | Unauthorized recovery (return rows) | **Revised** | Return rows removed; checkout row added | AC17 | Attempts PRES; quota comparisons **RED** |
 | TC18 | UI after recovery (return) | **Revised** | Return case removed | AC18 | **RED** |
-| TC19 | Activation off and coupling | **Retained** | Same | AC19 | **RED** (configuration, GET); quota-off POST PRES |
+| TC19 | Activation off and coupling | **Retained** | Same | AC19 | Configuration (U) and GET (I) **RED**; quota-off POST and client (K) parts **PRES** (r4.1 correction) |
 | TC20 | Concurrency with checkout and recovery | **Revised** | P-only outcomes; return case removed | AC20 | S1, S3–S5 **RED** (order-dependent); S2 PRES |
 | **TC21** | — | **New** | Active loans do not affect eligibility | AC21 | **PRES** |
 
@@ -204,7 +204,7 @@ Every case: **Actual result: NOT EXECUTED. Verdict: NOT RUN.** The "Predicted RE
 | Level / type | K (primary); E smoke for S1, S2, S6 |
 | Fixtures / input | Mocks `{1,2,1,true}`, `{2,2,0,false}`, `{3,2,0,false}`; a pending promise; 500; 409 quota; 401; two identities; a custodian |
 | Expected | As AC11, asserted by role and accessible name. Call order: quota re-read after 201 and after 409. |
-| Regression | `requests`, `borrow-workflow`, `navigation`, `borrower-navigation`, `request-lifecycle` (mock additions only); E2E `02`, `04`–`07` |
+| Regression | `requests`, `borrow-workflow`, `navigation`, `borrower-navigation`, `request-lifecycle`: **no change needed**, because their mocks do not enable `features.borrowingQuota` (r4.1 correction; impact analysis §14.2). E2E `02`, `04`–`07`. Note: S6's "server message, no success notice" already holds at the baseline; its RED signal comes from the quota re-read. |
 | Predicted RED | **FAIL** (no panel, no call, Submit enabled at the limit) |
 | File | `client/tests/borrowing-quota.test.tsx`; `e2e/tests/09-borrowing-quota.spec.ts` |
 | Actual / Verdict | NOT EXECUTED / NOT RUN |
@@ -295,7 +295,7 @@ Every case: **Actual result: NOT EXECUTED. Verdict: NOT RUN.** The "Predicted RE
 | Expected | U: `enabled` with unset or `disabled` lifecycle → `ConfigurationError`; `yes` → error; the rest start. I: POST 201; GET 404 `BORROWING_QUOTA_DISABLED`; `features.borrowingQuota: false`. K: no call, no panel. |
 | Database | +1 row (baseline behavior) |
 | Regression | `runtime-config.test.ts`, `lifecycle-rollout.test.ts` |
-| Predicted RED | U **FAIL**; GET **FAIL** (route 404 `NOT_FOUND`); POST PRES |
+| Predicted RED | U **FAIL**; GET **FAIL** (route 404 `NOT_FOUND`); POST PRES. **K part PRES** (r4.1): the baseline client never calls a quota endpoint or renders a panel, so "no call, no panel when off" already holds and must stay true. |
 | File | `borrowing-quota-unit.test.ts`, `borrowing-quota.test.ts`, `client/tests/borrowing-quota.test.tsx` |
 | Actual / Verdict | NOT EXECUTED / NOT RUN |
 
@@ -345,7 +345,7 @@ Every case: **Actual result: NOT EXECUTED. Verdict: NOT RUN.** The "Predicted RE
 | C13 Isolation | TC10 | RED (endpoint) / PRES |
 | C14 UI states | TC11, TC18 | RED |
 | C15 Persistence and refresh | TC12, TC18 | RED |
-| C16 Disabled and coupling | TC19 | RED / PRES |
+| C16 Disabled and coupling | TC19 | RED (U, GET) / PRES (POST, K) |
 
 19 active cases, all NOT EXECUTED / NOT RUN. Totals: 0 run, 0 passed, 0 failed, 0 skipped. TC04 and TC15 are inactive and carry no assertions.
 

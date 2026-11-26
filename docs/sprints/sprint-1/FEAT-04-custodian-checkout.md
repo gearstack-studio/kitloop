@@ -89,7 +89,7 @@ Teammate review, live-browser borrower-request → custodian-checkout → borrow
 | Revision | CR-01 contract r4 (draft), DC-1 K2a; base `e5ed70d`. The r1–r3 "quota-neutral checkout" (P − 1, L + 1 under the combined limit) is superseded. |
 | Requirements | BR-14 (e) r4; BR-06, BR-09, FR-09, FR-10 (unchanged) |
 | Code impact | **None.** `server/src/checkout.ts` and `client/src/components/Checkout.tsx` are unchanged. |
-| Status | **Proposed.** PR #79 approval PENDING. |
+| Status | **Agreed contract; not implemented.** PR #79 merged (`7519274`). |
 
 1. **No quota check.** Checkout never evaluates the quota and never returns `BORROWING_QUOTA_EXCEEDED`. Every failure code above, `LOAN_MAX_DAYS` validation and the transaction steps are unchanged.
 2. **Checkout restores capacity.** A successful checkout changes exactly one `PENDING` request to `CHECKED_OUT`, so the request owner's P **decreases by one** (for example 2 → 1, capacity 0 → 1). The new active loan does **not** count toward the quota.

@@ -1,0 +1,161 @@
+CR-01 Lab 7 — Frontend baseline evidence (pre-change)
+=====================================================
+Evidence for: Issue #80 / #82, STS §1 (baseline before RED). Recorded by yiiipunn.
+Executed: 2026-11-26, 14:32:04Z–14:32:38Z (21:32:04–21:32:38 ICT), on the developer workstation.
+
+Source under test
+- Checked-out commit: 37a44203cbedfe6fff57749fa7fb535dcb7b34c7 (docs branch head, before the PR #79 merge)
+- Verified before running: `client/` is identical to e5ed70dbd65ac03d633fc7b8e0b73a72aa262490 (accepted Sprint 1)
+  and to origin/sprint-1-staging 7519274686265cc10072cfbfbe5aa500d9521d37:
+    git diff --quiet HEAD e5ed70d -- client && git diff --quiet HEAD origin/sprint-1-staging -- client   -> both identical
+- `e5ed70d..7519274` changes only 11 files under docs/ (no client, server, e2e, infra, .github or docker change).
+
+Environment
+- Node v24.19.0, npm 11.3.0; vitest 5.1.0, jsdom 29.1.1, @testing-library/react 16.3.3,
+  @testing-library/user-event 14.6.8, typescript 5.9.3, vite 8.3.5, eslint 10.14.0 (npm ls --depth=0)
+
+Commands (from client/) and results
+1. npm test                               exit 0   Test Files 11 passed (11); Tests 80 passed (80); 0 failed; 0 skipped
+2. npm run build   (tsc -b && vite build)  exit 0
+3. npm run lint    (eslint .)             exit 0
+4. npx vitest run --reporter=verbose      exit 0   rerun once only to obtain per-file counts: 80 passed
+   Per file: borrower-navigation 10, borrow-workflow 9, checkout 5, checkout-workflow 7, landing-animation 3,
+   loan-duration 15, loans-workflow 4, navigation 5, readable-names 10, request-lifecycle 7, requests 5
+
+Production reference (read-only GETs, 2026-11-26 14:30:21Z = 21:30:21 ICT)
+- https://kitloop-610347790049.asia-southeast1.run.app/api/version -> {"commit":"e5ed70dbd65ac03d633fc7b8e0b73a72aa262490"}
+- /api/health 200 {"status":"ok"}; /api/ready 200 {"status":"ready"}; / first attempt timed out after 20 s, retry returned the SPA
+- Serving revision inferred from deploy run 45033262619: kitloop-e5ed70dbd65a-20261122152107 (not directly verified; gcloud unavailable)
+- GET /api/borrowing-quota without a session -> 401 UNAUTHENTICATED (router-wide auth; the route does not exist at the baseline)
+
+Raw output follows. ANSI colour codes are stripped; content is otherwise verbatim.
+
+----- BEGIN npm test -----
+
+> client@0.0.0 test
+> vitest run
+
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+
+ Test Files  11 passed (11)
+      Tests  80 passed (80)
+   Start at  21:32:06
+   Duration  10.57s (environment 58%, tests 20%, setup 14%, import 5%, transform 3%)
+----- END npm test -----
+
+----- BEGIN npm run build -----
+
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 41 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.54 kB │ gzip:  0.34 kB
+dist/assets/light-trails-Wu1C7WPy.svg    4.48 kB │ gzip:  1.25 kB
+dist/assets/index-D5BMNUG5.css          32.14 kB │ gzip:  7.14 kB
+dist/assets/index-CRfDxlJI.js          248.30 kB │ gzip: 77.05 kB
+
+✓ built in 427ms
+----- END npm run build -----
+
+----- BEGIN npm run lint -----
+
+> client@0.0.0 lint
+> eslint .
+----- END npm run lint -----
+
+----- BEGIN npx vitest run --reporter=verbose -----
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop/client
+
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > keep their fall duration and delay when they re-roll at the end of each loop 115ms
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > have fixed, distinct resting places for the reduced-motion scene 49ms
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > stay decorative: hidden from assistive technology 20ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > sets the picker maximum to the latest browser-local minute within the period and states the period 92ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > sets the minimum to the next browser-local minute and labels the timezone 84ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > custodian Active loans: equipment, borrower and checkout custodian by name for each record 134ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > borrower My loans: equipment name and dates, no person names or custodian ID 25ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > keeps loan, request and person IDs as collapsed secondary metadata 15ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > falls back to the Asset ID and "Name unavailable" without inventing names or showing UUIDs as names 10ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 requests show names > custodian Pending requests: equipment and borrower by name; UUIDs only in Record IDs 15ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 requests show names > borrower My requests: equipment name first, status kept, request ID secondary 6ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > refreshes the maximum with the minimum as time passes 31ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > requires a due date and submits only the selected request with its local date converted to UTC 229ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > rejects past due dates even when native validation is bypassed 25ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > blocks unavailable, still-loading, busy and non-pending requests 42ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > shows persisted loan identifiers, checkout and due timestamps, and status 22ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure reason and time 120ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > does not let a terminal request block a new request for available equipment 2ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > offers only available equipment without an existing pending request 348ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > disables submission while loading, busy, or selection becomes unavailable 38ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > renders history with equipment name and status without checkout controls 55ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /dashboard shows both links and marks only its own page as current 317ms
+ ✓ tests/loans-workflow.test.tsx > My loans panel > shows loading before displaying a successful empty list 296ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > distinguishes loading, error/retry and empty history 61ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > tells a custodian with an empty queue that only assigned equipment is listed 4ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > accepts a due date at the maximum and submits it as a UTC ISO timestamp 199ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > rejects a due date beyond the maximum, and year 9999, even when native validation is bypassed 43ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > shows the maximum message when Check out is clicked with an over-maximum date (validation is not left to the browser) 24ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /unknown 342ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /dashboard/extra 91ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /requests shows both links and marks only its own page as current 57ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > treats a trailing slash as the same page 41ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > BORROWER: shows the username once, never an account UUID prefix 45ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > CUSTODIAN: shows the username once, never an account UUID prefix 15ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > explains why an available asset with the current borrower’s pending request cannot be requested 390ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests, posts with CSRF, and refreshes history 310ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > applies no maximum when none is configured (OQ-01 unresolved) 42ms
+ ✓ tests/loans-workflow.test.tsx > My loans panel > shows an in-panel error and retries the loans endpoint 154ms
+ ✓ tests/loans-workflow.test.tsx > Active loans panel > shows loading before displaying a successful empty list 44ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > submits the selected request and refreshes queue, availability and the ACTIVE loan 445ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /signup 78ms
+ ✓ tests/loans-workflow.test.tsx > Active loans panel > shows an in-panel error and retries the loans endpoint 96ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > lets a different borrower select the same available asset when their own history has no pending request 113ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > shows lifecycle statuses but no Cancel action in the compatibility release (lifecycle actions off) 73ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (app, mocked HTTP) > passes the server maximum to the picker and shows a server-side rejection without claiming success 175ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > submits a date that became valid while the form stayed open, exactly once, as UTC ISO 23ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > redirects /dashboard to sign in without offering registration 84ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > redirects /requests to sign in without offering registration 62ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > prevents duplicate clicks while a checkout is in flight 179ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > keeps the newest request history when overlapping retries resolve out of order 117ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking each link navigates to its route and moves the current marker; both stay visible 241ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > still rejects a date beyond the current maximum after time passes 25ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > accepts a valid date and the exact (minute) maximum by click 31ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > rejects past dates by click with the inline message and recovers when corrected 36ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > rejects an empty or unparseable date even if the form is submitted programmatically 19ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > follows a configured maximum that changes while the form stays mounted, including back to no maximum 37ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > applies no upper limit when no maximum is configured 18ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > does not submit again while the checkout is busy 22ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > refreshes after a 409, disables checkout of the now unavailable item, and shows the conflict 120ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and removes the request from the refreshed queue 256ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > hides Decline but keeps checkout in the compatibility release (lifecycle actions off) 50ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons 37ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking the current page link does not add a history entry 101ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > keeps the session after a 403 and reports lack of permission 105ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > submits from My Requests, refreshes persisted history, and prevents a second selection 259ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > is keyboard operable: both links are in the tab order in reading order and Enter navigates 172ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > clears private custodian state when the session expires 106ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > uses the username from the login response 859ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > falls back to the role, not a UUID, if the server sends no username 18ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > browser Back and Forward restore the route and its current marker 200ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > shows safe server failures without claiming success 107ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > distinguishes a committed checkout from a failed refresh and hides repeat checkout controls 114ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > refreshes stale history after a 409 without displaying success 214ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > is not shown to custodians, who keep their single dashboard 20ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > signed out at /dashboard: redirected to sign in with no borrower navigation 40ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > signed out at /requests: redirected to sign in with no borrower navigation 23ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > ends an expired session and removes private history 198ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > distinguishes successful creation from a failed history refresh and blocks resubmission 177ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > loads request history on a fresh visit to the page 24ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > ignores a delayed history retry after logout and a different borrower signs in 709ms
+
+ Test Files  11 passed (11)
+      Tests  80 passed (80)
+   Start at  21:33:02
+   Duration  5.46s (environment 58%, tests 24%, setup 10%, import 5%, transform 2%)
+----- END npx vitest run --reporter=verbose -----
