@@ -299,8 +299,10 @@ function App() {
     const previous = previousRoute.current
     previousRoute.current = route
     if (previous === undefined || previous === route || route !== '/requests') return
+    // #91 (R05): invalidate the held quota before the re-read, so stale capacity cannot authorize a request meanwhile.
+    if (quotaEnabled && identity?.role === 'BORROWER') setQuotaStatus('loading')
     void loadQuota()
-  }, [route, loadQuota])
+  }, [route, loadQuota, quotaEnabled, identity])
 
   const quotaState: QuotaState = !quotaEnabled ? 'off'
     : quotaStatus === 'error' ? 'error'
