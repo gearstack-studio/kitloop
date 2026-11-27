@@ -17081,3 +17081,116 @@ dist/assets/index-AzSYdO79.js          251.87 kB │ gzip: 77.95 kB
 > client@0.0.0 lint
 > eslint .
 ----- END I. npm run lint -----
+
+=================================================================
+Post-review RED/GREEN verification — PR #89
+=================================================================
+Appended 2026-11-27 ICT by yiiipunn. Everything above this heading is the original evidence and is unchanged, including
+its historical counts (21 tests, 101 regression). Prepared with AI assistance (Anthropic Claude ran the commands and
+collected the logs under my direction). All results below come from the runs recorded in the linked raw logs.
+
+Why this section exists
+- DEV4952's independent review of 9bc49cb (https://github.com/gearstack-studio/kitloop/pull/89#issuecomment-7220149180)
+  confirmed that the functional findings are resolved. It requested evidence for the final suite: 23 quota tests and
+  103 regression tests instead of 21 and 101.
+- Earlier review of e14b914 (https://github.com/gearstack-studio/kitloop/pull/89#issuecomment-7211888197): F-01 delayed
+  409, F-02 flaky redirect assertions, F-03 catalog quota-error label and retry.
+
+Chronology (original test-first execution, then post-review)
+| Step | Commit | What | Result |
+|---|---|---|---|
+| Original RED (test-first) | d76751c (tests only, before any implementation) | frontend-red.txt | 17 failed, 4 passed (21) |
+| Timing-corrected RED | e27cc10 (3 awaited queries) | section D above | 17 failed, 4 passed (21) |
+| Initial GREEN | 725307b | section E above | 21/21 |
+| Historical full regression | 725307b | sections F and H above | 100/101, then 101/101 |
+| Review of e14b914 | e14b914 | DEV4952, REQUEST CHANGES | F-01, F-02, F-03 |
+| Review fixes | 9bc49cb (DEV4952) | +2 quota tests; App.tsx, borrowEligibility.ts, Catalog.tsx; awaited redirect assertions | reviewed commit |
+| Retrospective RED (this section) | 7a3db98 + final suite | not test-first; see note | 19 failed, 4 passed, 0 skipped (23) |
+| Final GREEN (this section) | 9bc49cb | final suite | 23/23 |
+
+RETROSPECTIVE, not original. The RED below was run after the implementation existed. It uses the final suite against the
+unchanged pre-change application, to show that the final suite (including the two tests added in 9bc49cb) fails on the
+baseline. The original test-first RED is frontend-red.txt (d76751c, 17 failed / 4 passed of 21). It remains the
+test-first record.
+
+Sources and hashes
+- Reviewed implementation: 9bc49cb73bd454c5b1d0c6c7c32b3c77fa693bd7 (PR head when tested)
+- Baseline source: 7a3db98725881944a4e3ef8134676ca4f5cb81ed (origin/sprint-1-staging before #88; client/src identical to
+  e5ed70d). Pre-fix check source: e14b914ee67defe9d6f4ab0dcb707865f4a5b2de.
+- Final test file client/tests/borrowing-quota.test.tsx at 9bc49cb: git blob 5726faf8c6c990b007b7fcb08250598ca6142948,
+  22131 bytes, 396 lines.
+  SHA-256 of the committed LF bytes: 7812b01fcac70cb41591f45d066953c32e00ed48a74dcda8c78ba7b4b689b2d2
+  The files actually run were byte-identical to the committed blob (LF, 0 CR bytes, same SHA-256). All three checkouts
+  were created with core.autocrlf=false.
+  For comparison only: a Windows CRLF working copy (core.autocrlf=true) of the same file hashes to
+  fb228e736ff07df5520e258576a7a74e040f69cf75631fb02b9c9d6b876eb2c6. No run used CRLF bytes.
+- Between 7a3db98 and 9bc49cb, client/ changes only client/src and three test files. Package, lock, Vite, Vitest,
+  TypeScript and ESLint configuration are identical, so overlaying the single test file is a faithful RED.
+
+Environment: Windows 11, Node v24.19.0, npm 11.3.0, Vitest 5.1.0 (client), jsdom tests with mocked HTTP. Each
+checkout had `npm ci` run in client/. No backend, database or production system was used.
+
+Commands (isolated git worktrees, detached HEAD; the developer's own working copy was not used)
+1. Retrospective RED: worktree at 7a3db98. Copy client/tests/borrowing-quota.test.tsx from 9bc49cb (untracked overlay).
+   In client/: npx vitest run tests/borrowing-quota.test.tsx --reporter=verbose --no-color
+2. Final GREEN: worktree at 9bc49cb, client/: npx vitest run tests/borrowing-quota.test.tsx --reporter=verbose --no-color
+3. Full regression ×3: same worktree, client/: npm test -- --reporter=verbose --no-color
+4. Typecheck, build and lint: same worktree, client/: npx tsc -b; npm run build; npm run lint
+5. Pre-fix check: worktree at e14b914 plus the same overlay, client/:
+   node node_modules/vitest/vitest.mjs run tests/borrowing-quota.test.tsx --reporter=verbose --no-color
+     -t "keeps submission disabled while the quota refresh after a 409 is pending|shows a quota read failure on the catalog"
+   (An earlier attempt via npx stalled before Vitest started, because the Windows npx shim mis-handled the "|" in the
+   pattern. It produced no results and was stopped; see the log header.)
+6. Mocked UI capture at 9bc49cb: screenshots/post-review-9bc49cb/README.md
+
+Results (actual; timestamps ICT = UTC+7; exit codes as recorded in the logs)
+| Run | Source | Start – end (ICT) | Result | Exit |
+|---|---|---|---|---|
+| Retrospective RED | 7a3db98 + final suite | 21:09:14 – 21:09:37 | 19 failed, 4 passed, 0 skipped (23) | 1 |
+| Final GREEN, quota suite | 9bc49cb | 21:10:18 – 21:10:25 | 23 passed (23) | 0 |
+| Full regression, run 1 | 9bc49cb | 21:10:27 – 21:10:37 | 103 passed (103), 12 files | 0 |
+| Full regression, run 2 | 9bc49cb | 21:10:41 – 21:10:53 | 103 passed (103), 12 files | 0 |
+| Full regression, run 3 | 9bc49cb | 21:10:56 – 21:11:08 | 103 passed (103), 12 files | 0 |
+| TypeScript (tsc -b) / build / lint | 9bc49cb | 21:11:19 – 21:11:32 | pass / pass / pass | 0 / 0 / 0 |
+| Pre-fix check (2 new tests) | e14b914 + final suite | 21:22:37 – 21:22:44 | 2 failed, 21 skipped (23) | 1 |
+| Mocked UI capture | 9bc49cb | 21:24:32 – 21:24:40 | 4/4 PASS | 0 |
+All runs are listed. No run was repeated or omitted, except the stalled npx attempt noted above.
+
+RED detail: the 4 passing tests are the preserved-behaviour cases Q04b, Q10, Q15 (flag false) and Q15 (flag absent). The
+19 failures include all 17 original failures and the 2 tests added in 9bc49cb. On the baseline those 2 fail because no
+quota UI exists ("expected [] to have a length of 2", "Unable to find role=button name /Borrowing limit unavailable:
+Camera/").
+
+Resolution of the review findings
+- F-01 delayed HTTP 409 (AC11-S6 / TC11). The test "keeps submission disabled while the quota refresh after a 409 is
+  pending" holds the quota re-read open after a 409 and asserts that exactly one POST /api/requests is sent.
+  - Pre-fix e14b914: FAILS with "expected [ { method: 'POST', …(4) }, …(1) ] to have a length of 1 but got 2". This is
+    DEV4952's two-POST reproduction.
+  - 9bc49cb: PASSES. The fix sets the quota to loading before the re-read after a 409 or a successful submission, so the
+    stale canSubmitRequest is not used.
+  - Mocked browser check: submission is disabled while the re-read is held, and the POST count stays at 1 after a forced
+    second click.
+- F-03 catalog quota error. The test "shows a quota read failure on the catalog and lets the borrower retry there" checks
+  that a failed quota read shows "Borrowing limit unavailable" (not "Checking limit"), offers "Retry borrowing limit",
+  and recovers after Retry.
+  - Pre-fix e14b914: FAILS ("Unable to find role=button name /Borrowing limit unavailable: Camera/").
+  - 9bc49cb: PASSES.
+  - Mocked browser check: the Retry button is focusable and works with the keyboard, and the catalog recovers after Retry.
+- F-02 redirect assertions. In 9bc49cb, navigation.test.tsx and borrower-navigation.test.tsx await the pathname with
+  waitFor after the Sign In button appears. All 3 full runs above passed 103/103. The same change is in merged PR #88
+  (commit 970d6dc, identical patch).
+
+Scope and limits
+- This is mocked frontend verification (jsdom with mocked fetch, and Playwright with route interception). It is not
+  full-stack or production verification.
+- Backend PR #88 is merged into sprint-1-staging (e92512a, 2026-11-27 20:51 ICT). This branch has not been integrated or
+  tested against it yet. Live-API verification of rejection at capacity and recovery after cancellation is still open.
+
+Raw logs (ANSI colour codes stripped, otherwise verbatim; same convention as frontend-red.txt)
+- frontend-post-review-9bc49cb/post-review-red-7a3db98.txt
+- frontend-post-review-9bc49cb/post-review-green-9bc49cb.txt
+- frontend-post-review-9bc49cb/post-review-regression-9bc49cb-run1.txt (run2, run3)
+- frontend-post-review-9bc49cb/post-review-build-lint-9bc49cb.txt
+- frontend-post-review-9bc49cb/post-review-prefix-e14b914.txt
+- frontend-post-review-9bc49cb/post-review-mocked-ui-capture.txt
+- screenshots/post-review-9bc49cb/ (README.md, 8 PNG, mocked-post-review-verification.json, capture script)
