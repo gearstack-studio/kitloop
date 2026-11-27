@@ -1,0 +1,35 @@
+{
+  "note": "Real API, no interception",
+  "results": [
+    {
+      "step": "seed P = 1 via API",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "step": "other session takes the last slot",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "step": "S6: server 409 shown, no success notice, quota re-read, limit shown, one POST",
+      "pass": true,
+      "detail": {
+        "status": 409,
+        "code": "BORROWING_QUOTA_EXCEEDED",
+        "message": "You already have two pending requests.",
+        "successNotice": 0,
+        "quotaReReadAfterPost": true,
+        "posts": 1,
+        "submitDisabled": true,
+        "callsAfterSubmit": [
+          "POST /requests",
+          "GET /borrowing-quota",
+          "GET /assets",
+          "GET /requests/mine",
+          "GET /loans/mine"
+        ]
+      }
+    }
+  ]
+}

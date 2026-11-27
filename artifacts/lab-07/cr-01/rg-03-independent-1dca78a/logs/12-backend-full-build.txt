@@ -1,0 +1,199 @@
+HEAD 1dca78a5e7735c784f01135c8c0bf7b57a8fb542 start 2026-11-28 00:12:16 ICT
+PostgreSQL 17.11 (Debian 17.11-1.pgdg12+2)
+DB postgresql://review:****@127.0.0.1:55432/kitloop_rg03_test?schema=public
+✔ Generated Prisma Client (v6.19.3) to .\node_modules\@prisma\client in 83ms
+The following migration(s) have been applied:
+All migrations have been successfully applied.
+$ npx vitest run --reporter=verbose --no-color
+◇ injected env (4) from .env.test
+
+ RUN  v5.0.5 D:/SWE_Project/kitloop-rg03-1dca78a/server
+
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > declines every competing PENDING request with a reason in the checkout transaction, keeping history 433ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > rolls back the checkout, the loan and every decline when a competing decline fails 324ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > gives concurrent checkouts of competing requests exactly one winner, one loan, and a declined loser 295ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > lets a borrower cancel their own PENDING request once, keeping it in history and out of the queue 354ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > rejects cancelling another borrower's request, custodians, missing sessions, CSRF failures and status payloads 306ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets an assigned custodian decline a PENDING request with a valid reason 304ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > requires a custodian-selectable reason and rejects unassigned custodians, borrowers and CSRF failures 296ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets exactly one of a concurrent cancel and decline close the request 235ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > never leaves a loan for a request cancelled concurrently with its checkout 365ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > allows a new request after a cancelled or declined one while the asset is available, and not while on loan 349ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > does not expire old PENDING requests without an explicit expiry policy 226ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > rejects inconsistent closure data and keeps one PENDING request per borrower and asset 243ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > migrates existing PENDING and CHECKED_OUT rows without rewriting them 285ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects an unauthenticated current-user request 29ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects invalid login without creating a session 54ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > logs in both roles and retrieves server-derived identity 122ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > replaces a presented session and stores only password and token hashes 128ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns the same generic error for unknown user and wrong password 78ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > revokes the server session on logout and rejects reuse 69ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects forged and expired sessions 66ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects missing CSRF and disallowed login origin 74ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > validates login input and sanitizes malformed JSON errors 10ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns 413 for a login body over 16 KB without creating a session 9ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > returns a generic response for an unexpected authentication failure 3ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > marks session cookies Secure in production configuration 43ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > rejects unauthenticated and wrong-role domain operations 124ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only the borrower's own direct request and loan records 93ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > derives a new request owner from the authenticated session 91ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > scopes a custodian's request queue and rejects out-of-scope checkout 116ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > restricts inventory editing to the assigned custodian 111ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > persists authorized checkout and prevents a duplicate active loan 170ms
+ ✓ tests/auth.test.ts > FEAT-01 authentication API > allows only one checkout when two requests race for an available asset 117ms
+ ✓ tests/borrowing-quota.test.ts > TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes 207ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: checkout lowers the pending count exactly once and reopens capacity 188ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: cancel lowers the pending count exactly once and reopens capacity 180ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: decline lowers the pending count exactly once and reopens capacity 143ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: auto-decline lowers the pending count exactly once and reopens capacity 216ms
+ ✓ tests/borrowing-quota.test.ts > TC07/TC16: historical over-capacity rows remain and recovery works down to P = 1 285ms
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded
+TC08a P=1, rounds=20: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded 2846ms
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded
+TC08a P=0, rounds=10: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded 1854ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 0 107ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 1 123ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 0 157ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 2 189ms
+ ✓ tests/borrowing-quota.test.ts > TC09/TC10: preserves request precedence and reads only the authenticated borrower's quota 256ms
+ ✓ tests/borrowing-quota.test.ts > TC19: startup validates the flag and the off state preserves submissions 118ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 3 active loans do not prevent a borrower from submitting two pending requests 285ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 5 active loans do not prevent a borrower from submitting two pending requests 379ms
+ ✓ tests/borrowing-quota.test.ts > TC06/TC12: counts pending rows across reconnects and excludes terminal requests and loans 317ms
+ ✓ tests/borrowing-quota.test.ts > TC17: unauthorized recovery and invalid inputs leave pending rows unchanged 349ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant
+TC20 checkout, P=2: {"201/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant 1085ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant
+TC20 checkout, P=1: {"409/201":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant 905ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant
+TC20 cancel, P=2: {"200/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant 1015ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant
+TC20 decline, P=2: {"200/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant 1171ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant
+TC20 auto-decline, P=2: {"201/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant 1647ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-01 returns stored non-retired assets to both roles (retrieval) 164ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-02 exposes exactly the five documented fields and nothing internal (response shape) 116ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-03 derives availability from loan state, not from requests (availability) 59ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-05 agrees with checkout validation for the same assets (FR-05) 126ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-06 rejects missing, forged, expired and revoked sessions with 401 135ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-07 orders by name then assetId, repeatably (ordering) 78ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-08 keeps Asset IDs unique in the database and seed data 15ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-09 leaves retired assets out of the catalog 56ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-10 returns 200 and an empty array when there are no assets 57ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-11 returns a generic 500 for an unexpected failure 62ms
+ ✓ tests/catalog.test.ts > FEAT-02 equipment catalog API > TEST-FEAT-02-12 does not change any record and needs no CSRF token 76ms
+ ✓ tests/lifecycle-rollout.test.ts > REQUEST_LIFECYCLE_WRITES configuration > defaults to disabled and accepts only 'enabled' or 'disabled' 182ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > checkout keeps the pre-lifecycle behaviour: the competing request stays PENDING and no lifecycle value is written 275ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > cancel and decline are unavailable (404 LIFECYCLE_ACTIONS_DISABLED) and change nothing 221ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > login and /auth/me tell the client that lifecycle actions are off 233ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > everything it writes stays readable by the pre-lifecycle 8b6e5a9 client, so 8b6e5a9 remains a safe rollback target 273ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > still reads lifecycle rows written while writes were enabled, so it is a safe rollback target after them 338ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > login and /auth/me tell the client that lifecycle actions are on 181ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes) 272ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 0 and reports SAFE only when the expected database has zero lifecycle-only rows 706ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 4 (UNSAFE) when lifecycle-only rows exist, e.g. after phase 2 and a rollback to phase 1 620ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > refuses (exit 2) without checking when connected to a different database or without --expect-database 865ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 1 (not 0) when the database cannot be reached 2502ms
+ ✓ tests/lifecycle-rollout.test.ts > Rollback safety check > counts lifecycle-only statuses and says whether pre-lifecycle revisions are safe rollback targets 220ms
+ ✓ tests/borrow-requests.test.ts > request payload unit validation > accepts only a trimmed Asset ID 2ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > returns 413 for a borrow request body over 16 KB without creating a request 185ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > persists PENDING with server identity/time, exposes asset details, and never reserves 262ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects concurrent duplicate submissions and the database independently guards uniqueness 214ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > allows concurrent submissions by different borrowers without reserving 248ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rejects unknown, retired, malformed, and client-controlled fields without writes 236ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > enforces authentication, role and CSRF for creation 185ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > scopes lists/direct IDs, forbids status writes and checks out atomically 391ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > rolls back failed loan creation, preserves availability, and permits a clean retry 296ms
+ ✓ tests/borrow-requests.test.ts > FEAT-03 borrowing workflow against PostgreSQL > does not expose database failure details during submission 171ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > returns 413 for a checkout body over 16 KB without changing the request or creating a loan 154ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > shows only scoped pending requests with borrower and equipment details 152ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads 224ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects invalid due dates and supplied status/identity without partial changes 186ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > checks due date against checkout time inside the transaction, not an earlier form timestamp 125ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects missing sessions, wrong role, CSRF failures and foreign-scope requests 140ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects a missing request, malformed ID, asset mismatch, and retired equipment 168ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > rejects repeated and concurrent checkout of the same request 177ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > allows one winner across different pending requests and custodians for one exclusive asset 276ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > does not expose a loan status mutation API to borrowers 161ms
+ ✓ tests/checkout.test.ts > F-04 Custodian Checkout Workflow (PostgreSQL) > preserves historic rows when the enum migration renames FULFILLED to CHECKED_OUT 29ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > dry run reports stale requests (active loan) and kept requests (loan returned) without changing anything 517ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > refuses to apply without the matching database confirmation or while lifecycle writes are disabled 468ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > apply declines only the stale requests, with reason and time, and keeps every other record and its history 630ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > is idempotent: a second run closes nothing and leaves closure timestamps unchanged 532ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > races safely with a borrower cancelling the same stale request: exactly one closure wins 1182ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > does not touch a request whose asset is checked out by a checkout that commits during the run 364ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: rule (validateDueDate) > accepts a due date within the maximum and exactly at the inclusive boundary 2ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: rule (validateDueDate) > rejects one second and one millisecond beyond the maximum, 100 years ahead and year 9999 1ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: rule (validateDueDate) > still rejects past and exactly-current due dates when a maximum is configured 1ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: rule (validateDueDate) > applies no maximum while OQ-01 is unresolved (LOAN_MAX_DAYS unset) 0ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS) > is unset by default and accepts a whole number of days 0ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: configuration (LOAN_MAX_DAYS) > refuses to start with an invalid value 1ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > accepts a due date within the configured maximum 168ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > measures the boundary from the actual checkout time inside the transaction (inclusive) 266ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > rejects due dates beyond the maximum with 400 VALIDATION_ERROR and a dueAt field message, changing nothing 187ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > still rejects past, timezone-free, impossible and invalid due dates, changing nothing 180ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > a rejected over-limit checkout leaves competing requests PENDING (UAT-E01 auto-decline does not run) 188ms
+ ✓ tests/loan-duration.test.ts > UAT-E02 maximum loan duration: checkout API (PostgreSQL) > tells the client the configured maximum through login and /auth/me 12ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: identity > /auth/me and login return the signed-in user's own username with the existing id and role 63ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: loans > a borrower's loans carry the equipment name, keeping every ID, and no person names 17ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: loans > no borrower loan response contains a custodian's username anywhere in the body 24ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: loans > a custodian's active loans name each borrower, item and checkout custodian correctly across users and assets 16ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: loans > a single loan read gives a scoped custodian the names and its owner the equipment name only 25ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: privacy boundaries > person summaries expose exactly id and username, never credentials, role or sessions 33ms
+ ✓ tests/readable-names.test.ts > UAT-E03 readable names: privacy boundaries > does not reveal other borrowers' loans or names, nor loans outside a custodian's scope 43ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > rejects missing/invalid credentials without including raw input 3ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > validates duplicate identifiers and custodian references before writes 1ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > provisions hashed accounts, asset and scope, and preserves passwords and IDs on reruns 222ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > serializes concurrent reruns without duplicates or password changes 170ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > rolls back earlier inserts if a later account has a conflicting role 118ms
+ ✓ tests/bootstrap.test.ts > Explicit production bootstrap > preserves existing assets and rolls back on metadata conflicts 126ms
+ ✓ tests/checkout-unit.test.ts > Checkout concurrency error mapping > treats serialization failures and deadlocks from the raw row lock as checkout conflicts 2ms
+ ✓ tests/checkout-unit.test.ts > Checkout concurrency error mapping > leaves every other database or application error unmapped 0ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > accepts an explicit Asset ID and a timezone-aware due date 1ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects invalid bodies and client-assigned loan or identity fields 1ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > rejects coercible, impossible, malformed, and timezone-free dates 1ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > requires the due date strictly after the actual checkout instant 0ms
+ ✓ tests/checkout-unit.test.ts > Checkout validation and loan projection > derives ACTIVE/RETURNED from persisted custody facts without editable state 0ms
+ ✓ tests/health.test.ts > GET /api/health > returns the service health response 35ms
+ ✓ tests/health.test.ts > GET /api/ready > returns 200 when PostgreSQL responds 6ms
+ ✓ tests/health.test.ts > GET /api/ready > returns a generic 503 when PostgreSQL is unavailable 5ms
+ ✓ tests/health.test.ts > Public release metadata and security headers > returns the full build commit without authentication and prevents caching 4ms
+ ✓ tests/health.test.ts > Public release metadata and security headers > does not disclose invalid build metadata 3ms
+ ✓ tests/health.test.ts > Public release metadata and security headers > sets browser security headers and omits the framework banner 3ms
+ ✓ tests/runtime-config.test.ts > Runtime configuration > accepts HTTPS production and Cloud SQL Unix-socket URLs 2ms
+ ✓ tests/runtime-config.test.ts > Runtime configuration > preserves development defaults and rejects invalid ports/session durations 1ms
+ ✓ tests/runtime-config.test.ts > Runtime configuration > rejects missing/invalid production secrets and database configuration without echoing values 1ms
+ ✓ tests/runtime-config.test.ts > Runtime configuration > requires an exact HTTPS origin without credentials, path or query 0ms
+ ✓ tests/spa.test.ts > Single-origin SPA hosting > serves root and deep links with revalidation 39ms
+ ✓ tests/spa.test.ts > Single-origin SPA hosting > serves bundled assets and keeps missing assets/API routes out of the SPA fallback 18ms
+ ✓ tests/availability.test.ts > FEAT-02 availability definition > TEST-FEAT-02-04 maps retirement and active loans to one canonical state 2ms
+ ✓ tests/seed-policy.test.ts > demo seed policy > refuses to create demo users in production 2ms
+
+ Test Files  17 passed (17)
+      Tests  152 passed (152)
+   Start at  00:12:24
+   Duration  46.81s (tests 93%, import 6%, transform 1%)
+
+    Isolate  17 workers spawned · ~149ms startup each (spawn + environment, per file)
+             at least ~2.38s faster with isolate: false — reuses workers across files instead of one per file
+
+exit=0
+$ npm run build
+> tsc --noEmit
+
+build exit=0
+end 2026-11-28 00:13:16 ICT

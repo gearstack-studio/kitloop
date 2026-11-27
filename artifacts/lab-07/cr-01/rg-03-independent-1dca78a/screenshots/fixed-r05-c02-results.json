@@ -1,0 +1,52 @@
+{
+  "note": "REAL API + PostgreSQL. Only GET /api/borrowing-quota responses were HELD (real response fetched from the API and delivered unchanged after a delay); nothing was mocked.",
+  "label": "fixed",
+  "app": "http://localhost:5173",
+  "api": "http://localhost:3000/api",
+  "results": [
+    {
+      "step": "C02",
+      "text": "Checking limit",
+      "ariaLabel": "Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet",
+      "disabled": true,
+      "heldQuotaResponses": 1,
+      "afterRelease": "Request to borrow Camera, E2E-CAM-01",
+      "expectedLoadingName": "Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet",
+      "pass": true
+    },
+    {
+      "step": "R05",
+      "seedStatus": 201,
+      "otherSessionStatus": 201,
+      "serverQuotaBeforeEntry": {
+        "pendingRequests": 2,
+        "maxPendingRequests": 2,
+        "remainingRequestCapacity": 0,
+        "canSubmitRequest": false
+      },
+      "during": {
+        "routeEntryQuotaGetIssued": true,
+        "heldResponses": 1,
+        "selectorDisabled": true,
+        "submitDisabled": true,
+        "panel": "Borrowing limit Loading borrowing limit…",
+        "postsWhilePending": 0,
+        "postResponsesWhilePending": []
+      },
+      "after": {
+        "panel": "Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.",
+        "submitDisabled": true,
+        "postsTotal": 0,
+        "postResponses": []
+      },
+      "persisted": {
+        "pending": [
+          "E2E-LAP-01",
+          "E2E-TRI-01"
+        ],
+        "cameraRows": 0
+      },
+      "pass": true
+    }
+  ]
+}
