@@ -47,6 +47,14 @@ jobs:
         with:
           persist-credentials: false
 
+      # The job runs as root inside the container, while the checked-out workspace is owned by the runner user, so Git
+      # refuses it ("dubious ownership"). Trust exactly this workspace (never '*') so the evidence guard's git status runs.
+      - name: Trust the checked-out workspace for Git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git -C "$GITHUB_WORKSPACE" status --short --untracked-files=no
+          echo "git status OK in $GITHUB_WORKSPACE"
+
       - name: Install server, client and e2e dependencies
         run: |
           npm ci --prefix server --no-audit --no-fund
