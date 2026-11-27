@@ -51,3 +51,11 @@ npm test -- --no-color
 npm run build
 npm run lint
 ```
+
+## GREEN after PR #89 merged into staging
+
+27 November 2026 ICT. Staging merge `b30fa9f168824625adf788b46c6c215d22637194` was merged into the RG-01 branch at `2ed2a7c79f9ce29423e359c6a98eb3f78ffe7daa`. Git showed a clean merge with no differences in `server/` and `infra/gcp/` relative to the previous PR head `330e4cd`. The backend, reconciliation and guard results above remain evidence for the same source.
+
+The full frontend suite passed **103/103** across 12 files at `2ed2a7c`, including the quota tests from #89. TypeScript, the production frontend build and lint passed. Commands from `client/` were `npm test -- --no-color`, `npm run build` and `npm run lint`. [Frontend output](rg-01-frontend-post-89.txt)
+
+The production observations and OD-13 approval requirements above are separate from the staging integration.
