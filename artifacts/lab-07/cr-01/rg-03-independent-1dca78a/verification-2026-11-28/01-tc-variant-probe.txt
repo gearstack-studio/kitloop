@@ -1,0 +1,46 @@
+STS variant probe (PR #93 review finding 1)
+checkout: D:/SWE_Project/kitloop-pr93-fix at 8ab8ca6bd38439bb28810f97c43f5a4adcc675e4; server/ client/ trees identical to 1dca78a5e7735c784f01135c8c0bf7b57a8fb542: server=yes client=yes
+configuration: in-process app, BORROWING_QUOTA=enabled, REQUEST_LIFECYCLE_WRITES=enabled; PostgreSQL 17.11 DB kitloop_rg03_variants_test (fresh, migrated); Node v24.19.0
+start 2026-11-28 00:54:01 ICT
+$ npx tsx ../artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/tc-variant-probe.mts
+PASS TC01 :: I: GET {0,2,2,true} -> POST 201 PENDING (session borrowerId) -> GET {1,2,1,true}; 4 keys; no-store; no loan; asset available :: {"before":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true},"post":[201,"PENDING"],"after":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"noStore":true,"available":true}
+PASS TC01 :: capacity grid P = 0..5 through GET (remaining = max(0, 2-P), canSubmit = P < 2) :: {"0":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true},"1":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"2":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"3":{"pendingRequests":3,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"4":{"pendingRequests":4,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"5":{"pendingRequests":5,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}}
+PASS TC05 :: negatives at P = 2: past dueAt -> 400; asset mismatch -> 409 REQUEST_MISMATCH; P stays 2; nothing written; never quota :: {"past":[400,"VALIDATION_ERROR"],"mismatch":[409,"REQUEST_MISMATCH"],"quota":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}}
+PASS TC06 :: terminal history + active and returned loans: GET {1,2,1,true}; POST X 201; POST Y 409 quota; terminal and loan rows unchanged :: {"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"x":201,"y":[409,"BORROWING_QUOTA_EXCEEDED"]}
+PASS TC07 :: historical P = 3: GET {3,2,0,false}; POST 409; checkout from P = 3 -> 201; GET {2,2,0,false}; nothing deleted :: {"before":{"pendingRequests":3,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"post":[409,"BORROWING_QUOTA_EXCEEDED"],"checkout":201,"after":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}}
+PASS TC09 :: P = 0: asset checked out (on loan) -> 409 ASSET_UNAVAILABLE; never quota :: {"status":409,"code":"ASSET_UNAVAILABLE"}
+PASS TC09 :: P = 0: asset retired -> 409 ASSET_UNAVAILABLE; never quota :: {"status":409,"code":"ASSET_UNAVAILABLE"}
+PASS TC09 :: P = 0: unknown asset -> 404 NOT_FOUND; never quota :: {"status":404,"code":"NOT_FOUND"}
+PASS TC09 :: P = 0: malformed field (number) -> 400 VALIDATION_ERROR; never quota :: {"status":400,"code":"VALIDATION_ERROR"}
+PASS TC09 :: P = 0: extra field -> 400 VALIDATION_ERROR; never quota :: {"status":400,"code":"VALIDATION_ERROR"}
+PASS TC09 :: P = 0: invalid JSON -> 400 INVALID_JSON; never quota :: {"status":400,"code":"INVALID_JSON"}
+PASS TC09 :: P = 0: body over 16 KB -> 413; never quota :: {"status":413,"code":"PAYLOAD_TOO_LARGE"}
+PASS TC09 :: P = 0: POST without session -> 401; never quota :: {"status":401,"code":"UNAUTHENTICATED"}
+PASS TC09 :: P = 0: GET quota without session -> 401; never quota :: {"status":401,"code":"UNAUTHENTICATED"}
+PASS TC09 :: P = 0: custodian POST -> 403 FORBIDDEN; never quota :: {"status":403,"code":"FORBIDDEN"}
+PASS TC09 :: P = 0: custodian GET quota -> 403 FORBIDDEN; never quota :: {"status":403,"code":"FORBIDDEN"}
+PASS TC09 :: P = 0: missing CSRF -> 403 INVALID_CSRF; never quota :: {"status":403,"code":"INVALID_CSRF"}
+PASS TC09 :: P = 0: foreign Origin -> 403 FORBIDDEN_ORIGIN; never quota :: {"status":403,"code":"FORBIDDEN_ORIGIN"}
+PASS TC09 :: P = 0: database unchanged and quota unchanged after every AC09 row :: {"quota":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true}}
+PASS TC09 :: P = 1: duplicate -> 409 DUPLICATE_REQUEST; never quota; no write :: {"status":409,"code":"DUPLICATE_REQUEST"}
+PASS TC09 :: P = 2: asset checked out (on loan) -> 409 ASSET_UNAVAILABLE; never quota :: {"status":409,"code":"ASSET_UNAVAILABLE"}
+PASS TC09 :: P = 2: asset retired -> 409 ASSET_UNAVAILABLE; never quota :: {"status":409,"code":"ASSET_UNAVAILABLE"}
+PASS TC09 :: P = 2: unknown asset -> 404 NOT_FOUND; never quota :: {"status":404,"code":"NOT_FOUND"}
+PASS TC09 :: P = 2: malformed field (number) -> 400 VALIDATION_ERROR; never quota :: {"status":400,"code":"VALIDATION_ERROR"}
+PASS TC09 :: P = 2: extra field -> 400 VALIDATION_ERROR; never quota :: {"status":400,"code":"VALIDATION_ERROR"}
+PASS TC09 :: P = 2: invalid JSON -> 400 INVALID_JSON; never quota :: {"status":400,"code":"INVALID_JSON"}
+PASS TC09 :: P = 2: body over 16 KB -> 413; never quota :: {"status":413,"code":"PAYLOAD_TOO_LARGE"}
+PASS TC09 :: P = 2: POST without session -> 401; never quota :: {"status":401,"code":"UNAUTHENTICATED"}
+PASS TC09 :: P = 2: GET quota without session -> 401; never quota :: {"status":401,"code":"UNAUTHENTICATED"}
+PASS TC09 :: P = 2: custodian POST -> 403 FORBIDDEN; never quota :: {"status":403,"code":"FORBIDDEN"}
+PASS TC09 :: P = 2: custodian GET quota -> 403 FORBIDDEN; never quota :: {"status":403,"code":"FORBIDDEN"}
+PASS TC09 :: P = 2: missing CSRF -> 403 INVALID_CSRF; never quota :: {"status":403,"code":"INVALID_CSRF"}
+PASS TC09 :: P = 2: foreign Origin -> 403 FORBIDDEN_ORIGIN; never quota :: {"status":403,"code":"FORBIDDEN_ORIGIN"}
+PASS TC09 :: P = 2: database unchanged and quota unchanged after every AC09 row :: {"quota":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}}
+PASS TC09 :: P = 2: duplicate -> 409 DUPLICATE_REQUEST; never quota; no write :: {"status":409,"code":"DUPLICATE_REQUEST"}
+PASS TC10 :: foreign request ID -> 404 and foreign loan ID -> 404; 200 quota body has no UUIDs :: {"foreignRequest":404,"foreignLoan":404,"uuidFree":true}
+PASS TC12 :: I: {2,2,0,false}; after checkout {1,2,1,true} consistent with /requests/mine and /loans/mine; direct CANCELLED -> {0,2,2,true} :: {"two":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"afterCheckout":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"consistent":true,"afterFixture":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true}}
+PASS TC17 :: missing CSRF on cancel -> 403 INVALID_CSRF; quota {2,2,0,false}; nothing written :: {"status":403,"code":"INVALID_CSRF"}
+SUMMARY 38 passed, 0 failed
+exit=0
+end 2026-11-28 00:54:07 ICT

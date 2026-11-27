@@ -2,14 +2,14 @@
 // Real HTTP to real API instances on localhost; synthetic fixture users/assets; no interception or mocks.
 //   API_ON  = http://localhost:3000/api  (BORROWING_QUOTA=enabled, REQUEST_LIFECYCLE_WRITES=enabled)
 //   API_OFF = http://localhost:3001/api  (BORROWING_QUOTA=disabled, REQUEST_LIFECYCLE_WRITES=disabled) = Release 1 config
+// Usage (from the repository root, servers running): node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/rg05-local-rehearsal.cjs
 const fs = require('node:fs')
-const path = require('node:path')
-const { createRequire } = require('node:module')
-const { request } = createRequire('D:/SWE_Project/kitloop-rg03-1dca78a/e2e/package.json')('@playwright/test')
+const paths = require('./paths.cjs')
+const { request } = paths.requireFrom('e2e', '@playwright/test')
 
-const ORIGIN = 'http://localhost:5173'
-const API_ON = 'http://localhost:3000/api', API_OFF = 'http://localhost:3001/api'
-const creds = JSON.parse(fs.readFileSync(path.join(__dirname, '.e2e-credentials.json'), 'utf8'))
+const ORIGIN = paths.APP_ORIGIN
+const API_ON = paths.API_ON, API_OFF = paths.API_OFF
+const creds = paths.readCredentials()
 const results = []
 const record = (item, pass, detail) => { results.push({ item, result: pass ? 'PASS' : 'FAIL', detail }); console.log(`${pass ? 'PASS' : 'FAIL'} ${item} :: ${JSON.stringify(detail)}`) }
 
@@ -137,7 +137,7 @@ const code = r => r.json?.error?.code ?? null
     record('unexpected error', false, { message: String(error.message).split('\n')[0] })
   } finally {
     for (const s of sessions) await s.ctx.dispose()
-    fs.writeFileSync(path.join(__dirname, '..', 'logs', '21-rg05-local-rehearsal.json'), JSON.stringify({
+    fs.writeFileSync(paths.outputPath('rg05-local-rehearsal.json'), JSON.stringify({
       note: 'LOCAL rehearsal against real local API instances with synthetic data. NOT production RG-05 evidence.', results }, null, 2) + '\n')
     process.exitCode = results.every(r => r.result === 'PASS') ? 0 : 1
   }

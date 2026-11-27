@@ -1,0 +1,7 @@
+Database safety guards (fixture.mts), 2026-11-28 00:54:41 ICT. Each DATABASE_URL below is fake; the guard must refuse before any connection.
+$ DATABASE_URL=<value> npx tsx ../artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/fixture.mts
+host/db db.example.com:5432/kitloop_rg03_realapi_test -> exit=1 :: Error: Refusing non-local database host
+host/db 127.0.0.1:55432/kitloop_auth_test -> exit=1 :: Error: Refusing database "kitloop_auth_test": must match ^kitloop_rg03_[a-z0-9_]+$
+host/db 127.0.0.1:55432/kitloop_rg03_variants_test -> exit=1 :: Error: Refusing database "kitloop_rg03_variants_test": expected "kitloop_rg03_realapi_test"
+host/db 127.0.0.1:55432/kitloop -> exit=1 :: Error: Refusing database "kitloop": must match ^kitloop_rg03_[a-z0-9_]+$
+credentials file created by any refused run: no

@@ -2,18 +2,17 @@
 // Real Vite frontend + real KitLoop API + real PostgreSQL. The ONLY interception is on GET /api/borrowing-quota: the
 // request is sent to the real API at once (route.fetch), and the REAL response is delivered unchanged after a hold.
 // No response body, status or header is invented or altered. Every other call passes through untouched.
-// Usage: node r05-c02-realapi.cjs <fixed|prefix>
+// Usage (from the repository root, servers running):
+//   node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/r05-c02-realapi.cjs <fixed|prefix>
 const fs = require('node:fs')
-const path = require('node:path')
-const { createRequire } = require('node:module')
-const { chromium, request: playwrightRequest } = createRequire('D:/SWE_Project/kitloop-rg03-1dca78a/e2e/package.json')('@playwright/test')
+const paths = require('./paths.cjs')
+const { chromium, request: playwrightRequest } = paths.requireFrom('e2e', '@playwright/test')
 
 const label = process.argv[2]
 if (!['fixed', 'prefix'].includes(label)) throw new Error('usage: <fixed|prefix>')
-const APP = 'http://localhost:5173', API = 'http://localhost:3000/api'
-const OUT = 'D:/SWE_Project/kitloop-lab7-partA-evidence/screenshots'
-fs.mkdirSync(OUT, { recursive: true })
-const creds = JSON.parse(fs.readFileSync(path.join(__dirname, '.e2e-credentials.json'), 'utf8'))
+const APP = paths.APP_ORIGIN, API = paths.API_ON
+const OUT = paths.outputPath('screenshots', '.keep').replace(/[\\/]\.keep$/, '') // git-ignored reproduction output
+const creds = paths.readCredentials()
 const results = []
 const log = (step, data) => { results.push({ step, ...data }); console.log(`${label} ${step} ${JSON.stringify(data)}`) }
 

@@ -1,15 +1,14 @@
 // Reviewer full-stack check (NOT part of the PR). Real Vite frontend + real KitLoop API + real PostgreSQL.
 // NO page.route / request interception anywhere: every /api call reaches the running backend.
-const path = require('node:path')
+// Usage (from the repository root, servers running): node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/fullstack.cjs
 const fs = require('node:fs')
-const { createRequire } = require('node:module')
-const { chromium } = createRequire('D:/SWE_Project/kitloop-rg03-1dca78a/e2e/package.json')('@playwright/test')
+const paths = require('./paths.cjs')
+const { chromium } = paths.requireFrom('e2e', '@playwright/test')
 
-const APP = 'http://localhost:5173'
-const API = 'http://localhost:3000/api'
-const OUT = 'D:/SWE_Project/kitloop-lab7-partA-evidence/screenshots'
-fs.mkdirSync(OUT, { recursive: true })
-const creds = JSON.parse(fs.readFileSync(path.join(__dirname, '.e2e-credentials.json'), 'utf8'))
+const APP = paths.APP_ORIGIN
+const API = paths.API_ON
+const OUT = paths.outputPath('screenshots', '.keep').replace(/[\\/]\.keep$/, '') // git-ignored reproduction output
+const creds = paths.readCredentials()
 const steps = []
 let failed = false
 
