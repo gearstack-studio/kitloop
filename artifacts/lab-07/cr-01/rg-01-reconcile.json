@@ -1,0 +1,99 @@
+{
+  "dryRun": {
+    "command": "reconcile",
+    "scope": [
+      "RG01-e8cf956b-14fd-4b28-88d8-015bd23c63a3"
+    ],
+    "mode": "dry-run",
+    "database": "kitloop_rg01_cli_test",
+    "rule": "PENDING request whose asset has an ACTIVE loan (returnedAt IS NULL) -> DECLINED / ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+    "startedAt": "2026-11-27T14:49:22.024Z",
+    "finishedAt": "2026-11-27T14:49:22.217Z",
+    "before": {
+      "pending": 1,
+      "staleOnActiveLoan": 1,
+      "keptLoanReturned": 0
+    },
+    "stale": [
+      {
+        "requestId": "ea9f07ef-eb2e-478e-86da-76914bcd66d9",
+        "assetId": "RG01-e8cf956b-14fd-4b28-88d8-015bd23c63a3",
+        "borrowerId": "89dd3cb5-f590-4d46-b686-f2fb530f1d28",
+        "submittedAt": "2026-11-27T14:49:21.059Z",
+        "activeLoanId": "ca8abc0a-8cf6-4b71-a497-60db70f67732",
+        "activeLoanRequestId": "33d2986e-dd3c-4398-9b64-0a28a20aa6e8",
+        "activeLoanCheckedOutAt": "2026-11-27T14:49:21.051Z"
+      }
+    ],
+    "kept": [],
+    "closed": [],
+    "conflicts": [],
+    "after": {
+      "pending": 1,
+      "staleOnActiveLoan": 1,
+      "keptLoanReturned": 0
+    }
+  },
+  "apply": {
+    "command": "reconcile",
+    "scope": [
+      "RG01-e8cf956b-14fd-4b28-88d8-015bd23c63a3"
+    ],
+    "mode": "apply",
+    "database": "kitloop_rg01_cli_test",
+    "rule": "PENDING request whose asset has an ACTIVE loan (returnedAt IS NULL) -> DECLINED / ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+    "startedAt": "2026-11-27T14:49:22.864Z",
+    "finishedAt": "2026-11-27T14:49:23.003Z",
+    "before": {
+      "pending": 1,
+      "staleOnActiveLoan": 1,
+      "keptLoanReturned": 0
+    },
+    "stale": [
+      {
+        "requestId": "ea9f07ef-eb2e-478e-86da-76914bcd66d9",
+        "assetId": "RG01-e8cf956b-14fd-4b28-88d8-015bd23c63a3",
+        "borrowerId": "89dd3cb5-f590-4d46-b686-f2fb530f1d28",
+        "submittedAt": "2026-11-27T14:49:21.059Z",
+        "activeLoanId": "ca8abc0a-8cf6-4b71-a497-60db70f67732",
+        "activeLoanRequestId": "33d2986e-dd3c-4398-9b64-0a28a20aa6e8",
+        "activeLoanCheckedOutAt": "2026-11-27T14:49:21.051Z"
+      }
+    ],
+    "kept": [],
+    "closed": [
+      "ea9f07ef-eb2e-478e-86da-76914bcd66d9"
+    ],
+    "conflicts": [],
+    "after": {
+      "pending": 0,
+      "staleOnActiveLoan": 0,
+      "keptLoanReturned": 0
+    }
+  },
+  "rerun": {
+    "command": "reconcile",
+    "scope": [
+      "RG01-e8cf956b-14fd-4b28-88d8-015bd23c63a3"
+    ],
+    "mode": "dry-run",
+    "database": "kitloop_rg01_cli_test",
+    "rule": "PENDING request whose asset has an ACTIVE loan (returnedAt IS NULL) -> DECLINED / ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER",
+    "startedAt": "2026-11-27T14:49:23.670Z",
+    "finishedAt": "2026-11-27T14:49:23.795Z",
+    "before": {
+      "pending": 0,
+      "staleOnActiveLoan": 0,
+      "keptLoanReturned": 0
+    },
+    "stale": [],
+    "kept": [],
+    "closed": [],
+    "conflicts": [],
+    "after": {
+      "pending": 0,
+      "staleOnActiveLoan": 0,
+      "keptLoanReturned": 0
+    }
+  }
+}
