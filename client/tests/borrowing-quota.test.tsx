@@ -3,7 +3,7 @@
 // TC19 (client parts). Accessible wording recorded before RED in #82 (issuecomment-7195791047).
 // Drives the real App through mocked HTTP only; imports nothing that does not exist before implementation.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../src/App'
 
@@ -241,6 +241,38 @@ describe('CR-01 pending-request quota UI (AC11 / TC11)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry borrowing limit' }))
     const available = await screen.findByRole('button', { name: /Request to borrow Camera/ })
     expect((available as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('R05 AC11-S4 / AC18-S2 (#91): entering My requests invalidates the held quota; no POST while the route-entry re-read is pending', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    const routeEntry = deferred()
+    history.B1 = [pendingOn('R1', laptop)]
+    quotaReplies.B1 = [quota(1), routeEntry.promise, quota(1)]
+    render(<App />)
+    const request = await screen.findByRole('button', { name: /Request to borrow Camera/ })
+    await waitFor(() => expect((request as HTMLButtonElement).disabled).toBe(false))
+    await userEvent.click(request) // selects Camera and opens My requests
+    await historyLoaded()
+    await waitFor(() => expect(quotaCalls()).toHaveLength(2))
+    expect.soft(selector().disabled, 'selector disabled while the route-entry re-read is pending').toBe(true)
+    expect.soft(submitButton().disabled, 'Submit disabled while the route-entry re-read is pending').toBe(true)
+    // Every way a user could submit: click Submit and submit the form.
+    await userEvent.click(submitButton())
+    fireEvent.submit(submitButton().closest('form')!)
+    expect(calls.filter(call => call.method === 'POST' && call.path === '/api/requests'),
+      'no POST /api/requests while the route-entry re-read is pending').toHaveLength(0)
+    routeEntry.resolve(json(quota(1)))
+    expect(await within(await region()).findByText(/1 of 2 pending requests/)).toBeTruthy()
+    await waitFor(() => expect(submitButton().disabled).toBe(false))
+  })
+
+  it('C02 AC11-S4 (#91): while the quota is loading, the catalog control keeps its descriptive accessible name', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    quotaReplies.B1 = [deferred().promise]
+    render(<App />)
+    const control = await screen.findByRole('button', { name: 'Checking your borrowing limit: Camera, CAM-01 cannot be requested yet' })
+    expect(control.textContent).toBe('Checking limit')
+    expect((control as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('Q07a AC11-S7: a successful submission shows the notice and re-reads the quota', async () => {

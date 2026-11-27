@@ -1,0 +1,12 @@
+     username     |  assetId   |  status   
+------------------+------------+-----------
+ e2e91.full.a     | E2E-CAM-01 | CANCELLED
+ e2e91.full.a     | E2E-LAP-01 | PENDING
+ e2e91.full.a     | E2E-TRI-01 | PENDING
+ e2e91.full.b     | E2E-LAP-01 | PENDING
+ e2e91.r05.fixed  | E2E-LAP-01 | PENDING
+ e2e91.r05.fixed  | E2E-TRI-01 | PENDING
+ e2e91.r05.prefix | E2E-LAP-01 | PENDING
+ e2e91.r05.prefix | E2E-TRI-01 | PENDING
+(8 rows)
+

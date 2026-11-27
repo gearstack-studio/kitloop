@@ -1,0 +1,123 @@
+HEAD 3a44570608f9c11257f8a762d5f9b86c33bc7753
+start 2026-11-27 22:17:21 ICT
+$ npm test -- --reporter=verbose --no-color
+
+> client@0.0.0 test
+> vitest run --reporter=verbose --no-color
+
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop-91-verify/client
+
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > keep their fall duration and delay when they re-roll at the end of each loop 465ms
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > have fixed, distinct resting places for the reduced-motion scene 79ms
+ ✓ tests/landing-animation.test.tsx > UAT-E05 falling equipment icons > stay decorative: hidden from assistive technology 76ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > custodian Active loans: equipment, borrower and checkout custodian by name for each record 456ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > borrower My loans: equipment name and dates, no person names or custodian ID 68ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > sets the picker maximum to the latest browser-local minute within the period and states the period 450ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > shows terminal statuses with their closure reason and time 445ms
+ ✓ tests/request-lifecycle.test.tsx > Request lifecycle display > does not let a terminal request block a new request for available equipment 16ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > keeps loan, request and person IDs as collapsed secondary metadata 56ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 loans show names > falls back to the Asset ID and "Name unavailable" without inventing names or showing UUIDs as names 44ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 requests show names > custodian Pending requests: equipment and borrower by name; UUIDs only in Record IDs 114ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 requests show names > borrower My requests: equipment name first, status kept, request ID secondary 17ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > BORROWER: shows the username once, never an account UUID prefix 235ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > sets the minimum to the next browser-local minute and labels the timezone 541ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > CUSTODIAN: shows the username once, never an account UUID prefix 145ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > offers only available equipment without an existing pending request 1470ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > requires a due date and submits only the selected request with its local date converted to UTC 1161ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > refreshes the maximum with the minimum as time passes 105ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > disables submission while loading, busy, or selection becomes unavailable 296ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > rejects past due dates even when native validation is bypassed 115ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > renders history with equipment name and status without checkout controls 337ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > blocks unavailable, still-loading, busy and non-pending requests 317ms
+ ✓ tests/checkout.test.tsx > Custodian checkout form > shows persisted loan identifiers, checkout and due timestamps, and status 169ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > distinguishes loading, error/retry and empty history 218ms
+ ✓ tests/requests.test.tsx > Borrow Request UI > tells a custodian with an empty queue that only assigned equipment is listed 26ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > accepts a due date at the maximum and submits it as a UTC ISO timestamp 1196ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > submits the selected request and refreshes queue, availability and the ACTIVE loan 2184ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > explains why an available asset with the current borrower’s pending request cannot be requested 2085ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > rejects a due date beyond the maximum, and year 9999, even when native validation is bypassed 341ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > shows the maximum message when Check out is clicked with an over-maximum date (validation is not left to the browser) 95ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /dashboard shows both links and marks only its own page as current 1791ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > offers Cancel only for PENDING requests, posts with CSRF, and refreshes history 1771ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (component) > applies no maximum when none is configured (OQ-01 unresolved) 197ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q01 AC11-S1: shows available pending capacity (active loans not counted) and allows submission 2456ms
+ ✓ tests/request-lifecycle.test.tsx > Borrower cancel (mocked HTTP) > shows lifecycle statuses but no Cancel action in the compatibility release (lifecycle actions off) 355ms
+ ✓ tests/loans-workflow.test.tsx > My loans panel > shows loading before displaying a successful empty list 1598ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > /requests shows both links and marks only its own page as current 412ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > lets a different borrower select the same available asset when their own history has no pending request 537ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > prevents duplicate clicks while a checkout is in flight 776ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > treats a trailing slash as the same page 325ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02a AC11-S2: at the limit the panel says so and the request form is disabled 647ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /unknown 2022ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout due-date maximum (app, mocked HTTP) > passes the server maximum to the picker and shows a server-side rejection without claiming success 733ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > submits a date that became valid while the form stayed open, exactly once, as UTC ISO 61ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > keeps the newest request history when overlapping retries resolve out of order 538ms
+ ✓ tests/loans-workflow.test.tsx > My loans panel > shows an in-panel error and retries the loans endpoint 727ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > requires a reason, posts it with CSRF, and removes the request from the refreshed queue 733ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > still rejects a date beyond the current maximum after time passes 78ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > accepts a valid date and the exact (minute) maximum by click 93ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > refreshes after a 409, disables checkout of the now unavailable item, and shows the conflict 473ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /dashboard/extra 243ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02b AC11-S2: catalog eligibility precedence is unavailable → already pending → quota reached → eligible 326ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > hides Decline but keeps checkout in the compatibility release (lifecycle actions off) 123ms
+ ✓ tests/loans-workflow.test.tsx > Active loans panel > shows loading before displaying a successful empty list 158ms
+ ✓ tests/request-lifecycle.test.tsx > Custodian decline (mocked HTTP) > offers only custodian-selectable reasons 127ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > rejects past dates by click with the inline message and recovers when corrected 93ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > rejects an empty or unparseable date even if the form is submitted programmatically 63ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > renders a not-found view at /signup 180ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > follows a configured maximum that changes while the form stays mounted, including back to no maximum 88ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > applies no upper limit when no maximum is configured 43ms
+ ✓ tests/loan-duration.test.tsx > UAT-E02 checkout with a stale picker maximum (PR #73 P2) > does not submit again while the checkout is busy 121ms
+ ✓ tests/loans-workflow.test.tsx > Active loans panel > shows an in-panel error and retries the loans endpoint 376ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > keeps the session after a 403 and reports lack of permission 362ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q03 AC11-S3: historical over-limit usage is shown unclamped and blocks submission 273ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > uses the username from the login response 2743ms
+ ✓ tests/readable-names.test.tsx > UAT-E03 header shows the signed-in username > falls back to the role, not a UUID, if the server sends no username 56ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > submits from My Requests, refreshes persisted history, and prevents a second selection 536ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > redirects /dashboard to sign in without offering registration 267ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking each link navigates to its route and moves the current marker; both stay visible 855ms
+ ✓ tests/navigation.test.tsx > Signed-out navigation > redirects /requests to sign in without offering registration 209ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04a AC11-S4: while the quota is loading, a loading status is shown and submission is disabled 328ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > clears private custodian state when the session expires 346ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > clicking the current page link does not add a history entry 274ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04b AC11-S4 (preserved): an unknown quota does not disable cancelling an existing pending request 180ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > refreshes stale history after a 409 without displaying success 486ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > shows safe server failures without claiming success 191ms
+ ✓ tests/checkout-workflow.test.tsx > Custodian checkout app workflow (mocked HTTP) > distinguishes a committed checkout from a failed refresh and hides repeat checkout controls 195ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > is keyboard operable: both links are in the tab order in reading order and Enter navigates 324ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > ends an expired session and removes private history 285ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q05 AC11-S5: a failed quota read shows an alert with Retry; Retry recovers the panel 347ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > browser Back and Forward restore the route and its current marker 296ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > is not shown to custodians, who keep their single dashboard 40ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > distinguishes successful creation from a failed history refresh and blocks resubmission 256ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > loads request history on a fresh visit to the page 62ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > signed out at /dashboard: redirected to sign in with no borrower navigation 94ms
+ ✓ tests/borrower-navigation.test.tsx > UAT-E04 persistent borrower navigation > signed out at /requests: redirected to sign in with no borrower navigation 80ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q06 AC11-S6: a stale-state 409 BORROWING_QUOTA_EXCEEDED shows the server message and re-reads quota, catalog, requests and loans 334ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > keeps submission disabled while the quota refresh after a 409 is pending 365ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > shows a quota read failure on the catalog and lets the borrower retry there 146ms
+ ✓ tests/borrow-workflow.test.tsx > Borrower workflow integration in the React app (mocked HTTP) > ignores a delayed history retry after logout and a different borrower signs in 828ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > R05 AC11-S4 / AC18-S2 (#91): entering My requests invalidates the held quota; no POST while the route-entry re-read is pending 302ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > C02 AC11-S4 (#91): while the quota is loading, the catalog control keeps its descriptive accessible name 82ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07a AC11-S7: a successful submission shows the notice and re-reads the quota 307ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07b AC11-S7: if the quota re-read fails after success, the UI says so and keeps submission disabled 271ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q08 AC11-S8: a 401 from the quota read ends the session and removes quota state 62ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q09 AC11-S9: a late quota response from a previous session is ignored after another borrower signs in 1021ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q10 AC11-S10 (preserved): a custodian never reads a quota and sees no quota panel 106ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q11 AC18-S1: cancelling a pending request re-reads the quota and re-enables submission 272ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12a AC18-S2: entering My requests re-reads the quota (recovery made by another user) 157ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12b AC18-S2: the Refresh borrowing limit button re-reads the quota 125ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q13 AC18-S3: recovery succeeded but the quota re-read failed — message shown, submission disabled until Retry 297ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q14 AC12: a reload reads the quota from the server again; nothing is cached on the client 108ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota false there is no quota call or panel and submission is unchanged 207ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota absent there is no quota call or panel and submission is unchanged 206ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q16 AC10 / TC10 (client): the quota read is a credentialed GET with no query string, body or borrower identifier 65ms
+
+ Test Files  12 passed (12)
+      Tests  105 passed (105)
+   Start at  22:17:24
+   Duration  21.11s (environment 61%, tests 25%, setup 7%, import 4%, transform 2%)
+
+exit=0
+end 2026-11-27 22:17:45 ICT

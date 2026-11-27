@@ -285,6 +285,13 @@ function App() {
   }
 
   const route = path === '/' || path === '/login' || path === '/dashboard' || path === '/requests' ? path : null
+  // #91 (R05): entering My requests re-reads the quota (effect below). Invalidate the held quota in the same render that
+  // changes the route, so stale capacity is never shown as usable or authorizes a request while that read is pending.
+  const [quotaRoute, setQuotaRoute] = useState(route)
+  if (route !== quotaRoute) {
+    setQuotaRoute(route)
+    if (route === '/requests' && quotaEnabled && identity?.role === 'BORROWER') setQuotaStatus('loading')
+  }
 
   useEffect(() => {
     if (checking) return

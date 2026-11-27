@@ -59,7 +59,7 @@ export default function Catalog({ assets, status, onRetry, canRequest, requests,
                     : limited
                       ? quota === 'reached'
                         ? `Request limit reached: ${asset.name}, ${asset.assetId} cannot be requested now`
-                        : `${quotaLabel}: ${asset.name}, ${asset.assetId} cannot be requested yet`
+                        : `${quota === 'error' ? 'Borrowing limit unavailable' : 'Checking your borrowing limit'}: ${asset.name}, ${asset.assetId} cannot be requested yet`
                       : asset.available ? `Request to borrow ${asset.name}, ${asset.assetId}` : `${asset.name}, ${asset.assetId} is checked out and cannot be requested`}
                   onClick={() => onRequest(asset.assetId)}
                 >{pending ? 'Request pending' : limited ? quotaLabel : 'Request to borrow'}</button>}
