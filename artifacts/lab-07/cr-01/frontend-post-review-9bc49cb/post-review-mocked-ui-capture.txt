@@ -1,0 +1,13 @@
+----- BEGIN post-review mocked UI capture -----
+MOCKED FRONTEND VERIFICATION (Playwright route interception, synthetic data) — not full-stack or production
+source: worktree D:/SWE_Project/kitloop-pr89-final, HEAD 9bc49cb73bd454c5b1d0c6c7c32b3c77fa693bd7; client/src tracked changes: []
+frontend: Vite dev server http://127.0.0.1:5199 serving client/ of that worktree; Playwright 1.64.1 Chromium headless; reduced motion
+capture start 2026-11-27T14:24:32Z = 2026-11-27 21:24:32 ICT
+$ node artifacts/lab-07/cr-01/screenshots/post-review-9bc49cb/ui-verify-post-review.mocked.cjs
+PASS catalog-quota-error desktop  | Camera control text="Borrowing limit unavailable" disabled=true; role=button name="Retry borrowing limit" count=1 disabled=false; Retry focusable=true; [catalog-quota-error] horizontal overflow=0px; after Retry (keyboard Enter): Camera text="Request to borrow" disabled=false; quota GETs=2; alert gone=true; [catalog-after-retry] horizontal overflow=0px
+PASS catalog-quota-error mobile  | Camera control text="Borrowing limit unavailable" disabled=true; role=button name="Retry borrowing limit" count=1 disabled=false; Retry focusable=true; [catalog-quota-error] horizontal overflow=0px; after Retry (keyboard Enter): Camera text="Request to borrow" disabled=false; quota GETs=2; alert gone=true; [catalog-after-retry] horizontal overflow=0px
+PASS pending-refresh-after-409 desktop  | while quota re-read held: Submit disabled=true, selector disabled=true; panel loading text visible=true; POST /api/requests count while held (after a forced second click)=1; [pending-refresh-after-409] horizontal overflow=0px; after fresh full quota: Submit disabled=true; POST count=1; [after-fresh-full-quota] horizontal overflow=0px
+PASS pending-refresh-after-409 mobile  | while quota re-read held: Submit disabled=true, selector disabled=true; panel loading text visible=true; POST /api/requests count while held (after a forced second click)=1; [pending-refresh-after-409] horizontal overflow=0px; after fresh full quota: Submit disabled=true; POST count=1; [after-fresh-full-quota] horizontal overflow=0px
+capture exit=0
+capture end 2026-11-27T14:24:39Z = 2026-11-27 21:24:40 ICT
+----- END post-review mocked UI capture -----

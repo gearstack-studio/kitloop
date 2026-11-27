@@ -1,0 +1,1532 @@
+----- BEGIN pre-fix regression check (findings F-01 delayed 409, F-03 catalog error) -----
+note: a first attempt at 21:11:57 ICT via 'npx vitest ... -t "a|b"' stalled before Vitest started (no output; the Windows npx cmd shim mis-handled the '|' in the pattern) and was stopped; this rerun calls the local Vitest binary directly.
+checkout: isolated worktree D:/SWE_Project/kitloop-pr89-prefix, detached HEAD e14b914ee67defe9d6f4ab0dcb707865f4a5b2de (implementation reviewed by DEV4952 before the fix)
+tracked changes vs e14b914: M client/tests/borrowing-quota.test.tsx  (the only change is the overlaid final test file)
+overlay: tests/borrowing-quota.test.tsx from 9bc49cb, sha256 7812b01fcac70cb41591f45d066953c32e00ed48a74dcda8c78ba7b4b689b2d2
+start 2026-11-27T14:22:36Z = 2026-11-27 21:22:37 ICT
+$ node node_modules/vitest/vitest.mjs run tests/borrowing-quota.test.tsx --reporter=verbose --no-color -t "keeps submission disabled while the quota refresh after a 409 is pending|shows a quota read failure on the catalog"
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop-pr89-prefix/client
+
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q01 AC11-S1: shows available pending capacity (active loans not counted) and allows submission
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02a AC11-S2: at the limit the panel says so and the request form is disabled
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02b AC11-S2: catalog eligibility precedence is unavailable → already pending → quota reached → eligible
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q03 AC11-S3: historical over-limit usage is shown unclamped and blocks submission
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04a AC11-S4: while the quota is loading, a loading status is shown and submission is disabled
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04b AC11-S4 (preserved): an unknown quota does not disable cancelling an existing pending request
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q05 AC11-S5: a failed quota read shows an alert with Retry; Retry recovers the panel
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q06 AC11-S6: a stale-state 409 BORROWING_QUOTA_EXCEEDED shows the server message and re-reads quota, catalog, requests and loans
+ × tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > keeps submission disabled while the quota refresh after a 409 is pending 716ms
+   → expected [ { method: 'POST', …(4) }, …(1) ] to have a length of 1 but got 2
+ × tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > shows a quota read failure on the catalog and lets the borrower retry there 1021ms
+   → Unable to find role="button" and name `/Borrowing limit unavailable: Camera/`
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+            title="Signed in as borrower.one"
+          >
+            <span
+              class="visually-hidden"
+            >
+              Signed in as 
+            </span>
+            borrower.one
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+          class="borrower-nav"
+        >
+          <ul>
+            <li>
+              <a
+                aria-current="page"
+                class="btn btn--primary"
+                href="/dashboard"
+              >
+                <span
+                  class="btn-label"
+                >
+                  Equipment dashboard
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="btn btn--secondary"
+                href="/requests"
+              >
+                <span
+                  class="btn-label"
+                >
+                  My requests
+                </span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              4
+               
+              assets
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic camera
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Camera, CAM-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Computer
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Laptop
+                </h3>
+                <p>
+                  Synthetic laptop
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    LAP-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Laptop, LAP-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card asset-card--unavailable"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Audio
+                  </span>
+                  <span
+                    class="unavailable"
+                  >
+                    Checked out
+                  </span>
+                </div>
+                <h3>
+                  Microphone
+                </h3>
+                <p>
+                  Synthetic microphone
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    MIC-01
+                  </code>
+                  <button
+                    aria-label="Microphone, MIC-01 is checked out and cannot be requested"
+                    disabled=""
+                    type="button"
+                  >
+                    Request to borrow
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Tripod
+                </h3>
+                <p>
+                  Synthetic tripod
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    TRI-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Tripod, TRI-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No requests to show yet.
+          </p>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+            title="Signed in as borrower.one"
+          >
+            <span
+              class="visually-hidden"
+            >
+              Signed in as 
+            </span>
+            borrower.one
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+          class="borrower-nav"
+        >
+          <ul>
+            <li>
+              <a
+                aria-current="page"
+                class="btn btn--primary"
+                href="/dashboard"
+              >
+                <span
+                  class="btn-label"
+                >
+                  Equipment dashboard
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="btn btn--secondary"
+                href="/requests"
+              >
+                <span
+                  class="btn-label"
+                >
+                  My requests
+                </span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              4
+               
+              assets
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic camera
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Camera, CAM-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Computer
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Laptop
+                </h3>
+                <p>
+                  Synthetic laptop
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    LAP-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Laptop, LAP-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card asset-card--unavailable"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Audio
+                  </span>
+                  <span
+                    class="unavailable"
+                  >
+                    Checked out
+                  </span>
+                </div>
+                <h3>
+                  Microphone
+                </h3>
+                <p>
+                  Synthetic microphone
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    MIC-01
+                  </code>
+                  <button
+                    aria-label="Microphone, MIC-01 is checked out and cannot be requested"
+                    disabled=""
+                    type="button"
+                  >
+                    Request to borrow
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Tripod
+                </h3>
+                <p>
+                  Synthetic tripod
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    TRI-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Tripod, TRI-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No requests to show yet.
+          </p>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07a AC11-S7: a successful submission shows the notice and re-reads the quota
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07b AC11-S7: if the quota re-read fails after success, the UI says so and keeps submission disabled
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q08 AC11-S8: a 401 from the quota read ends the session and removes quota state
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q09 AC11-S9: a late quota response from a previous session is ignored after another borrower signs in
+ ↓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q10 AC11-S10 (preserved): a custodian never reads a quota and sees no quota panel
+ ↓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q11 AC18-S1: cancelling a pending request re-reads the quota and re-enables submission
+ ↓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12a AC18-S2: entering My requests re-reads the quota (recovery made by another user)
+ ↓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12b AC18-S2: the Refresh borrowing limit button re-reads the quota
+ ↓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q13 AC18-S3: recovery succeeded but the quota re-read failed — message shown, submission disabled until Retry
+ ↓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q14 AC12: a reload reads the quota from the server again; nothing is cached on the client
+ ↓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota false there is no quota call or panel and submission is unchanged
+ ↓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota absent there is no quota call or panel and submission is unchanged
+ ↓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q16 AC10 / TC10 (client): the quota read is a credentialed GET with no query string, body or borrower identifier
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > keeps submission disabled while the quota refresh after a 409 is pending
+AssertionError: expected [ { method: 'POST', …(4) }, …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ tests/borrowing-quota.test.tsx:229:91
+    227|     expect(quotaCalls()).toHaveLength(2)
+    228|     await userEvent.click(submitButton())
+    229|     expect(calls.filter(call => call.method === 'POST' && call.path ==…
+       |                                                                                           ^
+    230|     refresh.resolve(json(quota(2)))
+    231|     await screen.findByText('2 of 2 pending requests')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > shows a quota read failure on the catalog and lets the borrower retry there
+TestingLibraryElementError: Unable to find role="button" and name `/Borrowing limit unavailable: Camera/`
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+            title="Signed in as borrower.one"
+          >
+            <span
+              class="visually-hidden"
+            >
+              Signed in as 
+            </span>
+            borrower.one
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+          class="borrower-nav"
+        >
+          <ul>
+            <li>
+              <a
+                aria-current="page"
+                class="btn btn--primary"
+                href="/dashboard"
+              >
+                <span
+                  class="btn-label"
+                >
+                  Equipment dashboard
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="btn btn--secondary"
+                href="/requests"
+              >
+                <span
+                  class="btn-label"
+                >
+                  My requests
+                </span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              4
+               
+              assets
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic camera
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Camera, CAM-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Computer
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Laptop
+                </h3>
+                <p>
+                  Synthetic laptop
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    LAP-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Laptop, LAP-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card asset-card--unavailable"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Audio
+                  </span>
+                  <span
+                    class="unavailable"
+                  >
+                    Checked out
+                  </span>
+                </div>
+                <h3>
+                  Microphone
+                </h3>
+                <p>
+                  Synthetic microphone
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    MIC-01
+                  </code>
+                  <button
+                    aria-label="Microphone, MIC-01 is checked out and cannot be requested"
+                    disabled=""
+                    type="button"
+                  >
+                    Request to borrow
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Tripod
+                </h3>
+                <p>
+                  Synthetic tripod
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    TRI-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Tripod, TRI-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No requests to show yet.
+          </p>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="shell shell--authenticated"
+    >
+      <header
+        class="topbar"
+      >
+        <a
+          aria-label="KitLoop home"
+          class="brand"
+          href="/"
+        >
+          <svg
+            aria-hidden="true"
+            class="kitloop-logo"
+            fill="none"
+            focusable="false"
+            viewBox="0 0 32 32"
+          >
+            <path
+              d="M 27.02 9.11 C 28.93 12.16 25.53 17.71 19.44 21.51 C 13.36 25.32 6.88 25.93 4.98 22.89 C 3.07 19.84 6.47 14.29 12.56 10.49 C 18.64 6.68 25.12 6.07 27.02 9.11 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M 27.02 22.89 C 25.12 25.93 18.64 25.32 12.56 21.51 C 6.47 17.71 3.07 12.16 4.98 9.11 C 6.88 6.07 13.36 6.68 19.44 10.49 C 25.53 14.29 28.93 19.84 27.02 22.89 Z"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-opacity="0.65"
+              stroke-width="1.4"
+            />
+            <circle
+              cx="27.02"
+              cy="9.11"
+              fill="#38BDF8"
+              r="2.15"
+            >
+              <animatemotion
+                calcMode="paced"
+                dur="14s"
+                path="M 0 0 C 1.91 3.05 -1.49 8.60 -7.58 12.40 C -13.66 16.21 -20.14 16.82 -22.04 13.78 C -23.95 10.73 -20.55 5.18 -14.46 1.38 C -8.38 -2.43 -1.90 -3.04 0 0 Z"
+                repeatCount="indefinite"
+              />
+            </circle>
+          </svg>
+          <span
+            class="brand-name"
+          >
+            KitLoop
+          </span>
+        </a>
+        <div
+          class="topbar-controls"
+        >
+          <span
+            class="identity-tag"
+            title="Signed in as borrower.one"
+          >
+            <span
+              class="visually-hidden"
+            >
+              Signed in as 
+            </span>
+            borrower.one
+          </span>
+          <button
+            class="btn btn--secondary"
+          >
+            <span
+              class="btn-label"
+            >
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+      <main
+        class="dashboard"
+      >
+        <div
+          class="page-heading"
+        >
+          <div>
+            <span
+              class="eyebrow"
+            >
+              BORROWER
+               WORKSPACE
+            </span>
+            <h1>
+              Find your next tool.
+            </h1>
+            <p>
+              Browse equipment and follow your requests and loans.
+            </p>
+          </div>
+        </div>
+        <nav
+          aria-label="Borrower pages"
+          class="borrower-nav"
+        >
+          <ul>
+            <li>
+              <a
+                aria-current="page"
+                class="btn btn--primary"
+                href="/dashboard"
+              >
+                <span
+                  class="btn-label"
+                >
+                  Equipment dashboard
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="btn btn--secondary"
+                href="/requests"
+              >
+                <span
+                  class="btn-label"
+                >
+                  My requests
+                </span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <section
+          aria-busy="false"
+          aria-labelledby="catalog-heading"
+          class="panel catalog"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="catalog-heading"
+            >
+              Equipment catalog
+            </h2>
+            <span
+              class="catalog-count"
+            >
+              4
+               
+              assets
+            </span>
+          </div>
+          <ul
+            class="asset-grid"
+          >
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Camera
+                </h3>
+                <p>
+                  Synthetic camera
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    CAM-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Camera, CAM-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Computer
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Laptop
+                </h3>
+                <p>
+                  Synthetic laptop
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    LAP-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Laptop, LAP-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card asset-card--unavailable"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Audio
+                  </span>
+                  <span
+                    class="unavailable"
+                  >
+                    Checked out
+                  </span>
+                </div>
+                <h3>
+                  Microphone
+                </h3>
+                <p>
+                  Synthetic microphone
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    MIC-01
+                  </code>
+                  <button
+                    aria-label="Microphone, MIC-01 is checked out and cannot be requested"
+                    disabled=""
+                    type="button"
+                  >
+                    Request to borrow
+                  </button>
+                </div>
+              </article>
+            </li>
+            <li>
+              <article
+                class="asset-card"
+              >
+                <div
+                  class="asset-meta"
+                >
+                  <span>
+                    Camera
+                  </span>
+                  <span
+                    class="available"
+                  >
+                    Available
+                  </span>
+                </div>
+                <h3>
+                  Tripod
+                </h3>
+                <p>
+                  Synthetic tripod
+                </p>
+                <div
+                  class="asset-footer"
+                >
+                  <code>
+                    TRI-01
+                  </code>
+                  <button
+                    aria-label="Checking your borrowing limit: Tripod, TRI-01 cannot be requested yet"
+                    disabled=""
+                    type="button"
+                  >
+                    Checking limit
+                  </button>
+                </div>
+              </article>
+            </li>
+          </ul>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="requests-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="requests-heading"
+            >
+              My requests
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No requests to show yet.
+          </p>
+        </section>
+        <section
+          aria-busy="false"
+          aria-labelledby="loans-heading"
+          class="panel"
+        >
+          <div
+            class="section-heading"
+          >
+            <h2
+              id="loans-heading"
+            >
+              My loans
+            </h2>
+            <span>
+              0
+               records
+            </span>
+          </div>
+          <p
+            class="empty"
+          >
+            No loans to show yet.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ tests/borrowing-quota.test.tsx:239:38
+    237|     quotaReplies.B1 = [{ status: 500, body: {} }, quota(0)]
+    238|     render(<App />)
+    239|     const unavailable = await screen.findByRole('button', { name: /Bor…
+       |                                      ^
+    240|     expect((unavailable as HTMLButtonElement).disabled).toBe(true)
+    241|     await userEvent.click(screen.getByRole('button', { name: 'Retry bo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 21 skipped (23)
+   Start at  21:22:38
+   Duration  5.25s (environment 44%, tests 35%, transform 9%, setup 8%, import 4%)
+
+prefix exit=1
+end 2026-11-27T14:22:44Z = 2026-11-27 21:22:44 ICT
+----- END pre-fix regression check -----

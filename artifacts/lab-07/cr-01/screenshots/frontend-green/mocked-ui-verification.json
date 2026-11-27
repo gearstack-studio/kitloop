@@ -1,0 +1,196 @@
+{
+  "note": "MOCKED FRONTEND VERIFICATION — synthetic API responses via Playwright route interception; not production or full-stack evidence",
+  "app": "http://127.0.0.1:5199",
+  "results": [
+    {
+      "scenario": "01-available-quota",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"1 of 2 pending requests\" visible",
+        "text \"You can submit 1 more request.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "01-available-quota",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"1 of 2 pending requests\" visible",
+        "text \"You can submit 1 more request.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "02-full-quota",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"2 of 2 pending requests\" visible",
+        "text \"Limit reached.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "02-full-quota",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"2 of 2 pending requests\" visible",
+        "text \"Limit reached.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "03-historical-over-limit",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"3 of 2 pending requests\" visible",
+        "text \"Limit reached.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "03-historical-over-limit",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"3 of 2 pending requests\" visible",
+        "text \"Limit reached.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "04-loading",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"Loading borrowing limit…\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "04-loading",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"Loading borrowing limit…\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "05-error-and-retry",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"Borrowing limit could not be loaded.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px",
+        "after-step \"05b-after-retry\" ok; Submit disabled=true"
+      ]
+    },
+    {
+      "scenario": "05-error-and-retry",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"Borrowing limit could not be loaded.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px",
+        "after-step \"05b-after-retry\" ok; Submit disabled=true"
+      ]
+    },
+    {
+      "scenario": "06-recovery-after-cancellation",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"2 of 2 pending requests\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px",
+        "after-step \"06b-after-cancel\" ok; Submit disabled=true"
+      ]
+    },
+    {
+      "scenario": "06-recovery-after-cancellation",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"2 of 2 pending requests\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px",
+        "after-step \"06b-after-cancel\" ok; Submit disabled=true"
+      ]
+    },
+    {
+      "scenario": "07-catalog-eligibility-full",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "button \"Request limit reached: Camera, CAM-01 cannot be requested now\"",
+        "button \"Request pending: you already have a pending request for Laptop, LAP-01\"",
+        "button \"Microphone, MIC-01 is checked out and cannot be requested\"",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "07-catalog-eligibility-full",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "button \"Request limit reached: Camera, CAM-01 cannot be requested now\"",
+        "button \"Request pending: you already have a pending request for Laptop, LAP-01\"",
+        "button \"Microphone, MIC-01 is checked out and cannot be requested\"",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "08-feature-disabled",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "no \"Borrowing limit\" region",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "08-feature-disabled",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "no \"Borrowing limit\" region",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "09-malformed-response",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "text \"Borrowing limit could not be loaded.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "09-malformed-response",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "text \"Borrowing limit could not be loaded.\" visible",
+        "Submit disabled=true",
+        "horizontal overflow=0px"
+      ]
+    }
+  ]
+}
