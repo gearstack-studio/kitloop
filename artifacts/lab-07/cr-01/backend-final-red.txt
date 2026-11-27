@@ -1,0 +1,295 @@
+
+> server@1.0.0 test
+> vitest run tests/borrowing-quota.test.ts --reporter=verbose --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-pr88-red-rerun/server
+
+ × tests/borrowing-quota.test.ts > TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes 151ms
+   → expected 201 to be 409 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC05/TC13/TC14: checkout lowers the pending count exactly once and reopens capacity 79ms
+   → expected 201 to be 409 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC05/TC13/TC14: cancel lowers the pending count exactly once and reopens capacity 70ms
+   → expected 201 to be 409 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC05/TC13/TC14: decline lowers the pending count exactly once and reopens capacity 68ms
+   → expected 201 to be 409 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC05/TC13/TC14: auto-decline lowers the pending count exactly once and reopens capacity 72ms
+   → expected 201 to be 409 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC07/TC16: historical over-capacity rows remain and recovery works down to P = 1 152ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded 95ms
+   → expected [ …(2) ] to have a length of 1 but got 2
+ × tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded 75ms
+   → expected [ …(3) ] to have a length of 2 but got 3
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 0 65ms
+ × tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 1 73ms
+   → expected 201 to be 409 // Object.is equality
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 0 54ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 2 60ms
+ × tests/borrowing-quota.test.ts > TC09/TC10: preserves request precedence and reads only the authenticated borrower's quota 222ms
+   → expected 404 to be 403 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC19: startup validates the flag and the off state preserves submissions 1ms
+   → expected function to throw an error, but it didn't
+ × tests/borrowing-quota.test.ts > TC21: 3 active loans do not prevent a borrower from submitting two pending requests 135ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC21: 5 active loans do not prevent a borrower from submitting two pending requests 179ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC06/TC12: counts pending rows across reconnects and excludes terminal requests and loans 120ms
+   → expected 404 to be 200 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC17: unauthorized recovery and invalid inputs leave pending rows unchanged 228ms
+   → expected 404 to be 200 // Object.is equality
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant
+TC20 checkout, P=1: {"409/201":10}
+
+ × tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant 108ms
+   → expected +0 to be 1 // Object.is equality
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant 1085ms
+ × tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant 108ms
+   → expected +0 to be 1 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant 108ms
+   → expected +0 to be 1 // Object.is equality
+ × tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant 224ms
+   → expected +0 to be 1 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes
+AssertionError: expected 201 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 201
+
+ ❯ expectBlocked tests/borrowing-quota.test.ts:66:27
+     64|   const before = await rows(who);
+     65|   const response = await submit(who, assetId);
+     66|   expect(response.status).toBe(409);
+       |                           ^
+     67|   expect(response.body.error).toMatchObject({ code: "BORROWING_QUOTA_E…
+     68|   expect(response.body.error).not.toHaveProperty("fields");
+ ❯ tests/borrowing-quota.test.ts:98:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC05/TC13/TC14: checkout lowers the pending count exactly once and reopens capacity
+ FAIL  tests/borrowing-quota.test.ts > TC05/TC13/TC14: cancel lowers the pending count exactly once and reopens capacity
+ FAIL  tests/borrowing-quota.test.ts > TC05/TC13/TC14: decline lowers the pending count exactly once and reopens capacity
+ FAIL  tests/borrowing-quota.test.ts > TC05/TC13/TC14: auto-decline lowers the pending count exactly once and reopens capacity
+AssertionError: expected 201 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 201
+
+ ❯ expectBlocked tests/borrowing-quota.test.ts:66:27
+     64|   const before = await rows(who);
+     65|   const response = await submit(who, assetId);
+     66|   expect(response.status).toBe(409);
+       |                           ^
+     67|   expect(response.body.error).toMatchObject({ code: "BORROWING_QUOTA_E…
+     68|   expect(response.body.error).not.toHaveProperty("fields");
+ ❯ tests/borrowing-quota.test.ts:109:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC07/TC16: historical over-capacity rows remain and recovery works down to P = 1
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ expectQuota tests/borrowing-quota.test.ts:55:27
+     53| async function expectQuota(who: Session, pendingRequests: number) {
+     54|   const response = await quota(who);
+     55|   expect(response.status).toBe(200);
+       |                           ^
+     56|   expect(response.headers["cache-control"]).toBe("no-store");
+     57|   expect(response.body).toEqual({
+ ❯ tests/borrowing-quota.test.ts:144:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded
+AssertionError: expected [ …(2) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ tests/borrowing-quota.test.ts:171:63
+    169|         outcomes.push(result.body.error.code);
+    170|       }
+    171|       expect(results.filter(result => result.status === 201)).toHaveLe…
+       |                                                               ^
+    172|       expect(await rows(borrower)).toHaveLength(2);
+    173|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded
+AssertionError: expected [ …(3) ] to have a length of 2 but got 3
+
+- Expected
++ Received
+
+- 2
++ 3
+
+ ❯ tests/borrowing-quota.test.ts:171:63
+    169|         outcomes.push(result.body.error.code);
+    170|       }
+    171|       expect(results.filter(result => result.status === 201)).toHaveLe…
+       |                                                               ^
+    172|       expect(await rows(borrower)).toHaveLength(2);
+    173|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 1
+AssertionError: expected 201 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 201
+
+ ❯ tests/borrowing-quota.test.ts:197:27
+    195|     const result = await submit(borrower, target);
+    196|     expect(spy).toHaveBeenCalledTimes(attempts);
+    197|     expect(result.status).toBe(status);
+       |                           ^
+    198|     if (status === 409) {
+    199|       expect(result.body.error.code).toBe(failures === 3 ? "CONFLICT" …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC09/TC10: preserves request precedence and reads only the authenticated borrower's quota
+AssertionError: expected 404 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 404
+
+ ❯ tests/borrowing-quota.test.ts:226:43
+    224|   expect((await submit(other, shared)).status).toBe(201);
+    225|   expect((await request(app).get(path)).status).toBe(401);
+    226|   expect((await quota(custodian)).status).toBe(403);
+       |                                           ^
+    227|   await expectQuota(borrower, 2);
+    228|   await expectQuota(other, 1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC19: startup validates the flag and the off state preserves submissions
+AssertionError: expected function to throw an error, but it didn't
+ ❯ tests/borrowing-quota.test.ts:243:23
+    241|       const start = () => runtimeConfig({ BORROWING_QUOTA, REQUEST_LIF…
+    242|       if (BORROWING_QUOTA === "yes" || (BORROWING_QUOTA === "enabled" …
+    243|         expect(start).toThrow(ConfigurationError);
+       |                       ^
+    244|       } else {
+    245|         expect(start).not.toThrow();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC21: 3 active loans do not prevent a borrower from submitting two pending requests
+ FAIL  tests/borrowing-quota.test.ts > TC21: 5 active loans do not prevent a borrower from submitting two pending requests
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ expectQuota tests/borrowing-quota.test.ts:55:27
+     53| async function expectQuota(who: Session, pendingRequests: number) {
+     54|   const response = await quota(who);
+     55|   expect(response.status).toBe(200);
+       |                           ^
+     56|   expect(response.headers["cache-control"]).toBe("no-store");
+     57|   expect(response.body).toEqual({
+ ❯ tests/borrowing-quota.test.ts:271:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC06/TC12: counts pending rows across reconnects and excludes terminal requests and loans
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ expectQuota tests/borrowing-quota.test.ts:55:27
+     53| async function expectQuota(who: Session, pendingRequests: number) {
+     54|   const response = await quota(who);
+     55|   expect(response.status).toBe(200);
+       |                           ^
+     56|   expect(response.headers["cache-control"]).toBe("no-store");
+     57|   expect(response.body).toEqual({
+ ❯ tests/borrowing-quota.test.ts:294:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC17: unauthorized recovery and invalid inputs leave pending rows unchanged
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ expectQuota tests/borrowing-quota.test.ts:55:27
+     53| async function expectQuota(who: Session, pendingRequests: number) {
+     54|   const response = await quota(who);
+     55|   expect(response.status).toBe(200);
+       |                           ^
+     56|   expect(response.headers["cache-control"]).toBe("no-store");
+     57|   expect(response.body).toEqual({
+ ❯ tests/borrowing-quota.test.ts:323:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/19]⎯
+
+ FAIL  tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant
+ FAIL  tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant
+ FAIL  tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant
+ FAIL  tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/borrowing-quota.test.ts:356:52
+    354|       expect(initial === 1 ? ["CONFLICT"] : ["CONFLICT", "BORROWING_QU…
+    355|     }
+    356|     if (initial === 2 && submitted) expect(closed).toBe(1);
+       |                                                    ^
+    357|     const current = await rows(borrower);
+    358|     const pendingCount = current.filter(row => row.status === RequestS…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/19]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  19 failed | 4 passed (23)
+   Start at  19:47:31
+   Duration  5.16s (tests 83%, transform 9%, import 8%)
