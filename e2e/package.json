@@ -9,6 +9,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report playwright-report",
     "install:browsers": "playwright install chromium",
+    "test:e2e:quota": "playwright test -c playwright.quota.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

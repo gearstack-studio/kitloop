@@ -5,6 +5,8 @@ import { API_BASE, API_ORIGIN, API_PORT, APP_ORIGIN, CLIENT_DIR, SERVER_DIR, WEB
 // and checkout cannot be undone until the return feature exists, so every run starts from a freshly created database.
 export default defineConfig({
   testDir: "./tests",
+  // Spec 09 needs the quota-enabled server and its own database; it runs only via playwright.quota.config.ts.
+  testIgnore: ["**/09-borrowing-quota.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
