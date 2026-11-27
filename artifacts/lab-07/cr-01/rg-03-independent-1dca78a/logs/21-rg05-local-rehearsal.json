@@ -1,0 +1,175 @@
+{
+  "note": "LOCAL rehearsal against real local API instances with synthetic data. NOT production RG-05 evidence.",
+  "results": [
+    {
+      "item": "E3 quota GET contract",
+      "result": "PASS",
+      "detail": {
+        "borrower": [
+          200,
+          {
+            "pendingRequests": 1,
+            "maxPendingRequests": 2,
+            "remainingRequestCapacity": 1,
+            "canSubmitRequest": true
+          },
+          "no-store"
+        ],
+        "custodian": 403,
+        "query": [
+          400,
+          "VALIDATION_ERROR"
+        ]
+      }
+    },
+    {
+      "item": "E4 enforcement at P=2",
+      "result": "PASS",
+      "detail": {
+        "statuses": [
+          201,
+          201,
+          409
+        ],
+        "code": "BORROWING_QUOTA_EXCEEDED",
+        "rowsBefore": 2,
+        "rowsAfter": 2
+      }
+    },
+    {
+      "item": "E5 recovery by cancel",
+      "result": "PASS",
+      "detail": {
+        "cancel": [
+          200,
+          "CANCELLED"
+        ],
+        "quota": {
+          "pendingRequests": 1,
+          "maxPendingRequests": 2,
+          "remainingRequestCapacity": 1,
+          "canSubmitRequest": true
+        },
+        "newRequest": 201
+      }
+    },
+    {
+      "item": "E6 recovery by decline (+ unassigned custodian refused)",
+      "result": "PASS",
+      "detail": {
+        "unassigned": 404,
+        "afterUnassigned": "PENDING",
+        "decline": [
+          200,
+          "DECLINED",
+          "BORROWER_NOT_ELIGIBLE"
+        ],
+        "quota": {
+          "pendingRequests": 1,
+          "maxPendingRequests": 2,
+          "remainingRequestCapacity": 1,
+          "canSubmitRequest": true
+        },
+        "newRequest": 201
+      }
+    },
+    {
+      "item": "E7 recovery by checkout",
+      "result": "PASS",
+      "detail": {
+        "checkout": [
+          201,
+          "ACTIVE"
+        ],
+        "quota": {
+          "pendingRequests": 1,
+          "maxPendingRequests": 2,
+          "remainingRequestCapacity": 1,
+          "canSubmitRequest": true
+        },
+        "newRequest": 201
+      }
+    },
+    {
+      "item": "E8 active loan not counted",
+      "result": "PASS",
+      "detail": {
+        "activeLoans": 1,
+        "quota": {
+          "pendingRequests": 0,
+          "maxPendingRequests": 2,
+          "remainingRequestCapacity": 2,
+          "canSubmitRequest": true
+        },
+        "submits": [
+          201,
+          201
+        ]
+      }
+    },
+    {
+      "item": "E9 preserved behaviour",
+      "result": "PASS",
+      "detail": {
+        "duplicate": [
+          409,
+          "DUPLICATE_REQUEST"
+        ],
+        "unavailable": [
+          409,
+          "ASSET_UNAVAILABLE"
+        ],
+        "custodianPost": 403,
+        "foreignCancel": 404,
+        "aSecond": 201
+      }
+    },
+    {
+      "item": "E9b two borrowers can request one available asset",
+      "result": "PASS",
+      "detail": {
+        "aOnRG16": 201,
+        "bOnRG16": 201
+      }
+    },
+    {
+      "item": "Auto-decline on checkout lowers competitor P",
+      "result": "PASS",
+      "detail": {
+        "checkout": 201,
+        "competitor": [
+          "DECLINED",
+          "ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER"
+        ],
+        "competitorP": [
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "item": "Release 1 contract (quota+lifecycle disabled)",
+      "result": "PASS",
+      "detail": {
+        "quotaGet": [
+          404,
+          "BORROWING_QUOTA_DISABLED"
+        ],
+        "features": {
+          "requestLifecycleActions": false,
+          "loanMaxDays": null,
+          "borrowingQuota": false
+        },
+        "thirdRequestAllowed": [
+          201,
+          201,
+          201
+        ],
+        "cancel": [
+          404,
+          "LIFECYCLE_ACTIONS_DISABLED"
+        ]
+      }
+    }
+  ]
+}
