@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../src/App'
 
@@ -24,7 +24,7 @@ describe('Signed-out navigation', () => {
     render(<App />)
 
     await screen.findByRole('button', { name: 'Sign In' })
-    expect(window.location.pathname).toBe('/login')
+    await waitFor(() => expect(window.location.pathname).toBe('/login'))
     expect(screen.queryByRole('link', { name: 'Sign up' })).toBeNull()
   })
 })

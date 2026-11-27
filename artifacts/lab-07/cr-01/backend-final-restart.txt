@@ -1,0 +1,11 @@
+KitLoop listening on port 35888
+Before restart
+{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}
+KitLoop listening on port 35888
+After restart (PID 6292 -> 21520)
+{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}
+After checkout
+{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true}
+After cancellation
+{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true}
+AC12 process restart and persisted readback passed

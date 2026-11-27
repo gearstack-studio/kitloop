@@ -4,9 +4,9 @@ import { ApiError } from "./api-error.js";
 import { activeLoanWhere, assetState } from "./availability.js";
 import { requireAuth, requireCsrf, requireRole } from "./auth.js";
 import { prisma } from "./db.js";
-import { createBorrowRequest, requestAssetId, requestDetails } from "./borrow-requests.js";
+import { createBorrowRequest, readBorrowingQuota, requestAssetId, requestDetails } from "./borrow-requests.js";
 import { borrowerLoanDetails, checkoutInput, checkoutRequest, custodianLoanDetails, loanDto } from "./checkout.js";
-import { requestLifecycleWrites } from "./config.js";
+import { borrowingQuota, requestLifecycleWrites } from "./config.js";
 import { cancelInput, cancelRequest, declineInput, declineRequest } from "./request-lifecycle.js";
 
 export const domainRouter = Router();
@@ -113,6 +113,18 @@ domainRouter.get("/requests/mine", requireRole(Role.BORROWER), async (request, r
     include: requestDetails,
     orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
   }));
+});
+
+domainRouter.get("/borrowing-quota", requireRole(Role.BORROWER), async (request, response) => {
+  if (!borrowingQuota(process.env)) {
+    throw new ApiError(404, "BORROWING_QUOTA_DISABLED", "Borrowing quota is disabled");
+  }
+  if (Object.keys(request.query).length > 0) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Query parameters are not supported", {
+      query: "Remove all query parameters",
+    });
+  }
+  response.json(await readBorrowingQuota(request.principal!.id));
 });
 
 domainRouter.get("/requests/pending", requireRole(Role.CUSTODIAN), async (request, response) => {

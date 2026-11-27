@@ -2,7 +2,7 @@ import request from "supertest";
 import { Prisma, PrismaClient, Role } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import app from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { hashPassword } from "../src/password.js";
@@ -60,8 +60,11 @@ async function queueIds(who: Session) {
 }
 
 beforeAll(async () => {
-  borrowerA = await session(Role.BORROWER); borrowerB = await session(Role.BORROWER);
   custodian = await session(Role.CUSTODIAN); foreignCustodian = await session(Role.CUSTODIAN);
+});
+beforeEach(async () => {
+  borrowerA = await session(Role.BORROWER);
+  borrowerB = await session(Role.BORROWER);
 });
 afterAll(async () => {
   await prisma.loan.deleteMany({ where: { assetId: { in: assetIds } } });

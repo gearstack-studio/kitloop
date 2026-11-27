@@ -129,7 +129,7 @@ describe('UAT-E04 persistent borrower navigation', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })))
     render(<App />)
     await screen.findByRole('button', { name: 'Sign In' })
-    expect(window.location.pathname).toBe('/login')
+    await waitFor(() => expect(window.location.pathname).toBe('/login'))
     expect(screen.queryByRole('navigation', { name: 'Borrower pages' })).toBeNull()
   })
 })
