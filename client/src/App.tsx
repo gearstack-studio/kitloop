@@ -254,6 +254,7 @@ function App() {
       setSelectedAsset('')
       // CR-01 (#82): re-read the quota with the existing refresh. A failed quota read never repeats the mutation; it
       // reports the success and the failed refresh separately, and new submissions stay disabled until a reload succeeds.
+      if (quotaEnabled && identity.role === 'BORROWER') setQuotaStatus('loading')
       const quotaRefresh = loadQuota({ reportFailure: true }).then(() => true, () => false)
       try { await refreshData(identity.role) } catch (failure) {
         if (epoch !== sessionEpoch.current) return
@@ -270,6 +271,7 @@ function App() {
         // A 409 means server state changed under us; refetch so the catalog shows current availability (FEAT-02 AC-13).
         if (issue.status === 409) {
           // CR-01 (#82): a 409 (including BORROWING_QUOTA_EXCEEDED) also re-reads the quota; a failure shows the panel alert.
+          if (quotaEnabled && identity.role === 'BORROWER') setQuotaStatus('loading')
           void loadQuota()
           try { await refreshData(identity.role) } catch (refreshFailure) {
             if (epoch !== sessionEpoch.current) return
@@ -277,7 +279,7 @@ function App() {
             setCatalogStatus('error')
           }
         }
-        setError(issue.status === 403 ? 'You do not have permission for this action.' : issue.message)
+        if (epoch === sessionEpoch.current) setError(issue.status === 403 ? 'You do not have permission for this action.' : issue.message)
       }
     } finally { setBusy(false) }
   }
@@ -301,6 +303,7 @@ function App() {
   }, [route, loadQuota])
 
   const quotaState: QuotaState = !quotaEnabled ? 'off'
+    : quotaStatus === 'error' ? 'error'
     : quotaStatus !== 'ready' || !quota ? 'unknown' : quota.canSubmitRequest ? 'available' : 'reached'
   // New submissions need a known quota with capacity. Cancel and other recovery actions are never gated by the quota.
   const quotaAllowsRequest = quotaState === 'off' || quotaState === 'available'
@@ -335,6 +338,7 @@ function App() {
       {route !== '/requests' && <Catalog assets={assets} status={catalogStatus} onRetry={retryCatalog}
         canRequest={identity.role === 'BORROWER'} requests={requests} requestStatus={requestStatus}
         busy={busy} quota={identity.role === 'BORROWER' ? quotaState : 'off'}
+        onRetryQuota={() => { setQuotaStatus('loading'); void loadQuota() }}
         onRequest={assetId => { setSelectedAsset(assetId); navigate('/requests') }} />}
       {identity.role === 'BORROWER' && route === '/requests' && <>
         {quotaEnabled && <BorrowingLimit status={quotaStatus} quota={quota} busy={busy}

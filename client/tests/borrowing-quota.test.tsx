@@ -216,6 +216,33 @@ describe('CR-01 pending-request quota UI (AC11 / TC11)', () => {
     expect(within(panel).getByText(/Limit reached/i)).toBeTruthy()
   })
 
+  it('keeps submission disabled while the quota refresh after a 409 is pending', async () => {
+    const refresh = deferred()
+    history.B1 = [pendingOn('R1', laptop)]
+    quotaReplies.B1 = [quota(1), refresh.promise]
+    submitReply = { status: 409, body: { error: { code: 'BORROWING_QUOTA_EXCEEDED', message: 'You already have two pending requests.' } } }
+    render(<App />)
+    await submitCamera()
+    await screen.findByText('You already have two pending requests.')
+    expect(quotaCalls()).toHaveLength(2)
+    await userEvent.click(submitButton())
+    expect(calls.filter(call => call.method === 'POST' && call.path === '/api/requests')).toHaveLength(1)
+    refresh.resolve(json(quota(2)))
+    await screen.findByText('2 of 2 pending requests')
+    expect(submitButton().disabled).toBe(true)
+  })
+
+  it('shows a quota read failure on the catalog and lets the borrower retry there', async () => {
+    window.history.replaceState(null, '', '/dashboard')
+    quotaReplies.B1 = [{ status: 500, body: {} }, quota(0)]
+    render(<App />)
+    const unavailable = await screen.findByRole('button', { name: /Borrowing limit unavailable: Camera/ })
+    expect((unavailable as HTMLButtonElement).disabled).toBe(true)
+    await userEvent.click(screen.getByRole('button', { name: 'Retry borrowing limit' }))
+    const available = await screen.findByRole('button', { name: /Request to borrow Camera/ })
+    expect((available as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('Q07a AC11-S7: a successful submission shows the notice and re-reads the quota', async () => {
     quotaReplies.B1 = [quota(1), quota(2)]
     history.B1 = [pendingOn('R1', laptop)]
