@@ -59,3 +59,9 @@ npm run lint
 The full frontend suite passed **103/103** across 12 files at `2ed2a7c`, including the quota tests from #89. TypeScript, the production frontend build and lint passed. Commands from `client/` were `npm test -- --no-color`, `npm run build` and `npm run lint`. [Frontend output](rg-01-frontend-post-89.txt)
 
 The production observations and OD-13 approval requirements above are separate from the staging integration.
+
+## GREEN after PR #92 merged into staging
+
+27 November 2026 ICT. Staging merge `bccee09e72c9be00ae8747bc2d70c902260fa667` was merged into the RG-01 branch at `885c09fdbbf84982b05fa3446902b01da4cc4353` without conflicts. The application trees match staging. The backend and release tooling trees match the previously verified PR head `8b06ac9`.
+
+The full frontend suite passed **105/105** across 12 files at `885c09f`, including the route-entry quota invalidation and loading-state accessible name regressions from #92. TypeScript, build and lint passed. Commands from `client/` were `npm test -- --no-color`, `npm run build` and `npm run lint`. [Frontend output](rg-01-frontend-post-92.txt)
