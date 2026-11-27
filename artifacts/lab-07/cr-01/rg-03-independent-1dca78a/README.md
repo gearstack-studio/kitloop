@@ -95,7 +95,7 @@ Evidence keys: **B** = `server/tests/borrowing-quota.test.ts` (in `logs/12`); **
 
 **Paths:**
 - The scripts find the repository from their own location; set `KITLOOP_ROOT` to override.
-- Generated credentials go to `scripts/.e2e-credentials.json` (git-ignored, random per run). Runtime output goes to `reproduction-output/` (git-ignored, override with `RG03_OUTPUT_DIR`). Historical `logs/` and `screenshots/` are never written.
+- Generated credentials go to `scripts/.e2e-credentials.json` (git-ignored, random per run). Runtime output goes to `reproduction-output/` (git-ignored); reproduction scripts can use another location through `RG03_OUTPUT_DIR`. Historical `logs/` and `screenshots/` are never written.
 
 1. Create two empty databases, `kitloop_rg03_realapi_test` and `kitloop_rg03_variants_test`, and run `npx prisma migrate deploy` (in `server/`) with `DATABASE_URL` pointing at each.
 2. Variant probe (in `server/`): `DATABASE_URL=<…/kitloop_rg03_variants_test> npx tsx ../artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/tc-variant-probe.mts`
@@ -105,6 +105,6 @@ Evidence keys: **B** = `server/tests/borrowing-quota.test.ts` (in `logs/12`); **
    - A second instance with `PORT=3001 REQUEST_LIFECYCLE_WRITES=disabled BORROWING_QUOTA=disabled`.
    - Vite: `node client/node_modules/vite/bin/vite.js --host localhost --port 5173 --strictPort` (in `client/`).
 5. From the repository root: `node <scripts>/rg05-local-rehearsal.cjs`, `node <scripts>/fullstack.cjs`, `node <scripts>/r05-c02-realapi.cjs fixed`, `node <scripts>/tc11-s6-stale409.cjs`.
-6. Cleanup: `node <scripts>/cleanup.cjs --output` removes the credentials file and `reproduction-output/`. Then stop the servers and drop both databases.
+6. Cleanup: `node <scripts>/cleanup.cjs` removes generated credentials and preserves output. Add `--output` to remove only the fixed default `reproduction-output/` directory. If `RG03_OUTPUT_DIR` points elsewhere, `--output` fails; remove that custom directory manually after checking its path. Then stop the servers and drop both databases.
 
 `<scripts>` = `artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts`.
