@@ -124,7 +124,7 @@ describe('CR-01 pending-request quota UI (AC11 / TC11)', () => {
     history.B1 = [pendingOn('R1', laptop)]; loans.B1 = [activeLoan]; quotaReplies.B1 = [quota(1)]
     render(<App />)
     const panel = await region()
-    expect(within(panel).getByText(/1 of 2 pending requests/)).toBeTruthy()
+    expect(await within(panel).findByText(/1 of 2 pending requests/)).toBeTruthy()
     expect(within(panel).getByText(/You can submit 1 more request\b/)).toBeTruthy()
     expect(within(panel).queryByText(/loan/i)).toBeNull()
     await chooseCamera()
@@ -135,7 +135,7 @@ describe('CR-01 pending-request quota UI (AC11 / TC11)', () => {
     history.B1 = [pendingOn('R1', laptop), pendingOn('R2', tripod)]; quotaReplies.B1 = [quota(2)]
     render(<App />)
     const panel = await region()
-    expect(within(panel).getByText(/2 of 2 pending requests/)).toBeTruthy()
+    expect(await within(panel).findByText(/2 of 2 pending requests/)).toBeTruthy()
     expect(within(panel).getByText(/Limit reached/i)).toBeTruthy()
     await historyLoaded()
     expect(selector().disabled).toBe(true)
@@ -157,7 +157,7 @@ describe('CR-01 pending-request quota UI (AC11 / TC11)', () => {
     history.B1 = [pendingOn('R1', laptop), pendingOn('R2', tripod), pendingOn('R3', old)]; quotaReplies.B1 = [quota(3)]
     render(<App />)
     const panel = await region()
-    expect(within(panel).getByText(/3 of 2 pending requests/)).toBeTruthy()
+    expect(await within(panel).findByText(/3 of 2 pending requests/)).toBeTruthy()
     expect(within(panel).getByText(/Limit reached/i)).toBeTruthy()
     await historyLoaded()
     expect(submitButton().disabled).toBe(true)
