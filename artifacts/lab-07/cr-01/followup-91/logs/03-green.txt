@@ -1,0 +1,41 @@
+----- BEGIN GREEN at committed fix -----
+HEAD 3a44570608f9c11257f8a762d5f9b86c33bc7753; test file sha256 (committed LF) ed0d99a0897b96080e35ba9adeb60e410858e09f47535f209bf70b94c0ad40bb
+green start 2026-11-27 22:17:11 ICT
+$ npx vitest run tests/borrowing-quota.test.tsx --reporter=verbose --no-color
+
+ RUN  v5.1.0 D:/SWE_Project/kitloop-91-verify/client
+
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q01 AC11-S1: shows available pending capacity (active loans not counted) and allows submission 282ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02a AC11-S2: at the limit the panel says so and the request form is disabled 78ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q02b AC11-S2: catalog eligibility precedence is unavailable → already pending → quota reached → eligible 44ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q03 AC11-S3: historical over-limit usage is shown unclamped and blocks submission 68ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04a AC11-S4: while the quota is loading, a loading status is shown and submission is disabled 55ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q04b AC11-S4 (preserved): an unknown quota does not disable cancelling an existing pending request 25ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q05 AC11-S5: a failed quota read shows an alert with Retry; Retry recovers the panel 172ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q06 AC11-S6: a stale-state 409 BORROWING_QUOTA_EXCEEDED shows the server message and re-reads quota, catalog, requests and loans 176ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > keeps submission disabled while the quota refresh after a 409 is pending 236ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > shows a quota read failure on the catalog and lets the borrower retry there 68ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > R05 AC11-S4 / AC18-S2 (#91): entering My requests invalidates the held quota; no POST while the route-entry re-read is pending 149ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > C02 AC11-S4 (#91): while the quota is loading, the catalog control keeps its descriptive accessible name 26ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07a AC11-S7: a successful submission shows the notice and re-reads the quota 150ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q07b AC11-S7: if the quota re-read fails after success, the UI says so and keeps submission disabled 144ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q08 AC11-S8: a 401 from the quota read ends the session and removes quota state 20ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q09 AC11-S9: a late quota response from a previous session is ignored after another borrower signs in 720ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 pending-request quota UI (AC11 / TC11) > Q10 AC11-S10 (preserved): a custodian never reads a quota and sees no quota panel 96ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q11 AC18-S1: cancelling a pending request re-reads the quota and re-enables submission 291ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12a AC18-S2: entering My requests re-reads the quota (recovery made by another user) 166ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q12b AC18-S2: the Refresh borrowing limit button re-reads the quota 151ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 quota after recovery (AC18 / TC18) > Q13 AC18-S3: recovery succeeded but the quota re-read failed — message shown, submission disabled until Retry 283ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q14 AC12: a reload reads the quota from the server again; nothing is cached on the client 133ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota false there is no quota call or panel and submission is unchanged 176ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q15 AC19-S3 (preserved): with features.borrowingQuota absent there is no quota call or panel and submission is unchanged 213ms
+ ✓ tests/borrowing-quota.test.tsx > CR-01 persistence, feature flag and API contract (AC12, AC19, AC10 / TC12, TC19, TC10) > Q16 AC10 / TC10 (client): the quota read is a credentialed GET with no query string, body or borrower identifier 67ms
+
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+   Start at  22:17:12
+   Duration  5.49s (tests 75%, environment 16%, transform 4%, setup 3%, import 2%)
+
+green exit=0
+green end 2026-11-27 22:17:18 ICT
+----- END GREEN -----

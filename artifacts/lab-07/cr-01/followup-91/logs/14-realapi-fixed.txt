@@ -1,0 +1,8 @@
+Frontend: Vite serving client/ of 3a44570608f9c11257f8a762d5f9b86c33bc7753 (FIX)
+API: server/ of 3a44570 on :3000, DB kitloop_91_e2e_test, quota+lifecycle enabled
+start 2026-11-27 22:24:51 ICT
+$ node scripts/r05-c02-realapi.cjs fixed
+fixed C02 {"text":"Checking limit","ariaLabel":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","disabled":true,"heldQuotaResponses":1,"afterRelease":"Request to borrow Camera, E2E-CAM-01","expectedLoadingName":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","pass":true}
+fixed R05 {"seedStatus":201,"otherSessionStatus":201,"serverQuotaBeforeEntry":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"during":{"routeEntryQuotaGetIssued":true,"heldResponses":1,"selectorDisabled":true,"submitDisabled":true,"panel":"Borrowing limit Loading borrowing limit…","postsWhilePending":0,"postResponsesWhilePending":[]},"after":{"panel":"Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.","submitDisabled":true,"postsTotal":0,"postResponses":[]},"persisted":{"pending":["E2E-LAP-01","E2E-TRI-01"],"cameraRows":0},"pass":true}
+exit=0
+end 2026-11-27 22:24:59 ICT
