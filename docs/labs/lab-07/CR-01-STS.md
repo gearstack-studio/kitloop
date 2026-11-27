@@ -353,7 +353,7 @@ Every case: **Actual result: NOT EXECUTED. Verdict: NOT RUN.** The "Predicted RE
 
 | ID | Belongs to | Check | Status |
 | --- | --- | --- | --- |
-| DEP-LC (RG-01) | #83 (DEV4952 executes; yiiipunn verifies) | Phase 2 serving; cancel and decline verified on synthetic records; unauthorized attempts unchanged; reconcile evidence; rollback recorded ([impact analysis §20.3](CR-01-impact-analysis.md#203-release-gates-r4)) | PENDING |
+| DEP-LC (RG-01) | #83 (DEV4952 executes; yiiipunn verifies), required by [#85](https://github.com/gearstack-studio/kitloop/issues/85) | Phase 2 serving; cancel and decline verified on synthetic records; unauthorized attempts unchanged; reconcile evidence; rollback recorded ([impact analysis §20.3](CR-01-impact-analysis.md#203-release-gates-r4)) | Production pending. [Preflight and local GREEN](../../../artifacts/lab-07/cr-01/rg-01-green.md) |
 | RG-02 | — | **N/A to r4.** The r3 FR-12 gate is deferred to #84 as that issue's own evidence. | N/A |
 | RG-03 | Both | This STS's active suite GREEN plus regressions plus CI on the release SHA | PENDING |
 | RG-04 | DEV4952 / yiiipunn | P ≥ 2 preflight | PENDING |

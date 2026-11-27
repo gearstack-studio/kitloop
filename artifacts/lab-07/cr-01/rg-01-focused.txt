@@ -1,0 +1,13 @@
+
+> server@1.0.0 test
+> vitest run tests/request-lifecycle.test.ts tests/lifecycle-rollout.test.ts tests/reconcile-competing-requests.test.ts --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-83/server
+
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Start at  21:48:16
+   Duration  30.62s (tests 92%, import 6%, transform 2%)
