@@ -91,13 +91,10 @@ afterAll(async () => {
 it("TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes", async () => {
   const borrower = await session();
   const a1 = await asset(), a2 = await asset(), a3 = await asset();
-  await expectQuota(borrower, 0);
   const first = await submit(borrower, a1);
   expect(first.status).toBe(201);
   expect(first.body).toMatchObject({ borrowerId: borrower.id, assetId: a1, status: "PENDING" });
-  await expectQuota(borrower, 1);
   expect((await submit(borrower, a2)).status).toBe(201);
-  await expectQuota(borrower, 2);
   for (let attempt = 0; attempt < 3; attempt++) await expectBlocked(borrower, a3);
   const catalog = await request(app).get("/api/assets").set("Cookie", borrower.cookie);
   expect(catalog.body).toEqual(expect.arrayContaining([expect.objectContaining({ assetId: a3, available: true })]));
@@ -262,17 +259,20 @@ it("TC19: startup validates the flag and the off state preserves submissions", a
   expect(me.body.features.borrowingQuota).toBe(false);
 });
 
-it("TC21: three active loans do not prevent a borrower from submitting two pending requests", async () => {
+it.each([3, 5])("TC21: %i active loans do not prevent a borrower from submitting two pending requests", async activeLoans => {
   const borrower = await session();
-  for (let count = 0; count < 3; count++) {
+  for (let count = 0; count < activeLoans; count++) {
     const assetId = await asset();
     const creation = await submit(borrower, assetId);
     expect(creation.status).toBe(201);
     expect((await checkout(creation.body.id, assetId)).status).toBe(201);
   }
-  expect(await prisma.loan.count({ where: { borrowerId: borrower.id, returnedAt: null } })).toBe(3);
+  expect(await prisma.loan.count({ where: { borrowerId: borrower.id, returnedAt: null } })).toBe(activeLoans);
+  await expectQuota(borrower, 0);
   expect((await submit(borrower, await asset())).status).toBe(201);
+  await expectQuota(borrower, 1);
   expect((await submit(borrower, await asset())).status).toBe(201);
+  await expectQuota(borrower, 2);
 });
 
 

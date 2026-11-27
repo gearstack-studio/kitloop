@@ -3,6 +3,7 @@ import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
 import { prisma } from "./db.js";
 import { borrowingQuota } from "./config.js";
+import { setTimeout as delay } from "node:timers/promises";
 
 const maxPendingRequests = 2;
 
@@ -58,7 +59,14 @@ export async function createBorrowRequest(borrowerId: string, assetId: string) {
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2034" && attempt < 2) continue;
+        if (error.code === "P2034" && attempt < 2) {
+          // Spread competing quota transactions out after PostgreSQL rolls them back.
+          if (quotaEnabled) {
+            const baseDelayMs = 20 * 2 ** attempt;
+            await delay(baseDelayMs + Math.floor(Math.random() * baseDelayMs));
+          }
+          continue;
+        }
         if (error.code === "P2002") {
           throw new ApiError(409, "DUPLICATE_REQUEST", "You already have a pending request for this equipment.");
         }
