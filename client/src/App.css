@@ -600,3 +600,12 @@
   .borrower-nav li { flex: 1 1 0; min-width: 0; }
   .borrower-nav a { width: 100%; padding: var(--space-2) var(--space-3); text-align: center; }
 }
+
+/* CR-01 r4 (#82): borrowing limit panel. Reuses panel, heading, alert and retry styles; only the meter is new. */
+.quota-usage { margin: 0 0 var(--space-3); font-size: 18px; font-weight: 650; color: var(--kl-text); }
+.quota-meter { height: 8px; margin-bottom: var(--space-3); overflow: hidden; border: 1px solid var(--kl-border); border-radius: var(--radius-pill); background: var(--kl-surface); }
+.quota-meter span { display: block; height: 100%; background: var(--kl-accent); transition: width var(--kl-base) var(--kl-ease); }
+.quota-capacity, .quota-limit { margin: 0; font-size: 14px; color: var(--color-text-muted); }
+.quota-panel--full .quota-meter span { background: var(--kl-warning); }
+.quota-limit { padding: var(--space-3) var(--space-4); border: 1px solid var(--kl-warning-border); border-radius: var(--radius-control); background: var(--kl-warning-bg); color: var(--kl-warning); }
+@media (prefers-reduced-motion: reduce) { .quota-meter span { transition: none; } }

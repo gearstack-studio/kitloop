@@ -1,0 +1,59 @@
+{
+  "note": "MOCKED FRONTEND VERIFICATION — synthetic API responses via Playwright route interception; not production or full-stack evidence",
+  "app": "http://127.0.0.1:5199",
+  "capturedAt": "2026-11-27T14:24:39.397Z",
+  "results": [
+    {
+      "scenario": "catalog-quota-error",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "Camera control text=\"Borrowing limit unavailable\" disabled=true",
+        "role=button name=\"Retry borrowing limit\" count=1 disabled=false",
+        "Retry focusable=true",
+        "[catalog-quota-error] horizontal overflow=0px",
+        "after Retry (keyboard Enter): Camera text=\"Request to borrow\" disabled=false; quota GETs=2; alert gone=true",
+        "[catalog-after-retry] horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "catalog-quota-error",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "Camera control text=\"Borrowing limit unavailable\" disabled=true",
+        "role=button name=\"Retry borrowing limit\" count=1 disabled=false",
+        "Retry focusable=true",
+        "[catalog-quota-error] horizontal overflow=0px",
+        "after Retry (keyboard Enter): Camera text=\"Request to borrow\" disabled=false; quota GETs=2; alert gone=true",
+        "[catalog-after-retry] horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "pending-refresh-after-409",
+      "viewport": "desktop",
+      "result": "PASS",
+      "checks": [
+        "while quota re-read held: Submit disabled=true, selector disabled=true",
+        "panel loading text visible=true",
+        "POST /api/requests count while held (after a forced second click)=1",
+        "[pending-refresh-after-409] horizontal overflow=0px",
+        "after fresh full quota: Submit disabled=true; POST count=1",
+        "[after-fresh-full-quota] horizontal overflow=0px"
+      ]
+    },
+    {
+      "scenario": "pending-refresh-after-409",
+      "viewport": "mobile",
+      "result": "PASS",
+      "checks": [
+        "while quota re-read held: Submit disabled=true, selector disabled=true",
+        "panel loading text visible=true",
+        "POST /api/requests count while held (after a forced second click)=1",
+        "[pending-refresh-after-409] horizontal overflow=0px",
+        "after fresh full quota: Submit disabled=true; POST count=1",
+        "[after-fresh-full-quota] horizontal overflow=0px"
+      ]
+    }
+  ]
+}
