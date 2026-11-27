@@ -1,0 +1,183 @@
+source=c7a88aeca70607da0cfed8966bf4074b1c2a2e24
+v24.22.3
+START ICT 2026-11-28T01:53:30.8697867+07:00 npm.cmd ci --offline --no-audit --no-fund
+
+added 178 packages in 18s
+npm warn install-scripts 4 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @prisma/client@6.19.3 (postinstall: node scripts/postinstall.js)
+npm warn install-scripts   @prisma/engines@6.19.3 (postinstall: node scripts/postinstall.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   prisma@6.19.3 (preinstall: node scripts/preinstall-entry.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+END ICT 2026-11-28T01:53:50.8524343+07:00 exit=0 npm.cmd ci --offline --no-audit --no-fund
+START ICT 2026-11-28T01:53:50.8624065+07:00 npx.cmd --no-install prisma generate
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to .\node_modules\@prisma\client in 88ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+END ICT 2026-11-28T01:53:54.3450526+07:00 exit=0 npx.cmd --no-install prisma generate
+START ICT 2026-11-28T01:53:54.3470575+07:00 npm.cmd run db:deploy
+
+> server@1.0.0 db:deploy
+> prisma migrate deploy
+
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "kitloop_partb85_test", schema "public" at "127.0.0.1:55488"
+
+4 migrations found in prisma/migrations
+
+Applying migration `20261102125822_auth_baseline`
+Applying migration `20261103090000_unique_pending_request`
+Applying migration `20261103100000_checked_out_request_status`
+Applying migration `20261121090000_request_lifecycle`
+
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.3 -> 8.0.0-rc.36                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261102125822_auth_baseline/
+    └─ migration.sql
+  └─ 20261103090000_unique_pending_request/
+    └─ migration.sql
+  └─ 20261103100000_checked_out_request_status/
+    └─ migration.sql
+  └─ 20261121090000_request_lifecycle/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+END ICT 2026-11-28T01:53:57.2682962+07:00 exit=0 npm.cmd run db:deploy
+START ICT 2026-11-28T01:53:57.2703327+07:00 npm.cmd run build
+
+> server@1.0.0 build
+> npm run typecheck && tsc -p tsconfig.build.json
+
+
+> server@1.0.0 typecheck
+> tsc --noEmit
+
+END ICT 2026-11-28T01:54:02.9299437+07:00 exit=0 npm.cmd run build
+START ICT 2026-11-28T01:54:02.9314384+07:00 npm.cmd test -- --no-color
+
+> server@1.0.0 test
+> vitest run --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-85/server
+
+
+ Test Files  17 passed (17)
+      Tests  152 passed (152)
+   Start at  01:54:04
+   Duration  51.44s (tests 92%, import 6%, transform 1%)
+
+    Isolate  17 workers spawned · ~389ms startup each (spawn + environment, per file)
+             at least ~6.22s faster with isolate: false — reuses workers across files instead of one per file
+
+END ICT 2026-11-28T01:54:56.4253209+07:00 exit=0 npm.cmd test -- --no-color
+START ICT 2026-11-28T01:54:56.4273274+07:00 npm.cmd test -- tests/borrowing-quota.test.ts tests/request-lifecycle.test.ts tests/lifecycle-rollout.test.ts tests/reconcile-competing-requests.test.ts --reporter=verbose --no-color
+
+> server@1.0.0 test
+> vitest run tests/borrowing-quota.test.ts tests/request-lifecycle.test.ts tests/lifecycle-rollout.test.ts tests/reconcile-competing-requests.test.ts --reporter=verbose --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-85/server
+
+ ✓ tests/borrowing-quota.test.ts > TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes 143ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: checkout lowers the pending count exactly once and reopens capacity 108ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: cancel lowers the pending count exactly once and reopens capacity 91ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: decline lowers the pending count exactly once and reopens capacity 93ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: auto-decline lowers the pending count exactly once and reopens capacity 146ms
+ ✓ tests/borrowing-quota.test.ts > TC07/TC16: historical over-capacity rows remain and recovery works down to P = 1 214ms
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded
+TC08a P=1, rounds=20: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded 2281ms
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded
+TC08a P=0, rounds=10: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded 1818ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 0 124ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 1 134ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 0 178ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 2 229ms
+ ✓ tests/borrowing-quota.test.ts > TC09/TC10: preserves request precedence and reads only the authenticated borrower's quota 307ms
+ ✓ tests/borrowing-quota.test.ts > TC19: startup validates the flag and the off state preserves submissions 127ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 3 active loans do not prevent a borrower from submitting two pending requests 224ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 5 active loans do not prevent a borrower from submitting two pending requests 276ms
+ ✓ tests/borrowing-quota.test.ts > TC06/TC12: counts pending rows across reconnects and excludes terminal requests and loans 255ms
+ ✓ tests/borrowing-quota.test.ts > TC17: unauthorized recovery and invalid inputs leave pending rows unchanged 328ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant
+TC20 checkout, P=2: {"201/201":1,"201/409":9}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant 1034ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant
+TC20 checkout, P=1: {"409/201":6,"201/201":4}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant 915ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant
+TC20 cancel, P=2: {"200/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant 965ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant
+TC20 decline, P=2: {"200/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant 1039ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant
+TC20 auto-decline, P=2: {"201/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant 1914ms
+ ✓ tests/lifecycle-rollout.test.ts > REQUEST_LIFECYCLE_WRITES configuration > defaults to disabled and accepts only 'enabled' or 'disabled' 156ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > checkout keeps the pre-lifecycle behaviour: the competing request stays PENDING and no lifecycle value is written 211ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > cancel and decline are unavailable (404 LIFECYCLE_ACTIONS_DISABLED) and change nothing 177ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > login and /auth/me tell the client that lifecycle actions are off 217ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > everything it writes stays readable by the pre-lifecycle 8b6e5a9 client, so 8b6e5a9 remains a safe rollback target 233ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled) > still reads lifecycle rows written while writes were enabled, so it is a safe rollback target after them 215ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > login and /auth/me tell the client that lifecycle actions are on 149ms
+ ✓ tests/lifecycle-rollout.test.ts > Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled) > characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes) 184ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 0 and reports SAFE only when the expected database has zero lifecycle-only rows 976ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 4 (UNSAFE) when lifecycle-only rows exist, e.g. after phase 2 and a rollback to phase 1 1100ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > refuses (exit 2) without checking when connected to a different database or without --expect-database 1865ms
+ ✓ tests/lifecycle-rollout.test.ts > Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-zero (PR #72 re-review P1) > exits 1 (not 0) when the database cannot be reached 3051ms
+ ✓ tests/lifecycle-rollout.test.ts > Rollback safety check > counts lifecycle-only statuses and says whether pre-lifecycle revisions are safe rollback targets 308ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > declines every competing PENDING request with a reason in the checkout transaction, keeping history 253ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > rolls back the checkout, the loan and every decline when a competing decline fails 225ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 competing requests are closed by checkout > gives concurrent checkouts of competing requests exactly one winner, one loan, and a declined loser 199ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > lets a borrower cancel their own PENDING request once, keeping it in history and out of the queue 199ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 borrower cancellation > rejects cancelling another borrower's request, custodians, missing sessions, CSRF failures and status payloads 209ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets an assigned custodian decline a PENDING request with a valid reason 204ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > requires a custodian-selectable reason and rejects unassigned custodians, borrowers and CSRF failures 207ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > lets exactly one of a concurrent cancel and decline close the request 172ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 custodian decline > never leaves a loan for a request cancelled concurrently with its checkout 212ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > allows a new request after a cancelled or declined one while the asset is available, and not while on loan 234ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 requests after a terminal request > does not expire old PENDING requests without an explicit expiry policy 177ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > rejects inconsistent closure data and keeps one PENDING request per borrower and asset 181ms
+ ✓ tests/request-lifecycle.test.ts > UAT-E01 database lifecycle guards > migrates existing PENDING and CHECKED_OUT rows without rewriting them 314ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > dry run reports stale requests (active loan) and kept requests (loan returned) without changing anything 344ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > refuses to apply without the matching database confirmation or while lifecycle writes are disabled 345ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > apply declines only the stale requests, with reason and time, and keeps every other record and its history 356ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > is idempotent: a second run closes nothing and leaves closure timestamps unchanged 314ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > races safely with a borrower cancelling the same stale request: exactly one closure wins 694ms
+ ✓ tests/reconcile-competing-requests.test.ts > P2 reconciliation of pre-existing competing PENDING requests > does not touch a request whose asset is checked out by a checkout that commits during the run 284ms
+
+ Test Files  4 passed (4)
+      Tests  55 passed (55)
+   Start at  01:54:57
+   Duration  30.36s (tests 97%, import 3%)
+
+END ICT 2026-11-28T01:55:28.3908158+07:00 exit=0 npm.cmd test -- tests/borrowing-quota.test.ts tests/request-lifecycle.test.ts tests/lifecycle-rollout.test.ts tests/reconcile-competing-requests.test.ts --reporter=verbose --no-color
