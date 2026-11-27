@@ -1,0 +1,57 @@
+
+> server@1.0.0 test
+> vitest run tests/borrowing-quota.test.ts --reporter=verbose --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-81/server
+
+ ✓ tests/borrowing-quota.test.ts > TC01–TC03: accepts the first two requests and rejects repeated attempts at capacity without writes 189ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: checkout lowers the pending count exactly once and reopens capacity 183ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: cancel lowers the pending count exactly once and reopens capacity 154ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: decline lowers the pending count exactly once and reopens capacity 156ms
+ ✓ tests/borrowing-quota.test.ts > TC05/TC13/TC14: auto-decline lowers the pending count exactly once and reopens capacity 216ms
+ ✓ tests/borrowing-quota.test.ts > TC07/TC16: historical over-capacity rows remain and recovery works down to P = 1 303ms
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded
+TC08a P=1, rounds=20: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+stdout | tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded
+TC08a P=0, rounds=10: ["BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED","BORROWING_QUOTA_EXCEEDED"]
+
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 1 with 2 parallel writes, capacity is never exceeded 2964ms
+ ✓ tests/borrowing-quota.test.ts > TC08a: starting at P = 0 with 3 parallel writes, capacity is never exceeded 2182ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 0 155ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 1 injected failures at P = 1 152ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 0 196ms
+ ✓ tests/borrowing-quota.test.ts > TC08b–d: retries 3 injected failures at P = 2 184ms
+ ✓ tests/borrowing-quota.test.ts > TC09/TC10: preserves request precedence and reads only the authenticated borrower's quota 337ms
+ ✓ tests/borrowing-quota.test.ts > TC19: startup validates the flag and the off state preserves submissions 129ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 3 active loans do not prevent a borrower from submitting two pending requests 257ms
+ ✓ tests/borrowing-quota.test.ts > TC21: 5 active loans do not prevent a borrower from submitting two pending requests 361ms
+ ✓ tests/borrowing-quota.test.ts > TC06/TC12: counts pending rows across reconnects and excludes terminal requests and loans 326ms
+ ✓ tests/borrowing-quota.test.ts > TC17: unauthorized recovery and invalid inputs leave pending rows unchanged 412ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant
+TC20 checkout, P=2: {"201/201":1,"201/409":9}
+
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant
+TC20 checkout, P=1: {"409/201":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 2 obeys the capacity invariant 1219ms
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing checkout at P = 1 obeys the capacity invariant 1091ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant
+TC20 cancel, P=2: {"200/409":10}
+
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant
+TC20 decline, P=2: {"200/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing cancel at P = 2 obeys the capacity invariant 1116ms
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing decline at P = 2 obeys the capacity invariant 1154ms
+stdout | tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant
+TC20 auto-decline, P=2: {"201/409":10}
+
+ ✓ tests/borrowing-quota.test.ts > TC20: submission racing auto-decline at P = 2 obeys the capacity invariant 1912ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  19:46:22
+   Duration  16.74s (tests 96%, import 3%, transform 1%)

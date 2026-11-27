@@ -18,7 +18,7 @@ const password = "synthetic-loan-duration-password";
 const assetIds: string[] = [];
 const userIds: string[] = [];
 type Session = { id: string; cookie: string; csrf: string };
-let borrower: Session, rival: Session, custodian: Session;
+let rival: Session, custodian: Session;
 
 async function session(role: Role): Promise<Session> {
   const user = await prisma.user.create({ data: { username: randomUUID(), role, passwordHash: await hashPassword(password) } });
@@ -34,6 +34,7 @@ async function requestAs(who: Session, assetId: string) {
   return result.body.id as string;
 }
 async function fixture() {
+  const borrower = await session(Role.BORROWER);
   const assetId = `LOAN-MAX-${randomUUID()}`;
   assetIds.push(assetId);
   await prisma.asset.create({ data: { assetId, name: "Loan duration camera", category: "Camera", description: "Synthetic",
@@ -50,7 +51,7 @@ async function assertUntouched(requestId: string, assetId: string) {
 }
 
 beforeAll(async () => {
-  borrower = await session(Role.BORROWER); rival = await session(Role.BORROWER); custodian = await session(Role.CUSTODIAN);
+  rival = await session(Role.BORROWER); custodian = await session(Role.CUSTODIAN);
 });
 afterAll(async () => {
   await prisma.loan.deleteMany({ where: { assetId: { in: assetIds } } });

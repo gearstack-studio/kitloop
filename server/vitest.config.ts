@@ -11,6 +11,6 @@ export default defineConfig({
   test: {
     fileParallelism: false,
     // Lifecycle tests exercise phase 2; tests/lifecycle-rollout.test.ts switches to phase 1 ("disabled") explicitly.
-    env: { REQUEST_LIFECYCLE_WRITES: "enabled" },
+    env: { REQUEST_LIFECYCLE_WRITES: "enabled", BORROWING_QUOTA: "enabled" },
   },
 });

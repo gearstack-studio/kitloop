@@ -13,7 +13,7 @@ const password = "synthetic-checkout-password";
 const assetIds: string[] = [];
 const userIds: string[] = [];
 type Session = { id: string; username: string; cookie: string; csrf: string };
-let borrower: Session, other: Session, custodian: Session, foreignCustodian: Session;
+let other: Session, custodian: Session, foreignCustodian: Session;
 
 async function session(role: Role) {
   const user = await prisma.user.create({ data: { username: randomUUID(), role, passwordHash: await hashPassword(password) } });
@@ -23,6 +23,7 @@ async function session(role: Role) {
   return { id: user.id, username: user.username, cookie: result.headers["set-cookie"][0].split(";")[0], csrf: result.headers["x-csrf-token"] };
 }
 async function fixture() {
+  const borrower = await session(Role.BORROWER);
   const assetId = `CHECKOUT-${randomUUID()}`;
   assetIds.push(assetId);
   await prisma.asset.create({ data: { assetId, name: "Checkout camera", category: "Camera", description: "Synthetic",
@@ -30,7 +31,7 @@ async function fixture() {
   const result = await request(app).post("/api/requests").set("Origin", origin)
     .set("Cookie", borrower.cookie).set("X-CSRF-Token", borrower.csrf).send({ assetId });
   expect(result.status).toBe(201);
-  return { assetId, requestId: result.body.id as string };
+  return { assetId, requestId: result.body.id as string, borrower };
 }
 const futureDue = () => new Date(Date.now() + 86_400_000).toISOString();
 function checkout(who: Session, requestId: string, assetId: string, extra: object = {}) {
@@ -43,7 +44,7 @@ async function assertUntouched(requestId: string, assetId: string) {
 }
 
 beforeAll(async () => {
-  borrower = await session(Role.BORROWER); other = await session(Role.BORROWER);
+  other = await session(Role.BORROWER);
   custodian = await session(Role.CUSTODIAN); foreignCustodian = await session(Role.CUSTODIAN);
 });
 afterAll(async () => {
@@ -70,7 +71,7 @@ describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
   });
 
   it("shows only scoped pending requests with borrower and equipment details", async () => {
-    const { requestId, assetId } = await fixture();
+    const { requestId, assetId, borrower } = await fixture();
     const response = await request(app).get("/api/requests/pending").set("Cookie", custodian.cookie);
     expect(response.status).toBe(200);
     expect(response.body.find((item: { id: string }) => item.id === requestId)).toMatchObject({
@@ -83,7 +84,7 @@ describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
   });
 
   it("creates exactly one ACTIVE loan, checks out the request, and immediately updates all reads", async () => {
-    const { requestId, assetId } = await fixture();
+    const { requestId, assetId, borrower } = await fixture();
     const dueAt = futureDue();
     const before = Date.now();
     const result = await checkout(custodian, requestId, assetId, { dueAt });
@@ -130,7 +131,7 @@ describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
   });
 
   it("rejects missing sessions, wrong role, CSRF failures and foreign-scope requests", async () => {
-    const { requestId, assetId } = await fixture();
+    const { requestId, assetId, borrower } = await fixture();
     expect((await request(app).post(`/api/requests/${requestId}/checkout`).send({ assetId, dueAt: futureDue() })).status).toBe(401);
     expect((await checkout(borrower, requestId, assetId)).status).toBe(403);
     expect((await checkout(foreignCustodian, requestId, assetId)).status).toBe(404);
@@ -181,7 +182,7 @@ describe("F-04 Custodian Checkout Workflow (PostgreSQL)", () => {
   });
 
   it("does not expose a loan status mutation API to borrowers", async () => {
-    const { requestId, assetId } = await fixture();
+    const { requestId, assetId, borrower } = await fixture();
     const created = await checkout(custodian, requestId, assetId);
     const result = await request(app).patch(`/api/loans/${created.body.id}`).set("Cookie", borrower.cookie)
       .set("Origin", origin).set("X-CSRF-Token", borrower.csrf).send({ status: "RETURNED", returnedAt: new Date().toISOString() });

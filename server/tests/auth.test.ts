@@ -117,7 +117,7 @@ describe("FEAT-01 authentication API", () => {
       const current = await request(app).get("/api/auth/me").set("Cookie", cookie);
       expect(current.status).toBe(200);
       // PR #72 P1: /auth/me also tells the client which lifecycle actions this deployment offers.
-      expect(current.body).toEqual({ id: expectedId, role, username, features: { requestLifecycleActions: true, loanMaxDays: null } });
+      expect(current.body).toEqual({ id: expectedId, role, username, features: { requestLifecycleActions: true, loanMaxDays: null, borrowingQuota: true } });
     }
   });
 

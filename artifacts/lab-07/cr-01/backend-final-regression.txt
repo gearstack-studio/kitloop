@@ -1,0 +1,16 @@
+
+> server@1.0.0 test
+> vitest run --no-color
+
+◇ injected env (0) from .env.test
+
+ RUN  v5.0.5 C:/SE/kitloop-81/server
+
+
+ Test Files  17 passed (17)
+      Tests  152 passed (152)
+   Start at  19:46:41
+   Duration  54.98s (tests 92%, import 8%)
+
+    Isolate  17 workers spawned · ~466ms startup each (spawn + environment, per file)
+             at least ~7.45s faster with isolate: false — reuses workers across files instead of one per file

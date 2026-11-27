@@ -661,6 +661,20 @@ log_lacks 'gcloud run deploy' 'invalid lifecycle setting reached Cloud Run'
 unset KITLOOP_REQUEST_LIFECYCLE_WRITES
 pass 'an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment'
 
+# CR-01: quota is off by default and cannot be enabled ahead of lifecycle writes.
+jq -e '.spec.containers[0].env | any(.name == "BORROWING_QUOTA" and .value == "disabled")' \
+  "$FAKE_STATE/revisions/$fourth.json" >/dev/null || fail_test 'deploy did not declare BORROWING_QUOTA=disabled by default'
+export KITLOOP_BORROWING_QUOTA=yes
+release deploy "$SHA6"
+refused 'invalid quota setting'; out_has 'KITLOOP_BORROWING_QUOTA must be enabled or disabled' 'invalid quota setting was not reported'
+log_lacks 'gcloud run deploy' 'invalid quota setting reached Cloud Run'
+export KITLOOP_BORROWING_QUOTA=enabled
+release deploy "$SHA6"
+refused 'quota without lifecycle writes'; out_has 'KITLOOP_BORROWING_QUOTA requires KITLOOP_REQUEST_LIFECYCLE_WRITES=enabled' 'quota dependency was not reported'
+log_lacks 'gcloud run deploy' 'quota without lifecycle writes reached Cloud Run'
+unset KITLOOP_BORROWING_QUOTA
+pass 'quota defaults off and invalid or uncoupled activation is refused before deployment'
+
 # UAT-E02 (#62): maximum loan duration. Unset/empty declares nothing (no maximum; SRS OQ-01 undecided). An invalid value
 # is refused before any Cloud Run deployment, so a typo never silently ships without the limit.
 jq -e '.spec.containers[0].env | all(.name != "LOAN_MAX_DAYS")' "$FAKE_STATE/revisions/$fourth.json" >/dev/null || \
