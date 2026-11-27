@@ -17,14 +17,14 @@
 
 ## Local GREEN
 
-The source for the lifecycle tests and backend build was staging commit `e92512a37f6e87f90adde9009586e1e5b0a50bcf`. The prepared runbook and CLI verifier are committed at `fbdd64a45c9340d797335aaedcf6ddf87a72aa3f`, which has identical `server/` and `client/` trees. Frontend repeat and standalone CLI verification ran at that commit. PostgreSQL 18.7 and Node.js 24.22.3 used dedicated local synthetic databases.
+The latest frontend implementation tested for this PR is `885c09fdbbf84982b05fa3446902b01da4cc4353`. The backend and release tooling match the earlier verified source. Local verification used Node.js 24.22.3 and dedicated PostgreSQL 18.7 synthetic databases.
 
 | Check | Result |
 | --- | --- |
 | Database migration | 4/4 applied on each dedicated database |
 | Lifecycle API, rollout, reconciliation tests | [32/32 passed](rg-01-focused.txt) |
 | Full backend regression and build | [152/152 passed](rg-01-backend.txt), TypeScript and build passed |
-| Full frontend regression, build and lint | [80/80 passed](rg-01-frontend.txt), build and lint passed |
+| Full frontend regression, build and lint | [105/105 passed](rg-01-frontend-post-92.txt) at `885c09f`, TypeScript, build and lint passed |
 | Offline deployment and release guards | Passed at `fbdd64a`. Ran `bash infra/gcp/deploy/guard.test.sh` and `bash infra/gcp/guards.test.sh` under Linux. [Output](rg-01-guards.txt) |
 | Compiled reconciliation CLI | [Dry run, apply and rerun JSON](rg-01-reconcile.json). One stale PENDING row found, zero writes in dry run, one DECLINED row on apply, zero stale rows on rerun, no conflicts. |
 
@@ -65,3 +65,17 @@ The production observations and OD-13 approval requirements above are separate f
 27 November 2026 ICT. Staging merge `bccee09e72c9be00ae8747bc2d70c902260fa667` was merged into the RG-01 branch at `885c09fdbbf84982b05fa3446902b01da4cc4353` without conflicts. The application trees match staging. The backend and release tooling trees match the previously verified PR head `8b06ac9`.
 
 The full frontend suite passed **105/105** across 12 files at `885c09f`, including the route-entry quota invalidation and loading-state accessible name regressions from #92. TypeScript, build and lint passed. Commands from `client/` were `npm test -- --no-color`, `npm run build` and `npm run lint`. [Frontend output](rg-01-frontend-post-92.txt)
+
+## Execution log provenance
+
+All executions below took place on **27 November 2026 ICT**. An exit status of 0 applies to each listed command in the corresponding successful execution. Frontend logs include Vitest's recorded start time.
+
+| Log | Exact source SHA | Working directory and command | Exit | Result |
+| --- | --- | --- | --- | --- |
+| [Focused backend](rg-01-focused.txt) | `e92512a37f6e87f90adde9009586e1e5b0a50bcf` | `server/`: `npm test -- tests/request-lifecycle.test.ts tests/lifecycle-rollout.test.ts tests/reconcile-competing-requests.test.ts --no-color` | 0 | 32/32 |
+| [Backend regression](rg-01-backend.txt) | `e92512a37f6e87f90adde9009586e1e5b0a50bcf` | `server/`: `npm test -- --no-color` | 0 | 152/152 |
+| [Initial frontend](rg-01-frontend.txt) | `fbdd64a45c9340d797335aaedcf6ddf87a72aa3f` | `client/`: `npm test -- --no-color`, `npm run build`, `npm run lint` | 0 each | 80/80, build and lint passed |
+| [Deployment guards](rg-01-guards.txt) | `fbdd64a45c9340d797335aaedcf6ddf87a72aa3f` | Linux checkout root: `bash infra/gcp/deploy/guard.test.sh`, `bash infra/gcp/guards.test.sh` | 0 each | Passed |
+| [Reconciliation CLI](rg-01-reconcile.json) | `fbdd64a45c9340d797335aaedcf6ddf87a72aa3f` | `server/`: `node ../artifacts/lab-07/cr-01/verify-rg01-reconcile.mjs` | 0 | Dry/apply/rerun stale count 1/0/0 |
+| [Frontend after #89](rg-01-frontend-post-89.txt) | `2ed2a7c79f9ce29423e359c6a98eb3f78ffe7daa` | `client/`: `npm test -- --no-color`, `npm run build`, `npm run lint` | 0 each | 103/103, build and lint passed |
+| [Frontend after #92](rg-01-frontend-post-92.txt) | `885c09fdbbf84982b05fa3446902b01da4cc4353` | `client/`: `npm test -- --no-color`, `npm run build`, `npm run lint` | 0 each | 105/105, build and lint passed |
