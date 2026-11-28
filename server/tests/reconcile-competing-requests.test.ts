@@ -1,7 +1,7 @@
 import request from "supertest";
 import { Role } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import app from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { hashPassword } from "../src/password.js";
@@ -48,6 +48,7 @@ const snapshot = (ids: string[]) => prisma.borrowRequest.findMany({ where: { ass
 
 /** Data exactly as the pre-lifecycle checkout left it: checkouts made with lifecycle writes disabled. */
 async function legacyData() {
+  process.env.BORROWING_QUOTA = "disabled";
   process.env.REQUEST_LIFECYCLE_WRITES = "disabled";
   try {
     // X: A checked out; B and C competed and are still PENDING (Team 7's UAT-E01 example).
@@ -66,11 +67,11 @@ async function legacyData() {
     return { x, y, z, a, b, c, d, e, f, assets: [x, y, z] };
   } finally {
     process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+    process.env.BORROWING_QUOTA = "enabled";
   }
 }
 
 beforeAll(async () => {
-  borrowerA = await session(Role.BORROWER); borrowerB = await session(Role.BORROWER); borrowerC = await session(Role.BORROWER);
   custodian = await session(Role.CUSTODIAN);
   const [{ db }] = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database() AS db`;
   database = db;
@@ -78,7 +79,15 @@ beforeAll(async () => {
   reconcile = module.reconcileCompetingRequests as Reconcile;
   ReconcileRefusal = module.ReconcileRefusal as typeof ReconcileRefusal;
 });
-afterEach(() => { process.env.REQUEST_LIFECYCLE_WRITES = "enabled"; });
+beforeEach(async () => {
+  borrowerA = await session(Role.BORROWER);
+  borrowerB = await session(Role.BORROWER);
+  borrowerC = await session(Role.BORROWER);
+});
+afterEach(() => {
+  process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+  process.env.BORROWING_QUOTA = "enabled";
+});
 afterAll(async () => {
   await prisma.loan.deleteMany({ where: { assetId: { in: assetIds } } });
   await prisma.borrowRequest.deleteMany({ where: { assetId: { in: assetIds } } });

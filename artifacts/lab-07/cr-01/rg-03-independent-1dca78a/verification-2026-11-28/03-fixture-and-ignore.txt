@@ -1,0 +1,10 @@
+Reproduction from a different checkout: D:/SWE_Project/kitloop-pr93-fix at 8ab8ca6bd38439bb28810f97c43f5a4adcc675e4, 2026-11-28 00:55:11 ICT
+$ (server/) DATABASE_URL=<local kitloop_rg03_realapi_test> npx tsx ../artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/fixture.mts
+seeded kitloop_rg03_realapi_test: 17 users, 29 assets; credentials -> artifacts\lab-07\cr-01\rg-03-independent-1dca78a\scripts\.e2e-credentials.json
+fixture exit=0
+credentials file exists at expected portable path (artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/.e2e-credentials.json): yes
+$ git check-ignore -v artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/.e2e-credentials.json
+artifacts/lab-07/cr-01/rg-03-independent-1dca78a/.gitignore:2:scripts/.e2e-credentials.json	artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/.e2e-credentials.json
+check-ignore exit=0
+credentials in git status (untracked or staged): 0
+runner credential path (all scripts via paths.cjs): artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/.e2e-credentials.json

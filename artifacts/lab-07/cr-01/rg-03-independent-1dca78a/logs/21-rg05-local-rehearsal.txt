@@ -1,0 +1,15 @@
+Tested commit 1dca78a5e7735c784f01135c8c0bf7b57a8fb542 (API, frontend and scripts' target); real API + PostgreSQL 17.11 kitloop_rg03_realapi_test
+start 2026-11-28 00:18:09 ICT
+$ node scripts/rg05-local-rehearsal.cjs
+PASS E3 quota GET contract :: {"borrower":[200,{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"no-store"],"custodian":403,"query":[400,"VALIDATION_ERROR"]}
+PASS E4 enforcement at P=2 :: {"statuses":[201,201,409],"code":"BORROWING_QUOTA_EXCEEDED","rowsBefore":2,"rowsAfter":2}
+PASS E5 recovery by cancel :: {"cancel":[200,"CANCELLED"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E6 recovery by decline (+ unassigned custodian refused) :: {"unassigned":404,"afterUnassigned":"PENDING","decline":[200,"DECLINED","BORROWER_NOT_ELIGIBLE"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E7 recovery by checkout :: {"checkout":[201,"ACTIVE"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E8 active loan not counted :: {"activeLoans":1,"quota":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true},"submits":[201,201]}
+PASS E9 preserved behaviour :: {"duplicate":[409,"DUPLICATE_REQUEST"],"unavailable":[409,"ASSET_UNAVAILABLE"],"custodianPost":403,"foreignCancel":404,"aSecond":201}
+PASS E9b two borrowers can request one available asset :: {"aOnRG16":201,"bOnRG16":201}
+PASS Auto-decline on checkout lowers competitor P :: {"checkout":201,"competitor":["DECLINED","ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER"],"competitorP":[1,0]}
+PASS Release 1 contract (quota+lifecycle disabled) :: {"quotaGet":[404,"BORROWING_QUOTA_DISABLED"],"features":{"requestLifecycleActions":false,"loanMaxDays":null,"borrowingQuota":false},"thirdRequestAllowed":[201,201,201],"cancel":[404,"LIFECYCLE_ACTIONS_DISABLED"]}
+exit=0
+end 2026-11-28 00:18:12 ICT

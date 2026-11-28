@@ -1,0 +1,7 @@
+Tested commit 1dca78a5e7735c784f01135c8c0bf7b57a8fb542; real API :3000 + Vite :5173. Only GET /api/borrowing-quota responses are HELD (real response fetched and delivered unchanged).
+start 2026-11-28 00:18:31 ICT
+$ node scripts/r05-c02-realapi.cjs fixed
+fixed C02 {"text":"Checking limit","ariaLabel":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","disabled":true,"heldQuotaResponses":1,"afterRelease":"Request to borrow Camera, E2E-CAM-01","expectedLoadingName":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","pass":true}
+fixed R05 {"seedStatus":201,"otherSessionStatus":201,"serverQuotaBeforeEntry":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"during":{"routeEntryQuotaGetIssued":true,"heldResponses":1,"selectorDisabled":true,"submitDisabled":true,"panel":"Borrowing limit Loading borrowing limit…","postsWhilePending":0,"postResponsesWhilePending":[]},"after":{"panel":"Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.","submitDisabled":true,"postsTotal":0,"postResponses":[]},"persisted":{"pending":["E2E-LAP-01","E2E-TRI-01"],"cameraRows":0},"pass":true}
+exit=0
+end 2026-11-28 00:18:42 ICT

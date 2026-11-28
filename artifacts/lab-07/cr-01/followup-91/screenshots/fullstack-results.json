@@ -1,0 +1,59 @@
+{
+  "note": "FULL-STACK: real API and PostgreSQL, no request interception",
+  "app": "http://localhost:5173",
+  "api": "http://localhost:3000/api",
+  "started": "2026-11-27T15:25:10.528Z",
+  "finished": "2026-11-27T15:25:17.310Z",
+  "steps": [
+    {
+      "step": "A1 initial quota",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests."
+    },
+    {
+      "step": "A2 first request accepted",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request."
+    },
+    {
+      "step": "A3 second request accepted; limit reached in UI",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | Submit disabled=true, selector disabled=true"
+    },
+    {
+      "step": "A4 catalog restriction at 2 pending",
+      "result": "PASS",
+      "detail": "Tripod control text=\"Limit reached\" disabled=true aria-label=\"Request limit reached: Tripod, E2E-TRI-01 cannot be requested now\""
+    },
+    {
+      "step": "A5 backend rejects third request",
+      "result": "PASS",
+      "detail": "POST /requests -> 409 BORROWING_QUOTA_EXCEEDED; quota after={\"pendingRequests\":2,\"maxPendingRequests\":2,\"remainingRequestCapacity\":0,\"canSubmitRequest\":false}; Tripod rows for A=0"
+    },
+    {
+      "step": "A6 cancel restores capacity",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | selector enabled=true | API quota={\"pendingRequests\":1,\"maxPendingRequests\":2,\"remainingRequestCapacity\":1,\"canSubmitRequest\":true}"
+    },
+    {
+      "step": "A7 new request after recovery accepted",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot."
+    },
+    {
+      "step": "A8 state persists after reload",
+      "result": "PASS",
+      "detail": "Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | list mentions Laptop, Tripod and the cancelled Camera=true"
+    },
+    {
+      "step": "B1 isolation",
+      "result": "PASS",
+      "detail": "B panel: Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests.; B list shows A's items=false; B cancels A's request -> 404; B reads quota?borrowerId=A -> 400"
+    },
+    {
+      "step": "B2 B requests an asset A has pending; A unaffected",
+      "result": "PASS",
+      "detail": "B: Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | A after reload: Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot."
+    }
+  ]
+}

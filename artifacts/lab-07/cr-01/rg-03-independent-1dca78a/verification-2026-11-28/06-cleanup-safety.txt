@@ -1,0 +1,23 @@
+RG-03 cleanup safety correction, PR #93 (local tooling only)
+Date/time zone: 2026-11-28 ICT (UTC+07:00). Timestamps below were captured immediately before or after the stated commands.
+Checkout/source commit for RED: fbf2c455934d3f35267578fb46e32bc50e014a8d
+Vulnerable cleanup.cjs Git blob: 0eb2a902c46741b869cb38f89f545b23a1b7d90a
+Corrected cleanup.cjs Git blob before commit: d4b082827943b4bba504b22ea83d4a2bcfd3566b
+Runtime: Node v24.19.0, Windows 11.
+
+RED (filesystem spy; no real removal attempted):
+At 2026-11-28T01:24:50.8076093+07:00, before editing cleanup.cjs, ran:
+  rtk proxy node --test artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/cleanup.test.cjs
+Result: exit 1; 4 passed, 6 failed. The checkout-root case failed because the spy recorded fs.rmSync('D:\SWE_Project\kitloop-pr93-fix', { recursive: true }) instead of zero calls. The evidence-root, historical-logs, custom-outside, traversal, and symlink cases also failed. No dangerous filesystem removal was executed.
+
+The same original source was then extracted to %TEMP%\rg03-cleanup-vulnerable.cjs from the commit above; `git hash-object` of the temporary file matched the vulnerable blob SHA above. At 2026-11-28T01:28:05.2033235+07:00, ran:
+  rtk proxy powershell -NoProfile -Command '$env:RG03_CLEANUP_SOURCE = Join-Path $env:TEMP "rg03-cleanup-vulnerable.cjs"; rtk proxy node --test --test-name-pattern="refuses checkout root" artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/cleanup.test.cjs; exit $LASTEXITCODE'
+Result: exit 1; 0 passed, 8 failed (the name pattern selected all refusal cases). The spy again recorded the checkout root as the recursive deletion target, and recorded calls for the other disallowed targets. No dangerous filesystem removal was executed.
+
+GREEN:
+At 2026-11-28T01:28:19.0209790+07:00, ran:
+  rtk proxy node --test artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/cleanup.test.cjs
+At 2026-11-28T01:28:31.0756577+07:00, captured completion time.
+Result: exit 0; 13 tests passed, 0 failed. Dangerous targets had zero removal calls. Disposable directories verified default-output deletion, absent and repeated cleanup, credential cleanup, custom-output refusal with exit 1, and custom-output preservation without --output.
+
+Historical logs and screenshots were not used as deletion targets. No database, browser, or full application suite was run. STS remains 17 fully verified / 2 partially verified; RG-03 remains PENDING and RG-01/RG-05 remain BLOCKED.

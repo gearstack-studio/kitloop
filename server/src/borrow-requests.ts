@@ -2,6 +2,25 @@ import { Prisma, RequestStatus } from "@prisma/client";
 import { ApiError } from "./api-error.js";
 import { activeLoanWhere, isBorrowable } from "./availability.js";
 import { prisma } from "./db.js";
+import { borrowingQuota } from "./config.js";
+import { setTimeout as delay } from "node:timers/promises";
+
+const maxPendingRequests = 2;
+
+function countPendingRequests(db: Prisma.TransactionClient, borrowerId: string) {
+  return db.borrowRequest.count({ where: { borrowerId, status: RequestStatus.PENDING } });
+}
+
+export async function readBorrowingQuota(borrowerId: string) {
+  const pendingRequests = await countPendingRequests(prisma, borrowerId);
+  const remainingRequestCapacity = Math.max(0, maxPendingRequests - pendingRequests);
+  return {
+    pendingRequests,
+    maxPendingRequests,
+    remainingRequestCapacity,
+    canSubmitRequest: remainingRequestCapacity > 0,
+  };
+}
 
 export function requestAssetId(body: unknown): string {
   if (!body || typeof body !== "object" || Array.isArray(body) ||
@@ -15,6 +34,7 @@ export function requestAssetId(body: unknown): string {
 }
 
 export async function createBorrowRequest(borrowerId: string, assetId: string) {
+  const quotaEnabled = borrowingQuota(process.env);
   // Retry serialization conflicts: different borrowers may both submit pending
   // requests. A conflict must not accidentally turn a request into a reservation.
   for (let attempt = 0; ; attempt++) {
@@ -32,11 +52,21 @@ export async function createBorrowRequest(borrowerId: string, assetId: string) {
           where: { borrowerId, assetId, status: RequestStatus.PENDING }, select: { id: true },
         });
         if (pending) throw new ApiError(409, "DUPLICATE_REQUEST", "You already have a pending request for this equipment.");
+        if (quotaEnabled && await countPendingRequests(tx, borrowerId) >= maxPendingRequests) {
+          throw new ApiError(409, "BORROWING_QUOTA_EXCEEDED", "You already have two pending requests.");
+        }
         return tx.borrowRequest.create({ data: { borrowerId, assetId, status: RequestStatus.PENDING } });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2034" && attempt < 2) continue;
+        if (error.code === "P2034" && attempt < 2) {
+          // Spread competing quota transactions out after PostgreSQL rolls them back.
+          if (quotaEnabled) {
+            const baseDelayMs = 20 * 2 ** attempt;
+            await delay(baseDelayMs + Math.floor(Math.random() * baseDelayMs));
+          }
+          continue;
+        }
         if (error.code === "P2002") {
           throw new ApiError(409, "DUPLICATE_REQUEST", "You already have a pending request for this equipment.");
         }

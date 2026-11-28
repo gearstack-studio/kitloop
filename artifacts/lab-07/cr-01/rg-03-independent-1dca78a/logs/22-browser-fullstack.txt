@@ -1,0 +1,15 @@
+Tested commit 1dca78a5e7735c784f01135c8c0bf7b57a8fb542; real API :3000 (quota+lifecycle enabled) + Vite :5173; NO interception
+start 2026-11-28 00:18:20 ICT
+$ node scripts/fullstack.cjs
+PASS A1 initial quota | Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests.
+PASS A2 first request accepted | Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request.
+PASS A3 second request accepted; limit reached in UI | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | Submit disabled=true, selector disabled=true
+PASS A4 catalog restriction at 2 pending | Tripod control text="Limit reached" disabled=true aria-label="Request limit reached: Tripod, E2E-TRI-01 cannot be requested now"
+PASS A5 backend rejects third request | POST /requests -> 409 BORROWING_QUOTA_EXCEEDED; quota after={"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}; Tripod rows for A=0
+PASS A6 cancel restores capacity | Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | selector enabled=true | API quota={"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true}
+PASS A7 new request after recovery accepted | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.
+PASS A8 state persists after reload | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | list mentions Laptop, Tripod and the cancelled Camera=true
+PASS B1 isolation | B panel: Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests.; B list shows A's items=false; B cancels A's request -> 404; B reads quota?borrowerId=A -> 400
+PASS B2 B requests an asset A has pending; A unaffected | B: Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | A after reload: Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.
+exit=0
+end 2026-11-28 00:18:30 ICT

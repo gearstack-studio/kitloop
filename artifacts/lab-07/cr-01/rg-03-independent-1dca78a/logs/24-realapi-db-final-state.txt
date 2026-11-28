@@ -1,0 +1,31 @@
+    username     |  assetId   |   status    |              closeReason              
+-----------------+------------+-------------+---------------------------------------
+ partA.auto1     | RG-17      | CHECKED_OUT | 
+ partA.auto2     | RG-17      | DECLINED    | ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER
+ partA.borrowerA | E2E-CAM-01 | CANCELLED   | CANCELLED_BY_BORROWER
+ partA.borrowerA | E2E-LAP-01 | PENDING     | 
+ partA.borrowerA | E2E-TRI-01 | PENDING     | 
+ partA.borrowerB | E2E-LAP-01 | PENDING     | 
+ partA.e3        | RG-01      | PENDING     | 
+ partA.e4        | RG-02      | CANCELLED   | CANCELLED_BY_BORROWER
+ partA.e4        | RG-03      | PENDING     | 
+ partA.e4        | RG-04      | PENDING     | 
+ partA.e6        | RG-05      | DECLINED    | BORROWER_NOT_ELIGIBLE
+ partA.e6        | RG-06      | PENDING     | 
+ partA.e6        | RG-07      | PENDING     | 
+ partA.e7        | RG-08      | CHECKED_OUT | 
+ partA.e7        | RG-09      | PENDING     | 
+ partA.e7        | RG-10      | PENDING     | 
+ partA.e8        | RG-11      | CHECKED_OUT | 
+ partA.e8        | RG-12      | PENDING     | 
+ partA.e8        | RG-13      | PENDING     | 
+ partA.e9a       | RG-14      | PENDING     | 
+ partA.e9a       | RG-16      | PENDING     | 
+ partA.e9b       | RG-16      | PENDING     | 
+ partA.r05Fixed  | E2E-LAP-01 | PENDING     | 
+ partA.r05Fixed  | E2E-TRI-01 | PENDING     | 
+ partA.rel1      | RG-18      | PENDING     | 
+ partA.rel1      | RG-19      | PENDING     | 
+ partA.rel1      | RG-20      | PENDING     | 
+(27 rows)
+

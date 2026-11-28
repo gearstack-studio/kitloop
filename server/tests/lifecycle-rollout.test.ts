@@ -48,15 +48,24 @@ const checkout = (requestId: string, assetId: string) =>
   post(custodian, `/api/requests/${requestId}/checkout`, { assetId, dueAt: new Date(Date.now() + 86_400_000).toISOString() });
 const stored = (id: string) => prisma.borrowRequest.findUniqueOrThrow({ where: { id } });
 const mine = (who: Session) => request(app).get("/api/requests/mine").set("Cookie", who.cookie);
+function setWrites(value: "enabled" | "disabled") {
+  process.env.REQUEST_LIFECYCLE_WRITES = value;
+  process.env.BORROWING_QUOTA = value;
+}
+
 const withWrites = (value: "enabled" | "disabled") => {
-  beforeEach(() => { process.env.REQUEST_LIFECYCLE_WRITES = value; });
-  afterEach(() => { process.env.REQUEST_LIFECYCLE_WRITES = "enabled"; });
+  beforeEach(() => { setWrites(value); });
+  afterEach(() => { setWrites("enabled"); });
 };
 
 beforeAll(async () => {
-  borrowerA = await session(Role.BORROWER); borrowerB = await session(Role.BORROWER); custodian = await session(Role.CUSTODIAN);
+  custodian = await session(Role.CUSTODIAN);
   legacy = legacyPrismaClient(process.env.DATABASE_URL!);
 }, 120_000);
+beforeEach(async () => {
+  borrowerA = await session(Role.BORROWER);
+  borrowerB = await session(Role.BORROWER);
+});
 afterAll(async () => {
   await legacy?.$disconnect();
   await prisma.loan.deleteMany({ where: { assetId: { in: assetIds } } });
@@ -123,13 +132,13 @@ describe("Phase 1, compatibility release (REQUEST_LIFECYCLE_WRITES=disabled)", (
 
   it("still reads lifecycle rows written while writes were enabled, so it is a safe rollback target after them", async () => {
     const assetId = await asset();
-    process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+    setWrites("enabled");
     const a = await submit(borrowerA, assetId);
     const b = await submit(borrowerB, assetId);
     await checkout(a, assetId);
     const c = await submit(borrowerB, await asset());
     await post(borrowerB, `/api/requests/${c}/cancel`);
-    process.env.REQUEST_LIFECYCLE_WRITES = "disabled";
+    setWrites("disabled");
 
     const history = await mine(borrowerB);
     expect(history.status).toBe(200);
@@ -146,7 +155,7 @@ describe("Phase 2, lifecycle writes enabled (REQUEST_LIFECYCLE_WRITES=enabled)",
 
   it("login and /auth/me tell the client that lifecycle actions are on", async () => {
     const me = await request(app).get("/api/auth/me").set("Cookie", borrowerA.cookie);
-    expect(me.body.features).toEqual({ requestLifecycleActions: true, loanMaxDays: null });
+    expect(me.body.features).toEqual({ requestLifecycleActions: true, loanMaxDays: null, borrowingQuota: true });
   });
 
   it("characterises the hazard: the 8b6e5a9 client cannot read a DECLINED row (why 8b6e5a9 is not a target after writes)", async () => {
@@ -191,13 +200,13 @@ describe("Pre-lifecycle rollback gate: lifecycle-cli rollback-check --require-ze
     const assetId = await asset();
     const a = await submit(borrowerA, assetId);
     await submit(borrowerB, assetId);
-    process.env.REQUEST_LIFECYCLE_WRITES = "enabled"; // phase 2 writes DECLINED
+    setWrites("enabled"); // phase 2 writes DECLINED
     await checkout(a, assetId);
-    process.env.REQUEST_LIFECYCLE_WRITES = "disabled"; // back on phase 1: writes off, but the row stays
+    setWrites("disabled"); // back on phase 1: writes off, but the row stays
     const result = gate("--require-zero", `--expect-database=${database}`, `--asset=${assetId}`);
     expect(result.status).toBe(4);
     expect(result.stderr).toContain("UNSAFE: 1 request row(s)");
-    process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+    setWrites("enabled");
   }, 60_000);
 
   it("refuses (exit 2) without checking when connected to a different database or without --expect-database", () => {
@@ -231,7 +240,7 @@ describe("Rollback safety check", () => {
     expect(await lifecycleRollbackReport(prisma, { assetIds: [assetId] })).toEqual({
       byStatus: { PENDING: 2 }, lifecycleOnlyRows: 0, preLifecycleRevisionsSafe: true,
     });
-    process.env.REQUEST_LIFECYCLE_WRITES = "enabled";
+    setWrites("enabled");
     await checkout(a, assetId);
     expect(await lifecycleRollbackReport(prisma, { assetIds: [assetId] })).toEqual({
       byStatus: { CHECKED_OUT: 1, DECLINED: 1 }, lifecycleOnlyRows: 1, preLifecycleRevisionsSafe: false,

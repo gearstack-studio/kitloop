@@ -41,6 +41,22 @@ Each invocation starts from scratch, so it can be re-run at will. Do **not** use
 - **Synthetic, deterministic data.** `support/seed-fixture.mts` creates two Borrowers, two Custodians and five assets (cameras and `KL-ACC-001` for Custodian A, a laptop for Custodian B, one retired asset). It uses the server's own password hashing and refuses to run against any database that is not `kitloop_e2e_*`.
 - **No credentials in code.** Passwords are random per run, generated in setup and passed through environment variables (`E2E_PW_*`). The session secret is random per run. Connection details come from the git-ignored `server/.env.test`.
 
+## Quota journeys (spec 09)
+
+`tests/09-borrowing-quota.spec.ts` checks the CR-01 borrowing quota in a real browser (STS TC11 S1/S2/S6, TC12 reload, TC18 S1 and S2 Refresh/route entry, TC10 isolation). It needs the quota **enabled**, so it never runs in the default suite:
+
+| Command (from `e2e/`) | What it does |
+| --- | --- |
+| `npm run test:e2e:quota` | Spec 09 only, with `playwright.quota.config.ts` |
+| `npm run test:e2e:guarded -- -c playwright.quota.config.ts` | The same, with the UAT evidence guard |
+
+- **Own database:** `kitloop_e2e_quota`, created, migrated and dropped by the same global setup and teardown. The default suite keeps `kitloop_e2e_pw` with the quota off.
+- **Own ports:** API `:3101` and Vite `:5175` (`E2E_API_PORT`, `E2E_WEB_PORT`). Only the API flag differs: `BORROWING_QUOTA=enabled`.
+- **Own fixtures:** `support/quota-global-setup.ts` seeds `e2e.quota.*` users and `KL-Q-*` assets through `support/seed-quota-fixture.mts`, with random passwords per run. It then proves the API is the quota-enabled server on that database before any test runs.
+- **No mocking:** a few steps briefly hold a *real* quota response (fetched from the API and delivered unchanged) to observe the loading state.
+- **Output:** `test-results-quota/` and `playwright-report-quota/`, both git-ignored.
+- **CI:** `.github/workflows/e2e-quota.yml` runs spec 09 on pull requests as a separate, non-required check.
+
 ## Output
 
 All under `e2e/` and git-ignored:

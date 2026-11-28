@@ -1,0 +1,86 @@
+name: E2E quota (spec 09)
+
+# CR-01 spec 09: borrowing quota journeys in a real browser against the quota-enabled API (STS TC11, TC12, TC18).
+# Separate and initially NOT a required check: the protected "Build, test and Docker smoke" check and the OD-13
+# release controls are unchanged. Uses no repository secrets; the database is a throwaway service container.
+on:
+  pull_request:
+    branches: [sprint-1-staging, main]
+    paths:
+      - "client/**"
+      - "server/**"
+      - "e2e/**"
+      - ".github/workflows/e2e-quota.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-quota-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  spec09:
+    name: Spec 09 quota journeys (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container: node:24-bookworm
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust # throwaway CI-only service, no credential stored
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Used only to CREATE/DROP the dedicated kitloop_e2e_quota database (e2e/support/env.ts).
+      E2E_ADMIN_DATABASE_URL: postgresql://postgres@postgres:5432/postgres
+      CI: "true"
+    steps:
+      - name: Check out the PR merge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The job runs as root inside the container, while the checked-out workspace is owned by the runner user, so Git
+      # refuses it ("dubious ownership"). Trust exactly this workspace (never '*') so the evidence guard's git status runs.
+      - name: Trust the checked-out workspace for Git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git -C "$GITHUB_WORKSPACE" status --short --untracked-files=no
+          echo "git status OK in $GITHUB_WORKSPACE"
+
+      - name: Install server, client and e2e dependencies
+        run: |
+          npm ci --prefix server --no-audit --no-fund
+          npm ci --prefix client --no-audit --no-fund
+          npm ci --prefix e2e --no-audit --no-fund
+          (cd server && npx prisma generate)
+
+      - name: Install Chromium for Playwright
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Type-check the e2e package
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Run spec 09 (guarded; UAT evidence must stay unchanged)
+        working-directory: e2e
+        run: npm run test:e2e:guarded -- -c playwright.quota.config.ts
+
+      - name: Upload the spec 09 report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-quota-report
+          path: |
+            e2e/playwright-report-quota/
+            e2e/test-results-quota/
+          retention-days: 14
+          if-no-files-found: warn

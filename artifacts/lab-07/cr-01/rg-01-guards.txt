@@ -1,0 +1,58 @@
+PASS: 16 offline deployment guard cases
+PASS: noninteractive mutation is refused
+PASS: wrong active project is refused
+PASS: mismatched typed confirmation is refused
+PASS: first deployment requires migration and a verified bootstrap
+PASS: failed bootstrap is not recorded and still blocks deployment
+PASS: verified bootstrap execution is recorded on Cloud SQL
+PASS: first deployment works after bootstrap job deletion, private, canonical APP_ORIGIN
+PASS: verify reports serving revision; publish grants access only after private checks
+PASS: subsequent release: no bootstrap, public access preserved, traffic moved only after candidate checks
+PASS: failed candidate never receives traffic; previous revision keeps serving
+PASS: candidate SHA mismatch leaves the previous revision serving
+PASS: failed, mismatched and incomplete migrations stop deployment
+PASS: rollback rejects unsafe or missing revisions and reports actual traffic
+PASS: a later deployment moves traffic away from a rollback-pinned revision
+PASS: automated candidate check uses IAM Credentials generateIdToken with the canonical service audience
+PASS: identity_token rejects a missing or non-canonical audience before any token request
+PASS: automated candidate refused, previous revision kept: deployment account variable mismatch
+PASS: automated candidate refused, previous revision kept: deployment account variable missing
+PASS: automated candidate refused, previous revision kept: credential file missing
+PASS: automated candidate refused, previous revision kept: credential file impersonates another account
+PASS: automated candidate refused, previous revision kept: WIF access token unavailable
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (denied)
+PASS: automated candidate refused, previous revision kept: IAM Credentials HTTP error (unavailable)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (empty)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (blank)
+PASS: automated candidate refused, previous revision kept: IAM Credentials response without a token (garbage)
+PASS: automated candidate refused, previous revision kept: IAM Credentials malformed token
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-audience)
+PASS: automated candidate refused, previous revision kept: ID token claims (wrong-account)
+PASS: automated candidate refused, previous revision kept: ID token claims (expired)
+PASS: automated candidate with a valid token but failing readiness never receives traffic
+PASS: automated private verification and rollback use the WIF ID-token flow; IAM denial fails closed
+PASS: build requires an allowed branch and a pushed commit
+PASS: deploy declares REQUEST_LIFECYCLE_WRITES=disabled (phase 1) unless told otherwise
+PASS: an invalid KITLOOP_REQUEST_LIFECYCLE_WRITES value is refused before deployment
+PASS: quota defaults off and invalid or uncoupled activation is refused before deployment
+PASS: LOAN_MAX_DAYS is omitted unless KITLOOP_LOAN_MAX_DAYS is set, and invalid values are refused before deployment
+PASS: phase 2 deploys over a phase-1 revision and declares REQUEST_LIFECYCLE_WRITES=enabled
+PASS: ALLOWED: phase 2 -> phase 1 (lifecycle-aware target)
+PASS: BLOCKED: pre-lifecycle rollback while a 0%-traffic tagged revision has lifecycle writes enabled (audit regression)
+PASS: BLOCKED: phase 2 -> phase 1 -> pre-lifecycle while the rows written by phase 2 remain (re-review regression)
+PASS: ALLOWED: phase 1 -> pre-lifecycle after a fresh zero-row database check (check runs before update-traffic)
+PASS: ALLOWED: rollback to the revision already serving 100% changes nothing and needs no check
+PASS: pre-lifecycle -> pre-lifecycle still requires the check; KITLOOP_ROLLBACK_CHECK_REVISION only selects its image
+PASS: BLOCKED: lifecycle writes cannot be enabled while a pre-lifecycle revision serves
+PASS: BLOCKED: phase 1 -> pre-lifecycle when the check reports lifecycle rows
+PASS: BLOCKED: the database check cannot run (database unreachable)
+PASS: BLOCKED: the check execution cannot be verified (malformed output)
+PASS: BLOCKED: a reconciliation job (another lifecycle writer) exists or jobs cannot be listed
+PASS: BLOCKED: phase 2 -> pre-lifecycle (writes could add rows after any check)
+PASS: BLOCKED: an operator confirmation never substitutes for a verified zero-row check
+PASS: BLOCKED: deploy of a full SHA absent from the checkout, before any registry or Cloud Run call (re-review regression)
+PASS: BLOCKED: deploy of an unknown abbreviated SHA, a pre-lifecycle commit (full and abbreviated) and a commit missing the migration
+PASS: BLOCKED: deploy of a blob, tree or annotated tag object, a tag name, a SHA-like branch name and malformed SHAs
+PASS: BLOCKED: migrate and bootstrap use the same source verification before any Cloud Run job mutation
+PASS: ALLOWED: a lifecycle-aware commit passes source verification (abbreviated input is canonicalised to the full SHA)
+PASS: all GCP release guard tests

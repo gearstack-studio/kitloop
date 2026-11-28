@@ -1,0 +1,41 @@
+Portable runner reproduction, cwd = repository root /d/SWE_Project/kitloop-pr93-fix at 8ab8ca6bd38439bb28810f97c43f5a4adcc675e4
+servers: API :3000 (quota+lifecycle enabled) and :3001 (both disabled) = node server/dist/index.js of this checkout; Vite :5173 serving client/ of this checkout; DB kitloop_rg03_realapi_test
+
+=== 2026-11-28 00:55:44 ICT $ node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/rg05-local-rehearsal.cjs
+PASS E3 quota GET contract :: {"borrower":[200,{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"no-store"],"custodian":403,"query":[400,"VALIDATION_ERROR"]}
+PASS E4 enforcement at P=2 :: {"statuses":[201,201,409],"code":"BORROWING_QUOTA_EXCEEDED","rowsBefore":2,"rowsAfter":2}
+PASS E5 recovery by cancel :: {"cancel":[200,"CANCELLED"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E6 recovery by decline (+ unassigned custodian refused) :: {"unassigned":404,"afterUnassigned":"PENDING","decline":[200,"DECLINED","BORROWER_NOT_ELIGIBLE"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E7 recovery by checkout :: {"checkout":[201,"ACTIVE"],"quota":{"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true},"newRequest":201}
+PASS E8 active loan not counted :: {"activeLoans":1,"quota":{"pendingRequests":0,"maxPendingRequests":2,"remainingRequestCapacity":2,"canSubmitRequest":true},"submits":[201,201]}
+PASS E9 preserved behaviour :: {"duplicate":[409,"DUPLICATE_REQUEST"],"unavailable":[409,"ASSET_UNAVAILABLE"],"custodianPost":403,"foreignCancel":404,"aSecond":201}
+PASS E9b two borrowers can request one available asset :: {"aOnRG16":201,"bOnRG16":201}
+PASS Auto-decline on checkout lowers competitor P :: {"checkout":201,"competitor":["DECLINED","ASSET_CHECKED_OUT_TO_ANOTHER_BORROWER"],"competitorP":[1,0]}
+PASS Release 1 contract (quota+lifecycle disabled) :: {"quotaGet":[404,"BORROWING_QUOTA_DISABLED"],"features":{"requestLifecycleActions":false,"loanMaxDays":null,"borrowingQuota":false},"thirdRequestAllowed":[201,201,201],"cancel":[404,"LIFECYCLE_ACTIONS_DISABLED"]}
+exit=0
+
+=== 2026-11-28 00:55:47 ICT $ node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/fullstack.cjs
+PASS A1 initial quota | Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests.
+PASS A2 first request accepted | Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request.
+PASS A3 second request accepted; limit reached in UI | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | Submit disabled=true, selector disabled=true
+PASS A4 catalog restriction at 2 pending | Tripod control text="Limit reached" disabled=true aria-label="Request limit reached: Tripod, E2E-TRI-01 cannot be requested now"
+PASS A5 backend rejects third request | POST /requests -> 409 BORROWING_QUOTA_EXCEEDED; quota after={"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false}; Tripod rows for A=0
+PASS A6 cancel restores capacity | Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | selector enabled=true | API quota={"pendingRequests":1,"maxPendingRequests":2,"remainingRequestCapacity":1,"canSubmitRequest":true}
+PASS A7 new request after recovery accepted | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.
+PASS A8 state persists after reload | Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot. | list mentions Laptop, Tripod and the cancelled Camera=true
+PASS B1 isolation | B panel: Borrowing limit Refresh borrowing limit 0 of 2 pending requests You can submit 2 more requests.; B list shows A's items=false; B cancels A's request -> 404; B reads quota?borrowerId=A -> 400
+PASS B2 B requests an asset A has pending; A unaffected | B: Borrowing limit Refresh borrowing limit 1 of 2 pending requests You can submit 1 more request. | A after reload: Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.
+exit=0
+
+=== 2026-11-28 00:55:52 ICT $ node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/r05-c02-realapi.cjs fixed
+fixed C02 {"text":"Checking limit","ariaLabel":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","disabled":true,"heldQuotaResponses":1,"afterRelease":"Request to borrow Camera, E2E-CAM-01","expectedLoadingName":"Checking your borrowing limit: Camera, E2E-CAM-01 cannot be requested yet","pass":true}
+fixed R05 {"seedStatus":201,"otherSessionStatus":201,"serverQuotaBeforeEntry":{"pendingRequests":2,"maxPendingRequests":2,"remainingRequestCapacity":0,"canSubmitRequest":false},"during":{"routeEntryQuotaGetIssued":true,"heldResponses":1,"selectorDisabled":true,"submitDisabled":true,"panel":"Borrowing limit Loading borrowing limit…","postsWhilePending":0,"postResponsesWhilePending":[]},"after":{"panel":"Borrowing limit Refresh borrowing limit 2 of 2 pending requests Limit reached. A checkout, cancellation or custodian decline frees a request slot.","submitDisabled":true,"postsTotal":0,"postResponses":[]},"persisted":{"pending":["E2E-LAP-01","E2E-TRI-01"],"cameraRows":0},"pass":true}
+exit=0
+
+=== 2026-11-28 00:55:58 ICT $ node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/tc11-s6-stale409.cjs
+PASS seed P = 1 via API :: {}
+PASS other session takes the last slot :: {}
+PASS S6: server 409 shown, no success notice, quota re-read, limit shown, one POST :: {"status":409,"code":"BORROWING_QUOTA_EXCEEDED","message":"You already have two pending requests.","successNotice":0,"quotaReReadAfterPost":true,"posts":1,"submitDisabled":true,"callsAfterSubmit":["POST /requests","GET /borrowing-quota","GET /assets","GET /requests/mine","GET /loans/mine"]}
+exit=0
+
+end 2026-11-28 00:56:01 ICT

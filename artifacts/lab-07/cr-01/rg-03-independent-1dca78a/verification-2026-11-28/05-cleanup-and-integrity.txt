@@ -1,0 +1,19 @@
+Cleanup, 2026-11-28 00:56:24 ICT
+$ node artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/cleanup.cjs --output
+removed: artifacts/lab-07/cr-01/rg-03-independent-1dca78a/scripts/.e2e-credentials.json, artifacts/lab-07/cr-01/rg-03-independent-1dca78a/reproduction-output
+credentials file present: false
+exit=0
+git status lists a credentials file: 0
+== broad check over all 35 files (includes the 4 intentionally fixed scripts; superseded by the scoped check below)
+./scripts/r05-c02-realapi.cjs: FAILED
+./scripts/rg05-local-rehearsal.cjs: FAILED
+sha256sum: WARNING: 4 computed checksums did NOT match
+sha256sum -c exit=1 (0 = all unchanged)
+git diff of the 35 historical files vs 8ab8ca6: 0 changed (README is intentionally updated)
+
+== historical execution record (logs/ and screenshots/ from 8ab8ca6) integrity, scoped
+files checked: 30
+all OK
+sha256sum -c exit=0 (0 = every historical log and screenshot byte-identical)
+intentionally changed (finding 2): scripts/fixture.mts, scripts/fullstack.cjs, scripts/r05-c02-realapi.cjs, scripts/rg05-local-rehearsal.cjs
+intentionally updated (finding 1): README.md

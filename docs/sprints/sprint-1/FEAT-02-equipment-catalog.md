@@ -90,7 +90,7 @@ The catalog is the equipment panel of the signed-in workspace (`client/src/App.t
 1. After sign-in or a protected page reload, the client requests the catalog together with the role's request and loan views.
 2. While the request is pending, the panel shows a loading state.
 3. On success the panel lists one card per asset, in server order.
-4. A Borrower sees a request control on each card (behavior owned by FEAT-03). It is disabled when the asset is not available, with an accessible explanation. Custodians see no request control.
+4. A Borrower sees a request control on each card (behavior owned by FEAT-03). It is disabled when the asset is not available, with an accessible explanation. Custodians see no request control. **CR-01 (proposed, FEAT-03-owned):** while the borrowing quota is active, the control is also disabled when the borrower has no remaining request capacity, with an accessible quota explanation. Eligibility precedence is unavailable → already pending → quota reached. Catalog availability itself is unchanged; the quota never alters `available`.
 5. After any FEAT-03 or FEAT-04 operation succeeds or returns a 409 conflict, the client refetches the catalog so the displayed state reflects the server. The client does not edit availability locally.
 6. A 401 follows the FEAT-01 session-ended behavior and clears the catalog from client state.
 
@@ -314,3 +314,4 @@ Ownership rule: the availability definition lives in one place. Where checkout, 
 | --- | --- | --- | --- | --- |
 | 0.1 (Draft) | 2026-11-03 | `yiiipunn` (assigned developer; AI-assisted draft) | Initial FEAT-02 engineering contract: scope, traceability, roles, UI states, API, data, availability rules, validation, AC, STS and DoD. Documentation only. | `DEV4952` review pending; no approval claimed. |
 | 0.2 (Draft) | 2026-11-03 | `yiiipunn` (assigned developer; AI-assisted revision) | Removed the proposed detail route; quoted FR-05, BR-08 and related wording and separated the Sprint 1 and Sprint 2 behavior; recorded the BR-05 versus catalog conflict without a new rule; fixed the five-field DTO and deterministic ordering; added response-shape, authentication and ordering tests; required an accessible catalog heading; recorded the `POST /requests` availability gap as a FEAT-03 risk; added AC-to-requirement-to-test traceability. Documentation only. | `DEV4952` review pending; no approval claimed. |
+| 0.3 (Draft, CR-01 note) | 2026-11-26 | `yiiipunn` (AI-assisted) | §4 item 4: added the proposed CR-01 quota-blocked state of the borrower request control. No catalog API, DTO or availability change. | `DEV4952` review pending; no approval claimed. |

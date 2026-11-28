@@ -6,6 +6,8 @@
 
 **Requirements:** [SRS](srs.md), [Feature Inventory](feature-inventory.md), and [Requirements Traceability Matrix (RTM)](traceability-matrix.md).
 
+**CR-01 proposed revision (Lab 7, contract r4, draft; DC-1 option K2a, pending-request quota only; [Issue #78](https://github.com/gearstack-studio/kitloop/issues/78); base `e5ed70d`):** This revision adds borrowing-quota design to §3 (contract row), §4 (invariant), §5.3.1 (submission transaction, read strategy, activation), §5.4 (checkout effect), §6 (access matrix) and §8 (alignment). Additions are marked **[CR-01 r4, proposed]**. The r1–r3 combined-limit design is superseded ([impact analysis §21](labs/lab-07/CR-01-impact-analysis.md#21-superseded-and-deferred-record-r1r3)). Review: **PENDING** (DEV4952, PR #79).
+
 ## 1. Purpose, scope, and implementation status
 
 This SDS defines the system architecture, component contracts, data relationships, workflows, and security boundaries for the mandatory three-sprint product. The SRS controls observable behavior and sprint allocation. This document proposes implementation choices within that scope; it does not claim stakeholder approval or completed implementation.
@@ -87,6 +89,7 @@ All paths are under `/api`. JSON uses explicit response DTOs, ISO 8601 timestamp
 | GET `/assets` | Either authenticated role; later search/name/Asset ID and category/availability filters | 200 catalog DTOs with canonical availability | 1 / FR-04, FR-05; 3 / FR-16 |
 | POST `/requests` | Borrower; `{ assetId }` | 201 pending request with ID, asset, requester, submission time, status | 1 / FR-06 |
 | GET `/requests/mine` | Borrower | 200 own requests with asset/status | 1 / FR-07 |
+| GET `/borrowing-quota` **[CR-01 r4, proposed]** | Borrower; no input. Identity from the session; any query parameter → 400 `VALIDATION_ERROR` (OD-05). | 200 `{ pendingRequests, maxPendingRequests, remainingRequestCapacity, canSubmitRequest }`; `Cache-Control: no-store`. 401 unauthenticated; 403 Custodian; 404 `BORROWING_QUOTA_DISABLED` while activation is off. | 1 (CR-01) / FR-07, BR-14 |
 | GET `/requests/pending` | Custodian | 200 pending requests joined to authorized assets and necessary requester details | 2 / FR-08 |
 | POST `/requests/:requestId/checkout` | Custodian; `{ assetId, dueAt }`; asset must match request | 201 persisted loan and checked-out request reference | 2 / FR-09, FR-10 |
 | GET `/loans/mine` | Borrower | 200 own active/returned loan DTOs with applicable timestamps; overdue flag added in Sprint 3 | 2 / FR-11; 3 / FR-13 |
@@ -100,7 +103,7 @@ All paths are under `/api`. JSON uses explicit response DTOs, ISO 8601 timestamp
 
 No generic write endpoint can set a loan's return time, request status, borrower, authority, or availability directly. Proposed paths above do not introduce approval, cancellation, assignment administration, or new roles. Custodian active-loan listing is an interface supporting the required return workflow, not a new feature.
 
-Use 400 for malformed/missing input, 401 for absent/ended sessions, 403 for an authenticated wrong role, 404 for missing or inaccessible foreign records, and 409 for state conflicts (unavailable asset, non-pending request, repeated return, duplicate Asset ID, or retirement while loaned). Invalid due dates produce 400. Error bodies use `{ error: { code, message, fields? } }`; unexpected failures use a generic 500 with no SQL, stack trace, credentials, or internal paths. These are proposed conventions for NFR-01–NFR-04. A 409 prompts the UI to refresh state and show the conflict, never silently choose another asset/request.
+Use 400 for malformed/missing input, 401 for absent/ended sessions, 403 for an authenticated wrong role, 404 for missing or inaccessible foreign records, and 409 for state conflicts (unavailable asset, non-pending request, repeated return, duplicate Asset ID, or retirement while loaned). Invalid due dates produce 400. Error bodies use `{ error: { code, message, fields? } }`; unexpected failures use a generic 500 with no SQL, stack trace, credentials, or internal paths. These are proposed conventions for NFR-01–NFR-04. A 409 prompts the UI to refresh state and show the conflict, never silently choose another asset/request. **[CR-01 r4, proposed]** `409 BORROWING_QUOTA_EXCEEDED` is a further state conflict for request submission (BR-14: the borrower already has 2 pending requests). It uses the same envelope without `fields`. After it, the UI also re-reads `GET /borrowing-quota`.
 
 ## 4. High-level data model
 
@@ -174,6 +177,7 @@ Checkout records are represented by Loan's immutable request, asset, borrower, c
 | Only a matching pending request becomes `CHECKED_OUT` | Atomic checkout transaction; no standalone status update API. |
 | No retirement during active custody | Retirement takes the same asset-row lock as checkout/return and checks for an active loan before writing. |
 | Authority belongs to a Custodian | Seed/service validation of role, plus scoped queries on every operation; assignments have no client write interface. |
+| **[CR-01 r4, proposed]** No submission is accepted while the borrower's P ≥ 2 (BR-14); loans are not counted | Derived count (no stored counter) read inside the Serializable submission transaction. SSI plus bounded retry prevents write skew between concurrent submissions. Checkout, cancel and decline each lower P. Existing over-limit rows are never rewritten. |
 
 Prisma migrations define ordinary keys/relations. Custom migration SQL supplies the partial index and checks where needed; implementation must verify constraints against PostgreSQL, not only mocked repositories.
 
@@ -202,6 +206,30 @@ Catalog query joins assets to active-loan existence and derives canonical state.
 
 Authenticate a Borrower and validate Asset ID. Within a short serializable transaction, read the asset and active-loan count and confirm it is borrowable using the canonical predicate. Reject an existing pending request for the same borrower and asset; otherwise insert a pending request with the session user's ID and server submission time, commit, and return it. Retry serialization conflicts a bounded number of times, revalidating all conditions. A PostgreSQL partial unique index on `(borrowerId, assetId)` where status is `PENDING` independently prevents duplicate pending requests. Different borrowers may create distinct pending requests for the same available asset. Do not write a loan, change availability, or enforce a one-pending-request-per-asset uniqueness rule. Personal views query `borrowerId = principal.userId` (FR-06, FR-07; BR-04, BR-10). This is the FEAT-03 implementation refinement; checkout/return locking elsewhere in this SDS remains the proposed custody design.
 
+#### 5.3.1 Borrowing quota in submission [CR-01 r4, proposed]
+
+When activation is on, count P inside the **same** Serializable transaction, after the asset, availability and duplicate checks and before the insert. P is the `BorrowRequest` rows with `borrowerId = principal.id` and status `PENDING`; loans are **not** counted.
+
+If `P ≥ 2`, throw `409 BORROWING_QUOTA_EXCEEDED`. The transaction rolls back and nothing is written.
+
+Precedence, unchanged first: body parse 400/413, 401, 403 role, 403 Origin/CSRF, 400 input, 404, 409 `ASSET_UNAVAILABLE`, 409 `DUPLICATE_REQUEST`, then the quota.
+
+The existing three-attempt retry on `P2034` repeats every check. A loser whose retry sees the committed winner receives `BORROWING_QUOTA_EXCEEDED`; `CONFLICT` means all three attempts aborted.
+
+Contract rules:
+1. Every operation that can increase a borrower's P must run at Serializable and evaluate the quota in the same transaction. At `e5ed70d` that is only request submission. Checkout, cancel, decline, auto-decline and reconcile only lower P.
+2. Client values are advisory.
+3. The limit is a server constant (2), rendered from the DTO.
+4. No counter, trigger, lock or migration; `BorrowRequest_borrowerId_idx` exists.
+
+**Read endpoint.** `GET /borrowing-quota` evaluates in this order: 401 → 403 role → 404 `BORROWING_QUOTA_DISABLED` → 400 query parameters → 200. It runs **one** `COUNT(*)` statement, using the same function as submission. A single statement already reads one snapshot at Read Committed, so the r3 two-query `RepeatableRead` transaction is no longer needed (OD-12). The result is advisory.
+
+**Controlled activation.** `BORROWING_QUOTA` is `disabled` by default, or `enabled`. Startup refuses `enabled` unless `REQUEST_LIFECYCLE_WRITES=enabled`, so cancel and decline are always available as recovery paths. With lifecycle writes on, every blocked borrower can recover by cancelling their own request, so no lockout state exists.
+
+Production activation waits for the verified lifecycle rollout (#83, release gate RG-01). FR-12 return is **not** a prerequisite. While activation is off, submission is identical to the pre-CR-01 contract and `features.borrowingQuota` is `false`.
+
+A phase 2 → phase 1 rollback must disable the quota in the same deploy; otherwise the new revision fails startup and does not receive traffic. Plan, gates and deployment procedure: [impact analysis §20](labs/lab-07/CR-01-impact-analysis.md#20-recovery-activation-and-release-l7a-ev11-l7a-ev13-l7a-ev14).
+
 ### 5.4 Checkout and loan creation
 
 ```mermaid
@@ -229,6 +257,8 @@ The service first resolves the request's asset without treating the initial read
 
 All custody/retirement operations lock the asset first; concurrent attempts for the same asset serialize. The second checkout sees an active loan and receives 409; its request remains pending. The partial unique index is a final guard against duplicate active loans even if a code path misses the lock. Known uniqueness/serialization conflicts are translated safely; any failure rolls back both loan and request changes (BR-01, BR-02, BR-05, BR-06, BR-08, BR-09, BR-11; NFR-05, NFR-06). No automatic retry may select another request or duplicate a successful checkout.
 
+**[CR-01 r4, proposed]** Checkout does not evaluate the borrowing quota and is never rejected with `BORROWING_QUOTA_EXCEEDED`, including for borrowers whose existing records exceed BR-14. It changes exactly one `PENDING` request to `CHECKED_OUT`, so the request owner's P **decreases by one** and capacity is restored. The new active loan does not count toward the quota. When lifecycle writes are enabled, the auto-decline of competing requests also lowers each affected borrower's P. A failed checkout changes nothing.
+
 ### 5.5 Return and availability update
 
 Resolve the loan's immutable Asset ID; begin a transaction, lock asset then loan, and recheck the Custodian's authority and that `returnedAt` is null. Set server return time and returning custodian exactly once. Commit, then return the closed loan and recomputed asset state. No active loan remains, so the non-retired asset is available without a separate availability write. A repeated return receives 409 and preserves the original return timestamp. Failure leaves the loan active and availability unchanged. Borrowers cannot return equipment through their API role (BR-03, BR-05, BR-07, BR-08).
@@ -248,6 +278,7 @@ Borrower loan views always filter by the signed-in borrower. Custodian active-lo
 | Catalog / search | Denied (proposed authenticated catalog) | Catalog policy above | Catalog policy above |
 | Submit request | Denied | As self only | Denied |
 | Personal requests / loans | Denied | Own records only | Denied borrower endpoints |
+| Own borrowing quota **[CR-01 r4, proposed]** | Denied (401) | Own quota only; any query parameter → 400 | Denied (403) |
 | Pending queue / active-loan management views | Denied | Denied | Authorized assets only |
 | Checkout / return | Denied | Denied | Authorized assets only |
 | Create / edit / retire inventory | Denied | Denied | Creator assignment on create; authorized assets on edit/retire |
@@ -284,7 +315,7 @@ Deployment work must document actual prerequisites, environment examples, migrat
 | --- | --- | --- | --- | --- |
 | FEAT-01 | Authentication/session service, API boundary, access matrix | FR-01, FR-02, FR-03 | BR-03, BR-04, BR-05 | Sprint 1; extend with later operations |
 | FEAT-02 | Inventory service, derived availability, catalog contract | FR-04, FR-05, FR-16 | BR-08, BR-13 | Sprint 1 catalog; Sprint 3 search |
-| FEAT-03 | Request service, request workflow, scoped views | FR-06, FR-07, FR-08 | BR-03, BR-04, BR-05, BR-06, BR-10, BR-13 | Sprint 1 submission/personal view; Sprint 2 queue |
+| FEAT-03 | Request service, request workflow, scoped views | FR-06, FR-07, FR-08 | BR-03, BR-04, BR-05, BR-06, BR-10, BR-13; **BR-14 [CR-01 r4, proposed]** | Sprint 1 submission/personal view; Sprint 2 queue; CR-01 quota as Lab 7 maintenance |
 | FEAT-04 | Loan service, asset locks, atomic checkout/return, constraints | FR-09, FR-10, FR-12 | BR-01, BR-02, BR-03, BR-05, BR-06, BR-07, BR-08, BR-09, BR-11, BR-13 | Sprint 2 |
 | FEAT-05 | Loan views, derived due/overdue, ownership queries | FR-11, FR-13 | BR-03, BR-04, BR-12 | Sprint 2 loan view; Sprint 3 overdue |
 | FEAT-06 | Scoped single-snapshot aggregate query | FR-17 | BR-03, BR-05, BR-08, BR-13 | Sprint 3 |
@@ -295,6 +326,7 @@ The RTM remains the canonical planned test catalog. This design supplies the fol
 - **Sprint 1:** TC-01–TC-07, TC-18, TC-21–TC-24 verify seeded identity/logout, catalog, request ownership/non-reservation, authentication boundaries, password/config inspection, input validation, and safe internal failures (NFR-01–NFR-04).
 - **Sprint 2:** TC-08–TC-12, TC-19, TC-20, TC-25, TC-26 verify scoped custody, concurrent checkout against PostgreSQL, rollback with injected failure, duplicate active-loan constraints, persistence/restart, and clean-checkout reproduction (NFR-05–NFR-07). Repeat earlier security cases on new operations.
 - **Sprint 3:** TC-13–TC-17, TC-27, TC-28 verify strict overdue time boundaries, scoped administration/search/summary consistency, deployment smoke, and full BR regression coverage (NFR-08, NFR-09).
+- **CR-01 r4 (proposed):** the 19 active cases among CR01-TC01–TC21 in the [CR-01 STS](labs/lab-07/CR-01-STS.md) verify the pending-limit boundaries, no-write rejection, active-loan independence, checkout, cancel, decline and auto-decline recovery, historical over-limit data, concurrent submissions against PostgreSQL, concurrency with lifecycle operations, precedence, isolation, UI states, persistence and controlled activation. TC04 is superseded and TC15 is deferred. TC-06–TC-11, TC-18–TC-21, TC-23 and TC-25 remain regression obligations.
 
 In particular, test simultaneous checkout of different pending requests for one asset, checkout versus retirement, repeated return, foreign request/loan IDs, and failures between related writes. Verify database state after rejection. A rendered UI or health response alone cannot establish these invariants.
 
@@ -306,5 +338,6 @@ In particular, test simultaneous checkout of different pending requests for one 
 | Team member 1 review | Pending | Name, date, PR review URL, and resolved comments |
 | Team member 2 review | Pending | Name, date, PR review URL, and resolved comments |
 | Reviewed PR | Pending | PR URL, approvals/review records, and merge commit |
+| CR-01 r4 design review (§3, §4, §5.3.1, §5.4, §6, §8) | **Done.** DEV4952 approved PR #79 (2026-11-26 21:22 ICT; merge `7519274`); remaining decisions confirmed at 21:48 ICT (impact analysis §16). | PR #79 review; Issue #78 comment 7195363924 |
 
 Both team members should review component boundaries, SRS/feature coverage, scope/ownership enforcement, transaction failure and concurrency behavior, proposed HTTP/session contracts, and provisional policy decisions. Record actual reviews in the PR before marking these gates complete. This draft does not substitute an automated check for teammate review. If a decision changes, update this SDS and the affected SRS, feature inventory, RTM, and implementation plan together.

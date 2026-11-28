@@ -1,0 +1,26 @@
+HEAD 3a44570608f9c11257f8a762d5f9b86c33bc7753
+$ npm run lint
+
+> client@0.0.0 lint
+> eslint .
+
+lint exit=0
+$ npx tsc -b
+typecheck exit=0
+$ npm run build
+
+> client@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 43 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.52 kB │ gzip:  0.33 kB
+dist/assets/light-trails-Civz05j4.svg    4.43 kB │ gzip:  1.25 kB
+dist/assets/index-BAuD8a2T.css          32.92 kB │ gzip:  7.26 kB
+dist/assets/index-trgcnKE0.js          252.51 kB │ gzip: 78.04 kB
+
+✓ built in 794ms
+build exit=0
